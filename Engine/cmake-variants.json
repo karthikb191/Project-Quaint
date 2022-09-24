@@ -1,0 +1,22 @@
+{
+    "buildType":{
+        "default": "Debug",
+        "description": "Build variant",
+        "choices": {
+            "Debug":{
+                "short": "Debug Build",
+                "buildType": "Debug",
+                "settings": {
+                    "DEBUG_BUILD":1
+                }
+            },
+            "Release":{
+                "short":"Release Build",
+                "buildType": "Release",
+                "settings": {
+                    "DEBUG_BUILD":0
+                }
+            }
+        }
+    }
+}

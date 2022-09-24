@@ -1,0 +1,6 @@
+#VS Generated extensions
+*.vcxproj
+*.sln
+
+#Build Folders
+Build/

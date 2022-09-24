@@ -1,0 +1,27 @@
+{
+    //Engine Root
+    "folders": [
+      {
+        "name": "Quaint Engine",
+        "path": "./"
+      },
+      //Modules
+      {
+        "name": "Bolt Renderer",
+        "path": "../Modules/Bolt"
+      }
+    ],
+    
+    "settings": {
+      "workbench.colorCustomizations" : {
+          "terminal.ansiRed": "#f88"
+      },
+      "cmake.sourceDirectory" :"${workspaceFolder}",
+      "cmake.buildDirectory": "${workspaceFolder}/Build"
+  },
+  "launch": {
+    "name":"LaunchEngine",
+    "version": "0.2.0",
+    "configurations": []
+  }
+}
