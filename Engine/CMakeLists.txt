@@ -5,6 +5,7 @@ project(Quaint)
 
 if(${DEBUG_BUILD} EQUAL 1)
      message("[+]Debug Build")
+     set(CMAKE_CXX_FLAGS_RELEASE "-O0 -g")
 else()
      message("[+]Non-Debug Build")
 endif()
