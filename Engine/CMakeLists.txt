@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Module Name
-project(Quaint)
-
 if(${DEBUG_BUILD} EQUAL 1)
      message("[+]Debug Build")
      set(CMAKE_CXX_FLAGS_RELEASE "-O0 -g")
@@ -23,6 +20,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/../Modules/Bolt/CMakeLists.txt")
 #Include External plugins here
 
 
+
+# Module Name. The root project must be set after all the other CMakeLists to give it a proper .sln name
+project(Quaint)
 
 #Source files
 #TODO: Generate CMakelists through an external script once build times start to become unbearable

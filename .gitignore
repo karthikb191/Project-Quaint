@@ -3,4 +3,5 @@
 *.sln
 
 #Build Folders
-Build/
+Build
+Saved

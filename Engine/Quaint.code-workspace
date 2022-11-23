@@ -9,6 +9,10 @@
       {
         "name": "Bolt Renderer",
         "path": "../Modules/Bolt"
+      },
+      {
+        "name": "Quaint Logger",
+        "path": "../Modules/Core/Logger"
       }
     ],
     

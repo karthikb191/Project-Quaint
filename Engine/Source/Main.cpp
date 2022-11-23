@@ -6,5 +6,4 @@ int main()
     Bolt::BoltRenderer::get()->startEngine();
     Bolt::BoltRenderer::get()->shutdown();
     return 0;
-    
 }
