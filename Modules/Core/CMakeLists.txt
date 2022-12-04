@@ -12,6 +12,7 @@ endif()
 #Include External Modules(CMakeLists.txt) here
 include("${CMAKE_CURRENT_LIST_DIR}/Logger/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Memory/CMakeLists.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/Types/CMakeLists.txt")
 
 #TODO: Register sub modules here
 #add_subdirectory(Renderer)   # look in hello subdirectory for CMakeLists.txt to process
