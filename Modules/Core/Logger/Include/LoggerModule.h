@@ -13,6 +13,7 @@ namespace Quaint
         bool shutdown();
         static LoggerModule* get();
         bool shouldPrintLogsInCategory(const char* loggerName);
+        bool isRunning() { return mRunning; }
 
         private:
         LoggerModule(const LoggerModule&) = delete;

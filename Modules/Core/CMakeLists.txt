@@ -3,17 +3,26 @@ cmake_minimum_required(VERSION 3.10)
 # Module Name
 project(Core VERSION 1.0)
 
-if(${BUILD_BOLT_LIB})
+# If BUILD_<Lib>_LIB is OFF, then it's respective executable will be generated. This is to provide ease of testing until 
+# unit testing is available
+set(BUILD_LOGGER_LIB ON)
+set(BUILD_MEMORY_LIB ON)
+set(BUILD_TYPES_LIB ON)
+
+if(${BUILD_CORE_LIB})
     message("[+]Building Core Library")
 else()
-    message("[+]Building Core Executable")
+    set(BUILD_CORE_LIB OFF)
+    set(BUILD_MEMORY_LIB OFF)
+    message("[+]Building Core Executables")
+endif()
+
+if(${BUILD_CORE_LIB})
+    message("[+]Added target Library " ${PROJECT_NAME})
+    add_library(${PROJECT_NAME})
 endif()
 
 #Include External Modules(CMakeLists.txt) here
 include("${CMAKE_CURRENT_LIST_DIR}/Logger/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Memory/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Types/CMakeLists.txt")
-
-#TODO: Register sub modules here
-#add_subdirectory(Renderer)   # look in hello subdirectory for CMakeLists.txt to process
-#add_subdirectory(Logger)    # look in apps subdirectory for CMakeLists.txt to process

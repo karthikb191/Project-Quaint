@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Module Name
-project(QuaintTypes VERSION 1.0)
+#project(QuaintTypes VERSION 1.0)
 
 # Compile features
 
@@ -11,8 +11,24 @@ file(GLOB_RECURSE SOURCES
      "${CMAKE_CURRENT_LIST_DIR}/Source/*.cpp"
 )
 
-message("[+]Building Quaint-Types Library")
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+if(NOT ${BUILD_CORE_LIB})
+    #Module Name
+    project(QuaintTypes VERSION 1.0)
+    message("[+]Project Defined: " ${PROJECT_NAME})
+endif()
+
+if(NOT ${BUILD_TYPES_LIB})
+     message("[+]Building Quaint-Types Executable")
+     add_executable(${PROJECT_NAME})
+elseif(NOT ${BUILD_CORE_LIB})
+    message("[+]Building \"QuaintTypes\" Libray")
+    list(FILTER SOURCES EXCLUDE REGEX ".*Source/Main\\.cpp$")
+    add_library(${PROJECT_NAME} STATIC)
+else()
+    message("[+]Adding Quaint-Types to core Library")
+endif()
+
+target_sources(${PROJECT_NAME} PUBLIC ${SOURCES})
 
 # Make include directories available to use within this project
 include_directories(${CMAKE_CURRENT_LIST_DIR}/Include)

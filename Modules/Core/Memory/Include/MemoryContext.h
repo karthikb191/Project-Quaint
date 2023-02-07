@@ -1,19 +1,29 @@
 #ifndef _H_MEMORY_CONTEXT
 #define _H_MEMORY_CONTEXT
 
+#include <QuaintLogger.h>
 #include <stdint.h>
 
 namespace Quaint
 {
+    DECLARE_LOG_CATEGORY(MemoryContextLogger);
+
     class MemoryContext
     {
         public:
-            constexpr MemoryContext() : m_name(""), m_size(0), m_valid(false){}
-            constexpr MemoryContext(const char* name, uint32_t size) : m_name(name), m_size(size), m_valid(size > 1024){}
-        
-            const char*           m_name;
-            uint32_t        m_size;
-            bool            m_valid;
+            constexpr MemoryContext() 
+            : m_name(""), m_size(0), m_valid(false), m_rawMemory(nullptr), m_dynamic(false)
+            {}
+            constexpr MemoryContext(const char* name, size_t size, bool dynamic = false)
+             : m_name(name), m_size(size), m_valid(size > 1024), m_dynamic(dynamic), m_rawMemory(nullptr)
+             {}
+            bool Initialize();
+
+            const char*             m_name;
+            void*                   m_rawMemory;
+            size_t                  m_size;     /*In Bytes*/
+            bool                    m_valid;
+            bool                    m_dynamic;  /*Whether Memory of this context can be dynamically adjusted*/
     };
 }
 

@@ -11,8 +11,8 @@
         "path": "../Modules/Bolt"
       },
       {
-        "name": "Quaint Logger",
-        "path": "../Modules/Core/Logger"
+        "name": "Quaint Core",
+        "path": "../Modules/Core"
       }
     ],
     
@@ -21,11 +21,10 @@
           "terminal.ansiRed": "#f88"
       },
       "cmake.sourceDirectory" :"${workspaceFolder}",
-      "cmake.buildDirectory": "${workspaceFolder}/Build"
-  },
-  "launch": {
-    "name":"LaunchEngine",
-    "version": "0.2.0",
-    "configurations": []
+      "cmake.buildDirectory": "${workspaceFolder}/Build",
+      "files.associations": {
+        "system_error": "cpp",
+        "xlocale": "cpp"
+      }
   }
 }

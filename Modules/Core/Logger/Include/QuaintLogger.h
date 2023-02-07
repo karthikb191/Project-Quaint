@@ -14,7 +14,7 @@ namespace Quaint
     #define DECLARE_LOG_CATEGORY(name)\
     class Logger_##name : public LoggerBase {\
         public:\
-        Logger_##name() : LoggerBase(#name){};\
+        Logger_##name() : LoggerBase(#name) {}\
     }
 
     #define DEFINE_LOG_CATEGORY(name) Logger_##name logger##name;

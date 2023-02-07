@@ -9,12 +9,12 @@ endif()
 
 #Project variables to be passed on to child CMakeLists.txt
 set(BUILD_BOLT_LIB ON)
-
+set(BUILD_CORE_LIB ON)
 
 
 #Include External Modules(CMakeLists.txt) here
 include("${CMAKE_CURRENT_LIST_DIR}/../Modules/Bolt/CMakeLists.txt")
-
+include("${CMAKE_CURRENT_LIST_DIR}/../Modules/Core/CMakeLists.txt")
 
 
 #Include External plugins here
@@ -35,7 +35,7 @@ add_executable(Quaint ${SOURCES})
 
 #Setup Links to other modules and plugins here
 target_link_libraries(Quaint PUBLIC Bolt)
-
+target_link_libraries(Quaint PUBLIC Core)
 
 
 # Make headers available to other libraries

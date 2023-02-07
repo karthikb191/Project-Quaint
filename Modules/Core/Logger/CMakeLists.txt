@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Module Name
-project(QuaintLogger VERSION 1.0)
-
 # Compile features
 
 #Source files
@@ -11,13 +8,24 @@ file(GLOB_RECURSE SOURCES
      "${CMAKE_CURRENT_LIST_DIR}/Source/*.cpp"
 )
 
-if(${BUILD_BOLT_LIB})
-    message("[+]Building Quaint-Logger Library")
-    add_library(${PROJECT_NAME} ${SOURCES})
-else()
-    message("[+]Building Quaint-Logger Executable")
-    add_executable(${PROJECT_NAME} ${SOURCES})
+if(NOT ${BUILD_CORE_LIB})
+    #Module Name
+    project(QuaintLogger VERSION 1.0)
+    message("[+]Project Defined: " ${PROJECT_NAME})
 endif()
+
+if(NOT ${BUILD_LOGGER_LIB})
+    message("[+]Building Quaint-Logger Executable " ${BUILD_LOGGER_LIB})
+    add_executable(${PROJECT_NAME})
+elseif(NOT ${BUILD_CORE_LIB})
+    message("[+]Building \"QuaintLogger\" Libray")
+    list(FILTER SOURCES EXCLUDE REGEX ".*Source/Main\\.cpp$")
+    add_library(${PROJECT_NAME} STATIC)
+else()
+    message("[+]Adding Quaint Logger to core Library")
+endif()
+
+target_sources(${PROJECT_NAME} PUBLIC ${SOURCES})
 
 # Make include directories available to use within this project
 include_directories(${CMAKE_CURRENT_LIST_DIR}/Include)

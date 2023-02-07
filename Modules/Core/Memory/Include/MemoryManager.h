@@ -5,6 +5,8 @@
 #include <string>
 #include <map>
 #include <set>
+#include <memory>
+#include <QuaintLogger.h>
 #include "MemoryContext.h"
 #include "MemoryConstants.h"
 
@@ -12,6 +14,8 @@ using namespace std;
 
 namespace Quaint
 {
+    DECLARE_LOG_CATEGORY(MemoryManagerLogger);
+
     struct MemoryMap
     {
         public:
@@ -24,17 +28,28 @@ namespace Quaint
     class MemoryManager
     {
     public:
-        static bool initialize();
-        static MemoryManager* get() { return m_MemoryManager; }
+        static MemoryManager* get() 
+        {
+            if(m_MemoryManager == nullptr)
+            {
+                //TODO: New should be using default memory context. Check if that's happening correctly
+                m_MemoryManager = new MemoryManager();
+            }
+            return m_MemoryManager;
+        }
+        bool initialize();
 
         /*Registers a new memory partition*/
-        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, uint32_t size)
+        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false)
         {
-            m_MemoryContexts[index] = MemoryContext(partitionName, size);
+            m_MemoryContexts[index] = MemoryContext(partitionName, size, dynamic);
             ++m_validContexts;
         }
         static int getValidContexts() { return m_validContexts; }
         static MemoryContext* getMemoryContexts() { return m_MemoryContexts; }
+
+        MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
+        MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
         MemoryManager();

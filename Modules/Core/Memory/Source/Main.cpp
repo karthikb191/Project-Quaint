@@ -1,14 +1,14 @@
-#include<iostream>
+#include <iostream>
 #include <vector>
-
+#include <QuaintLogger.h>
 #include <MemoryDefinitions.h>
 
 int main()
 {
     std::cout << "Hello Memory Manager\n";
     Quaint::RegisterMemoryPartitions();
-
-    //static_assert(Quaint::MemoryManager::getValidContexts() > 0 && "Invalid valid contexts");
+    
+    Quaint::MemoryManager::get()->initialize();
     int validContexts = Quaint::MemoryManager::getValidContexts();
     std::cout << "Valid Contexts: " << validContexts << std::endl;
     for(int i = 0; i < validContexts; i++)
