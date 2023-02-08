@@ -8,7 +8,8 @@ int main()
     std::cout << "Hello Memory Manager\n";
     Quaint::RegisterMemoryPartitions();
     
-    Quaint::MemoryManager::get()->initialize();
+    Quaint::MemoryManager::initialize();
+    Quaint::MemoryManager::Get()->TestFunction();
     int validContexts = Quaint::MemoryManager::getValidContexts();
     std::cout << "Valid Contexts: " << validContexts << std::endl;
     for(int i = 0; i < validContexts; i++)

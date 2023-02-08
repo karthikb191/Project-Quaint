@@ -12,11 +12,11 @@ namespace Quaint
         LoggerBase(const char* loggerName);
 
         //void log(Category category, const char* message, ...);
-        void log(Category category, const std::string& message);
-        void logVerbose(const std::string& message);
-        void logInfo(const std::string& message);
-        void logWarning(const std::string& message);
-        void logError(const std::string& message);
+        void log(Category category, const char* message);
+        void logVerbose(const char* message);
+        void logInfo(const char* message);
+        void logWarning(const char* message);
+        void logError(const char* message);
 
         const char* getLoggerName() {return mLoggerName;}
         private:

@@ -25,8 +25,25 @@ namespace Quaint
         
         char buffer[1024];
         sprintf_s(buffer, "Memory Contest %s initialization successful! Allocated %lu bytes from OS", m_name, m_size);
-        QLOG_E(MemoryContextLogger, buffer);
+        QLOG_I(MemoryContextLogger, buffer);
         
+        //TODO: Initialize technique
+        
+
+        m_technique->boot(m_size, m_rawMemory, m_dynamic);
+
         return true;
+    }
+
+    void* MemoryContext::Alloc(size_t allocSize)
+    {
+        //TODO: Add an assert here
+        return m_technique->alloc(allocSize);
+    }
+
+    void MemoryContext::Free()
+    {
+        //TODO: Add an assert here
+        m_technique->free();
     }
 }

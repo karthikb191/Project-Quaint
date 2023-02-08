@@ -6,13 +6,14 @@
 namespace Quaint
 {
     DEFINE_LOG_CATEGORY(MemoryManagerLogger);
+    DEFINE_SINGLETON(MemoryManager);
 
-    MemoryManager *MemoryManager::m_MemoryManager = nullptr;
     MemoryContext MemoryManager::m_MemoryContexts[] = {};
+    DefaultAllocTechnique MemoryManager::m_bootAllocTechnique = DefaultAllocTechnique();
     int MemoryManager::m_validContexts = 0;
+    bool MemoryManager::m_initialized = false;
 
     MemoryManager::MemoryManager()
-        : m_initialized(false)
     {
     }
 
@@ -30,12 +31,30 @@ namespace Quaint
                 return false;
             }
         }
+
+        //Initialize default allocator technique that
+        m_bootAllocTechnique.boot(BOOT_MEMORY_SIZE, malloc(BOOT_MEMORY_SIZE));
+
         m_initialized = true;
 
         QLOG_V(MemoryManagerLogger, "MemoryManager Initialization successful");
         return true;
     }
 
+    void* MemoryManager::defaultAlloc(size_t allocSize)
+    {
+        return m_bootAllocTechnique.alloc(allocSize);
+    }
+
+    void MemoryManager::defaultFree()
+    {
+        m_bootAllocTechnique.free();
+    }
+
+    void MemoryManager::TestFunction()
+    {
+        QLOG_I(MemoryManagerLogger, "Inside Test Function");
+    }
 
     MemoryContext* MemoryManager::getMemoryContenxtByIndex(uint32_t index)
     {

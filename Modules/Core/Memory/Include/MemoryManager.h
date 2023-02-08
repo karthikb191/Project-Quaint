@@ -6,7 +6,9 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <Singleton.h>
 #include <QuaintLogger.h>
+#include "MemCore/Techniques/DefaultAllocTechnique.h"
 #include "MemoryContext.h"
 #include "MemoryConstants.h"
 
@@ -16,48 +18,38 @@ namespace Quaint
 {
     DECLARE_LOG_CATEGORY(MemoryManagerLogger);
 
-    struct MemoryMap
-    {
-        public:
-
-        static constexpr MemoryMap* next = nullptr;
-    };
-
     /*Memory Manager lives outside the custom allocated memory blocks. This should be the last thing to be destroyed*/
-    //TODO: Find a way to move this to a memory context 
-    class MemoryManager
+    //TODO: Find a way to add to one of the memory contexts
+    class MemoryManager : public Singleton<MemoryManager>
     {
+        DECLARE_SINGLETON(MemoryManager);
+        
     public:
-        static MemoryManager* get() 
-        {
-            if(m_MemoryManager == nullptr)
-            {
-                //TODO: New should be using default memory context. Check if that's happening correctly
-                m_MemoryManager = new MemoryManager();
-            }
-            return m_MemoryManager;
-        }
-        bool initialize();
-
+        static bool initialize();
         /*Registers a new memory partition*/
         static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false)
         {
             m_MemoryContexts[index] = MemoryContext(partitionName, size, dynamic);
             ++m_validContexts;
         }
-        static int getValidContexts() { return m_validContexts; }
-        static MemoryContext* getMemoryContexts() { return m_MemoryContexts; }
+        static int              getValidContexts() { return m_validContexts; }
+        static MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
 
+        static void*    defaultAlloc(size_t allocSize);
+        static void     defaultFree();
+
+        void TestFunction();
         MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
         MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
         MemoryManager();
-        static MemoryManager*       m_MemoryManager;
-        static MemoryContext        m_MemoryContexts[MAX_MEMORY_CONTEXTS];
-        static int                  m_validContexts;
+        
+        static DefaultAllocTechnique    m_bootAllocTechnique;
+        static MemoryContext            m_MemoryContexts[MAX_MEMORY_CONTEXTS];
+        static int                      m_validContexts;
 
-        bool                        m_initialized;
+        static bool                     m_initialized;
     };
 
     #define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE) \
