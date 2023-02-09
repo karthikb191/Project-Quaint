@@ -13,16 +13,18 @@ namespace Quaint
     int MemoryManager::m_validContexts = 0;
     bool MemoryManager::m_initialized = false;
 
-    MemoryManager::MemoryManager()
-    {
-    }
-
     bool MemoryManager::initialize()
     {
         //Create Memory Context map that maps a string to MemoryContext once the custom allocator is working
 
+        if(m_validContexts == 0)
+        {
+            QLOG_E(MemoryManagerLogger, "No memory contexts registered. We need atleast 1. Populate them in MemoryDefinitions.h");
+            return false;
+        }
         //initializes valid memory contexts
-        for(int i = 0; i < m_validContexts; i++)
+        m_MemoryContexts[0].InitializeContextAndTechnique(&m_bootAllocTechnique);
+        for(int i = 1; i < m_validContexts; i++)
         {
             bool res = m_MemoryContexts[i].Initialize();
             if(!res)
@@ -32,34 +34,39 @@ namespace Quaint
             }
         }
 
-        //Initialize default allocator technique that
-        m_bootAllocTechnique.boot(BOOT_MEMORY_SIZE, malloc(BOOT_MEMORY_SIZE));
-
         m_initialized = true;
 
         QLOG_V(MemoryManagerLogger, "MemoryManager Initialization successful");
         return true;
     }
 
+    bool MemoryManager::shutdown()
+    {
+        for(int i = 1; i < m_validContexts; i++)
+        {
+            m_MemoryContexts[i].Shutdown();
+        }
+        
+        m_bootAllocTechnique.shutdown();
+        m_MemoryContexts[0].Invalidate();
+        return true;
+    }
+
     void* MemoryManager::defaultAlloc(size_t allocSize)
     {
-        return m_bootAllocTechnique.alloc(allocSize);
+        return m_MemoryContexts[0].Alloc(allocSize);
     }
 
-    void MemoryManager::defaultFree()
+    void MemoryManager::defaultFree(void* mem)
     {
-        m_bootAllocTechnique.free();
-    }
-
-    void MemoryManager::TestFunction()
-    {
-        QLOG_I(MemoryManagerLogger, "Inside Test Function");
+        m_MemoryContexts[0].Free(mem);
     }
 
     MemoryContext* MemoryManager::getMemoryContenxtByIndex(uint32_t index)
     {
         return nullptr;
     }
+
     MemoryContext* MemoryManager::getMemoryContextByName(const char* name)
     {
         return nullptr;

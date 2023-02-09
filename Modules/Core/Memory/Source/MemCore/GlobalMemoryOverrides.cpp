@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <MemoryManager.h>
-#include <MemCore/MemoryData.h>
+
+//TODO: Later Move this to a precompiled header
+//TODO: Add operators to handle arrays
 
 void* operator new(size_t size)
 {
@@ -9,7 +11,7 @@ void* operator new(size_t size)
 
 void operator delete(void* mem)
 {
-    Quaint::MemoryManager::defaultFree();
+    Quaint::MemoryManager::defaultFree(mem);
 }
 
 void* operator new(size_t size, const char* contextName)
@@ -22,12 +24,12 @@ void operator delete(void* mem, const char* contextName)
     //TODO: Fill this up
 }
 
-void* operator new(size_t size, size_t contextId)
+void* operator new(size_t size, int contextId)
 {
     //TODO: Fill this up
     return nullptr;
 }
-void operator delete(void* mem, size_t contextId)
+void operator delete(void* mem, int contextId)
 {
     //TODO: Fill this up
 }

@@ -20,14 +20,15 @@ namespace Quaint
 
     /*Memory Manager lives outside the custom allocated memory blocks. This should be the last thing to be destroyed*/
     //TODO: Find a way to add to one of the memory contexts
-    class MemoryManager : public Singleton<MemoryManager>
+    class MemoryManager
     {
         DECLARE_SINGLETON(MemoryManager);
         
     public:
         static bool initialize();
+        static bool shutdown();
         /*Registers a new memory partition*/
-        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false)
+        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false, EAllocationTechnique technique = EAllocationTechnique::Default)
         {
             m_MemoryContexts[index] = MemoryContext(partitionName, size, dynamic);
             ++m_validContexts;
@@ -36,14 +37,16 @@ namespace Quaint
         static MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
 
         static void*    defaultAlloc(size_t allocSize);
-        static void     defaultFree();
+        static void     defaultFree(void* mem);
 
-        void TestFunction();
-        MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
-        MemoryContext*          getMemoryContextByName(const char* name);
+        static MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
+        static MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
-        MemoryManager();
+        MemoryManager() = delete;
+        ~MemoryManager() = delete;
+        MemoryManager(const MemoryManager&) = delete;
+        MemoryManager(const MemoryManager&&) = delete;
         
         static DefaultAllocTechnique    m_bootAllocTechnique;
         static MemoryContext            m_MemoryContexts[MAX_MEMORY_CONTEXTS];
@@ -52,7 +55,7 @@ namespace Quaint
         static bool                     m_initialized;
     };
 
-    #define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE) \
-            MemoryManager::registerMemoryPartition(INDEX, PARTITION_NAME, SIZE);
+    #define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE) \
+            MemoryManager::registerMemoryPartition(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE);
 }
 #endif //_H_MEMORY_MANAGER
