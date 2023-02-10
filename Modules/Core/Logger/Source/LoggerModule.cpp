@@ -2,12 +2,13 @@
 
 namespace Quaint
 {
-    std::unique_ptr<LoggerModule>        LoggerModule::mLoggerModule;
-    
-    LoggerModule::LoggerModule()
-    {}
+    std::unique_ptr<LoggerModule> LoggerModule::mLoggerModule = nullptr;
+    std::set<std::string> LoggerModule::mRegisteredLogs;
+    bool LoggerModule::mRunning = false;
+
     bool LoggerModule::init()
     {
+        get();
         mRunning = true;
         //TODO:
         return true;
@@ -15,7 +16,6 @@ namespace Quaint
     bool LoggerModule::shutdown()
     {
         mRegisteredLogs.clear();
-        mLoggerModule.release();
         mRunning = false;
         return true;
     }

@@ -7,23 +7,20 @@
 #include <set>
 #include <memory>
 #include <Singleton.h>
-#include <QuaintLogger.h>
 #include "MemCore/Techniques/DefaultAllocTechnique.h"
 #include "MemoryContext.h"
 #include "MemoryConstants.h"
 
 using namespace std;
 
+
 namespace Quaint
 {
-    DECLARE_LOG_CATEGORY(MemoryManagerLogger);
-
     /*Memory Manager lives outside the custom allocated memory blocks. This should be the last thing to be destroyed*/
     //TODO: Find a way to add to one of the memory contexts
-    class MemoryManager
+    class MemoryManager : public Singleton<MemoryManager>
     {
         DECLARE_SINGLETON(MemoryManager);
-        
     public:
         static bool initialize();
         static bool shutdown();
@@ -36,18 +33,25 @@ namespace Quaint
         static int              getValidContexts() { return m_validContexts; }
         static MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
 
-        static void*    defaultAlloc(size_t allocSize);
-        static void     defaultFree(void* mem);
+        inline void*    defaultAlloc(size_t allocSize) { return m_bootAllocTechnique.alloc(allocSize); }
+        inline void     defaultFree(void* mem) { m_bootAllocTechnique.free(mem); }
 
-        static MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
-        static MemoryContext*          getMemoryContextByName(const char* name);
+        MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
+        MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
-        MemoryManager() = delete;
-        ~MemoryManager() = delete;
-        MemoryManager(const MemoryManager&) = delete;
-        MemoryManager(const MemoryManager&&) = delete;
+        MemoryManager() 
+        { 
+            m_bootMemory = malloc(BOOT_MEMORY_SIZE);
+            m_bootAllocTechnique.boot(BOOT_MEMORY_NAME, BOOT_MEMORY_SIZE, m_bootMemory, false); 
+        };
+        ~MemoryManager() 
+        {
+            m_bootAllocTechnique.shutdown();
+            free(m_bootMemory);
+        };
         
+        void*                           m_bootMemory;
         static DefaultAllocTechnique    m_bootAllocTechnique;
         static MemoryContext            m_MemoryContexts[MAX_MEMORY_CONTEXTS];
         static int                      m_validContexts;
@@ -57,5 +61,6 @@ namespace Quaint
 
     #define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE) \
             MemoryManager::registerMemoryPartition(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE);
+
 }
 #endif //_H_MEMORY_MANAGER

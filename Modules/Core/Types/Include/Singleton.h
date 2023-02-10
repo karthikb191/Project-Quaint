@@ -8,13 +8,10 @@ namespace Quaint
     {
     public:
         virtual ~Singleton() = default;
-        static T *Get()
+        static T& Get()
         {
-            if (m_dataPtr == nullptr)
-            {
-                m_dataPtr = new T();
-            }
-            return m_dataPtr;
+            static T data;
+            return data;
         }
 
     private:
@@ -25,12 +22,12 @@ namespace Quaint
         Singleton &operator=(Singleton &&) = delete;
 
         friend typename T;
-    protected:
-        static T *m_dataPtr;
+    //protected:
+    //    static T *m_dataPtr;
     };
 }
 
 #define DECLARE_SINGLETON(TYPE) friend typename Singleton<TYPE>;
-#define DEFINE_SINGLETON(TYPE) TYPE *Singleton<TYPE>::m_dataPtr = nullptr;
+//#define DEFINE_SINGLETON(TYPE) TYPE *Singleton<TYPE>::m_dataPtr = nullptr;
 
 #endif //_H_SINGLETON

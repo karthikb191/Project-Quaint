@@ -1,7 +1,6 @@
 #ifndef _H_MEMORY_CONTEXT
 #define _H_MEMORY_CONTEXT
 
-#include <QuaintLogger.h>
 #include <stdint.h>
 #include <Memory>
 #include <MemCore/MemoryData.h>
@@ -9,8 +8,6 @@
 
 namespace Quaint
 {
-    DECLARE_LOG_CATEGORY(MemoryContextLogger);
-
     class MemoryContext
     {
     public:
@@ -33,8 +30,25 @@ namespace Quaint
         void Invalidate();
         bool Shutdown();
         bool InitializeContextAndTechnique(IAllocationTechnique* technique);
-        void* Alloc(size_t allocSize);
-        void Free(void* mem);
+        inline void* Alloc(size_t allocSize)
+        {
+            //TODO: Add an assert check for m_technique
+            void* mem = m_technique->alloc(allocSize);
+
+            //char buffer[1024];
+            //sprintf_s(buffer, "Allocated %lu in MemoryContext %s. Available: %lu", allocSize, m_name, m_technique->getAvailableSize());
+            //QLOG_E(MemoryContextLogger, buffer);
+            return mem;
+        }
+        inline void Free(void* mem)
+        {
+            //TODO: Add an assert check for m_technique
+            m_technique->free(mem);
+
+            //char buffer[1024];
+            //sprintf_s(buffer, "Freed from MemoryContext %s. Available: %lu", m_name, m_technique->getAvailableSize());
+            //QLOG_E(MemoryContextLogger, buffer);
+        }
     private:
         bool RequestMemoryFromOS();
     

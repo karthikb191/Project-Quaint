@@ -19,6 +19,7 @@ namespace Quaint
         char buffer[1024];
         sprintf_s(buffer, "Memory chunk overhead cleared from DefaultAllocTechnique. Total available: %lu", m_availableSize);
         QLOG_E(DefaultAllocLogger, buffer);
+        m_isRunning = false;
     }
     
     //TODO: Pass in a memory context here
@@ -28,7 +29,8 @@ namespace Quaint
         //TODO: Assert available size is greater than a certain threshold and power of 2
         if(m_availableSize < 1024)
         {
-            QLOG_E(DefaultAllocLogger, "Boot Failed! partition size provided is not sufficient");
+            //TODO: Throw an assert here. Dont log
+            //QLOG_E(DefaultAllocLogger, "Boot Failed! partition size provided is not sufficient");
         }
 
         //Creates initial Memory chunk
@@ -39,6 +41,7 @@ namespace Quaint
         m_rootChunk->m_next = nullptr;
         m_currentFree = m_rootChunk;
         m_availableSize -= sizeof(MemoryChunk);
+        m_isRunning = true;
     }
     
     void DefaultAllocTechnique::reboot(size_t size, void* rawMemory)
@@ -82,7 +85,7 @@ namespace Quaint
         
     }
 
-    MemoryChunk* DefaultAllocTechnique::getFirstFitChunk(size_t allocSize)
+    DefaultAllocTechnique::MemoryChunk* DefaultAllocTechnique::getFirstFitChunk(size_t allocSize)
     {
         if(!m_currentFree->m_isUsed && allocSize <= m_currentFree->m_size)
         {
@@ -93,7 +96,7 @@ namespace Quaint
     }
     
     /*This can return nullptr if freechunk cant be created*/
-    MemoryChunk* DefaultAllocTechnique::createFreeChunk(void* memLocation, size_t availableSize)
+    DefaultAllocTechnique::MemoryChunk* DefaultAllocTechnique::createFreeChunk(void* memLocation, size_t availableSize)
     {
         if(availableSize < sizeof(MemoryChunk) + 1024)
         {
@@ -145,6 +148,8 @@ namespace Quaint
 
     void DefaultAllocTechnique::free(void* mem)
     {
+        if(!m_isRunning)
+            return;
         MemoryChunk* current = m_rootChunk;
         while(current != nullptr)
         {

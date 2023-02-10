@@ -1,11 +1,13 @@
 #include <MemoryContext.h>
+#include <QuaintLogger.h>
 #include <MemCore/AllocationTechniqueFactory.h>
 #include <cstdlib>
 
 namespace Quaint
 {
+    DECLARE_LOG_CATEGORY(MemoryContextLogger);
     DEFINE_LOG_CATEGORY(MemoryContextLogger);
-
+    
     bool MemoryContext::Initialize()
     {
         if(!m_valid)
@@ -95,24 +97,4 @@ namespace Quaint
         return true;
     }
 
-    void* MemoryContext::Alloc(size_t allocSize)
-    {
-        //TODO: Add an assert check for m_technique
-        void* mem = m_technique->alloc(allocSize);
-
-        //char buffer[1024];
-        //sprintf_s(buffer, "Allocated %lu in MemoryContext %s. Available: %lu", allocSize, m_name, m_technique->getAvailableSize());
-        //QLOG_E(MemoryContextLogger, buffer);
-        return mem;
-    }
-
-    void MemoryContext::Free(void* mem)
-    {
-        //TODO: Add an assert check for m_technique
-        m_technique->free(mem);
-
-        char buffer[1024];
-        sprintf_s(buffer, "Freed from MemoryContext %s. Available: %lu", m_name, m_technique->getAvailableSize());
-        QLOG_E(MemoryContextLogger, buffer);
-    }
 }

@@ -7,7 +7,8 @@
 */
 #define MAX_MEMORY_CONTEXTS 50
 
-#define BOOT_MEMORY_SIZE    10 * 1024 //10Kib
+#define BOOT_MEMORY_NAME "DEFAULT"
+#define BOOT_MEMORY_SIZE  10 * 1024 * 1024 //10Mib
 
 
 #endif //_H_MEMORY_CONSTANTS

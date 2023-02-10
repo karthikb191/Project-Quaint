@@ -1,17 +1,18 @@
-//#include "MemCore/GlobalMemoryOverrides.cpp"
+#include <MemoryModule.h>
+#include <QuaintLogger.h>
+
 #include <iostream>
 #include <vector>
-#include <QuaintLogger.h>
 #include <MemoryDefinitions.h>
 #include <chrono>
 
 int main()
 {
     std::cout << "Hello Memory Manager\n";
-    Quaint::RegisterMemoryPartitions();
-    
-    Quaint::MemoryManager::initialize();
-    
+
+    Quaint::LoggerModule::init();
+    Quaint::MemoryModule::initialize();
+
     int validContexts = Quaint::MemoryManager::getValidContexts();
     std::cout << "Valid Contexts: " << validContexts << std::endl;
     //for(int i = 0; i < validContexts; i++)

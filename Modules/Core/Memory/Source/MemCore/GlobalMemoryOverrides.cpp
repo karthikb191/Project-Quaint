@@ -6,12 +6,12 @@
 
 void* operator new(size_t size)
 {
-    return Quaint::MemoryManager::defaultAlloc(size);
+    return Quaint::MemoryManager::Get().defaultAlloc(size);
 }
 
 void operator delete(void* mem)
 {
-    Quaint::MemoryManager::defaultFree(mem);
+    Quaint::MemoryManager::Get().defaultFree(mem);
 }
 
 void* operator new(size_t size, const char* contextName)

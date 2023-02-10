@@ -8,9 +8,9 @@ namespace Quaint
     class LoggerModule
     {
         public:
-        LoggerModule();
-        bool init();
-        bool shutdown();
+        LoggerModule() {}
+        static bool init();
+        static bool shutdown();
         static LoggerModule* get();
         bool shouldPrintLogsInCategory(const char* loggerName);
         bool isRunning() { return mRunning; }
@@ -19,9 +19,10 @@ namespace Quaint
         LoggerModule(const LoggerModule&) = delete;
         LoggerModule(const LoggerModule&&) = delete;
 
-        std::set<std::string>                       mRegisteredLogs; 
+        //TODO: Remove this. Use Singleton<> instead if needed
         static std::unique_ptr<LoggerModule>        mLoggerModule;
-        bool                                        mRunning = false;
+        static std::set<std::string>                mRegisteredLogs; 
+        static bool                                 mRunning;
         //TODO: Construct Delegates in utils library and add it here for Loggers to subscribe
     };
 }
