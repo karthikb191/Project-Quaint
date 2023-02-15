@@ -41,7 +41,7 @@ namespace MemoryVisualizer
             if(MouseDown)
             {
                 float Zoom = ZoomLevel / (float)DefaultZoomLevel;
-                OffsetX += (int)((float)(e.Location.X - MouseDownLocation.X) * Zoom);
+                OffsetX += (int)((float)(e.Location.X - MouseDownLocation.X));
                 MouseDownLocation.X = e.Location.X;
                 debugLabel.Text = OffsetX.ToString();
                 Refresh();
@@ -52,18 +52,14 @@ namespace MemoryVisualizer
             debugLabel.Text = e.X.ToString() + "   " + e.Y.ToString();
             float Zoom = (float)ZoomLevel / (float)DefaultZoomLevel;
             
-            //if(ZoomPivotX != e.X)
+            //Transform Pivot to the unscaled(Default) position
             {
                 int newPivot = e.X;
                 newPivot -= ZoomPivotX;
-                newPivot = (int)(e.X / (float)Zoom);
-                newPivot += e.X;
+                newPivot = (int)(newPivot / (float)Zoom);
+                newPivot += ZoomPivotX;
                 ZoomPivotX = newPivot;
             }
-            //else
-            //{
-            //    ZoomPivotX = (int)(e.X);
-            //}
             ZoomPivotY = (int)(e.Y);
             ZoomLevel += Math.Sign(e.Delta);
             Refresh();
