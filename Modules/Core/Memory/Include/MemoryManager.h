@@ -40,6 +40,7 @@ namespace Quaint
         MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
+        /*When heap allocation is first requested, boot allocation technique is constructed*/
         MemoryManager() 
         { 
             m_bootMemory = malloc(BOOT_MEMORY_SIZE);

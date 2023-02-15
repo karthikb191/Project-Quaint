@@ -1,6 +1,6 @@
 {
     "cmake.sourceDirectory":"${workspaceFolder}",
-    "cmake.buildDirectory": "${workspaceFolder}/Build",
+    "cmake.buildDirectory": "${workspaceFolder}/Build/",
     "files.associations": {
         "memory": "cpp",
         "atomic": "cpp",

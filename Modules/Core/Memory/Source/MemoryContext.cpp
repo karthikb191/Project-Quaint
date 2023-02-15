@@ -27,6 +27,7 @@ namespace Quaint
         QLOG_I(MemoryContextLogger, buffer);
         
         //TODO: Assert check here
+        //TODO: Instead of using new to create allocator technique, use the memory given by OS
         m_technique = AllocationTechniqueFactory::createAllocationTechique(EAllocationTechnique::Default);
         m_technique->boot(m_name, m_size, m_rawMemory, m_dynamic);
 
