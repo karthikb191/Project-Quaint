@@ -5,3 +5,6 @@
 #Build Folders
 Build
 Saved
+.vs
+Tools/*/bin/*
+Tools/*/obj/*

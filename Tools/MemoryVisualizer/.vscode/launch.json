@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "Launch Memory Visualizer(Debug)",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-debug",
+        "program": "${workspaceFolder}/bin/Debug/MemoryVisualizer.exe",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "console": "internalConsole",
+        "stopAtEntry": false
+    },
+    {
+        "name": "Launch Memory Visualizer(Release)",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build-release",
+        "program": "${workspaceFolder}/bin/Release/MemoryVisualizer.exe",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "console": "internalConsole",
+        "stopAtEntry": false
+    }
+]
+}
