@@ -10,7 +10,7 @@ namespace Quaint
     class AllocationTechniqueFactory
     {
     public:
-        static IAllocationTechnique* createAllocationTechique(EAllocationTechnique technique);
+        static IAllocationTechnique* createAllocationTechique(const EAllocationTechnique technique, void* memoryPointer, size_t& techniqueSize);
 
     private:
         AllocationTechniqueFactory() = delete;

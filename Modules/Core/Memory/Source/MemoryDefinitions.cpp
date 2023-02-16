@@ -6,7 +6,7 @@ namespace Quaint
 {
     void RegisterMemoryPartitions()
     {
-        REGISTER_MEMORY_PARTITION(0, "Test0", 1000 * 1024, false, EAllocationTechnique::Default);
+        REGISTER_MEMORY_PARTITION(0, BOOT_MEMORY_NAME, BOOT_MEMORY_SIZE, false, EAllocationTechnique::Default);
         REGISTER_MEMORY_PARTITION(1, "Test1", 30 * 1024, false, EAllocationTechnique::Default);
         REGISTER_MEMORY_PARTITION(2, "Test2", 40 * 1024, false, EAllocationTechnique::Default);
         REGISTER_MEMORY_PARTITION(3, "Test3", 50 * 1024, false, EAllocationTechnique::Default);

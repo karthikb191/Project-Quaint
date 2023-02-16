@@ -104,8 +104,7 @@ namespace Quaint
             return nullptr;
         }
 
-        MemoryChunk* chunk = (MemoryChunk*)memLocation;
-        *chunk = MemoryChunk();
+        MemoryChunk* chunk = new (memLocation) MemoryChunk();
         chunk->m_size = availableSize - sizeof(MemoryChunk);
         chunk->m_rawData = (char*)memLocation + sizeof(MemoryChunk);
         m_availableSize -= sizeof(MemoryChunk);

@@ -10,6 +10,7 @@ namespace Quaint
     
     bool MemoryContext::Initialize()
     {
+        //TODO: Only add asserts here
         if(!m_valid)
         {
             QLOG_E(MemoryContextLogger, "Memory context is in invalid state during initialization");
@@ -28,8 +29,10 @@ namespace Quaint
         
         //TODO: Assert check here
         //TODO: Instead of using new to create allocator technique, use the memory given by OS
-        m_technique = AllocationTechniqueFactory::createAllocationTechique(EAllocationTechnique::Default);
-        m_technique->boot(m_name, m_size, m_rawMemory, m_dynamic);
+        size_t techniqueSize = 0;
+        m_technique = AllocationTechniqueFactory::createAllocationTechique(EAllocationTechnique::Default, m_rawMemory, techniqueSize);
+        void* targetMemory = (char*)m_rawMemory + techniqueSize;
+        m_technique->boot(m_name, m_size - techniqueSize, targetMemory, m_dynamic);
 
         return true;
     }
@@ -48,7 +51,7 @@ namespace Quaint
         if(m_technique != nullptr)
         {
             m_technique->shutdown();
-            delete m_technique;
+            // No need to call delete on technique here. managed memory will be cleared in free
         }
         Invalidate();
         return true;

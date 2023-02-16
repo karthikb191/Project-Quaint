@@ -33,30 +33,28 @@ namespace Quaint
         int              getValidContexts() { return m_validContexts; }
         MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
 
-        inline void*    defaultAlloc(size_t allocSize) { return m_bootAllocTechnique.alloc(allocSize); }
-        inline void     defaultFree(void* mem) { m_bootAllocTechnique.free(mem); }
+        inline void*    defaultAlloc(size_t allocSize) 
+        { 
+            return m_MemoryContexts[0].Alloc(allocSize); 
+        }
+        inline void     defaultFree(void* mem) 
+        { 
+            m_MemoryContexts[0].Free(mem); 
+        }
 
         MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
         MemoryContext*          getMemoryContextByName(const char* name);
 
     private:
         /*When heap allocation is first requested, boot allocation technique is constructed*/
-        MemoryManager() 
-        { 
-            m_bootMemory = malloc(BOOT_MEMORY_SIZE);
-            m_bootAllocTechnique.boot(BOOT_MEMORY_NAME, BOOT_MEMORY_SIZE, m_bootMemory, false); 
-        };
-        ~MemoryManager() 
+        MemoryManager() = default;
+        ~MemoryManager()
         {
-            m_bootAllocTechnique.shutdown();
-            free(m_bootMemory);
+            shutdown();
         };
         
         static int                             m_validContexts;
         static MemoryContext                   m_MemoryContexts[MAX_MEMORY_CONTEXTS];
-        
-        void*                                   m_bootMemory = nullptr;
-        DefaultAllocTechnique                   m_bootAllocTechnique;
 
         bool                                    m_initialized = false;
     };

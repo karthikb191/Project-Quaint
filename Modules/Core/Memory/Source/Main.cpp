@@ -16,6 +16,15 @@ namespace Quaint
 #include <vector>
 #include <chrono>
 
+class Test
+{
+    int i = 100;
+    char J = 'c';
+    long k = 1994724892;
+    std::string test = "sdufhskfhskdfhsd3jfs";
+    char* ptr = nullptr;
+};
+
 int main()
 {
     std::cout << "Hello Memory Manager\n";
@@ -29,17 +38,30 @@ int main()
     //}
 
     auto before = std::chrono::high_resolution_clock::now();
+    int* testInt[10000];
+
+    Test* testStruct = nullptr;
     for(int i = 0; i < 10000; i++)
     {
-        int* temp = new int(10);
+        if( i == 100)
+        {
+            testStruct = new Test();
+        }
+        testInt[i] = new int(10);
     }
     auto after = std::chrono::high_resolution_clock::now();
     
     std::cout << "Time: " << (after - before).count() << std::endl;
 
+    
+    for(int i = 0; i < 10000; i++)
+    {
+        std::cout << *testInt[i] << "\n";   
+    }
+
 using namespace Quaint;
     SHUTDOWN_MODULE(LoggerModule);
-    SHUTDOWN_MODULE(MemoryModule);
+    //SHUTDOWN_MODULE(MemoryModule);
 
     return 0;
 }

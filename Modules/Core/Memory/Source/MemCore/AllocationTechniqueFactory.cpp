@@ -3,13 +3,16 @@
 
 namespace Quaint
 {
-    IAllocationTechnique* AllocationTechniqueFactory::createAllocationTechique(EAllocationTechnique technique)
+    IAllocationTechnique* AllocationTechniqueFactory::createAllocationTechique(const EAllocationTechnique technique, void* memoryPointer, size_t& techniqueSize)
     {
         //Technique ptrs use default Memory chunk
         switch (technique)
         {
         case EAllocationTechnique::Default:
-            return new DefaultAllocTechnique();
+            DefaultAllocTechnique* allocTechnique = nullptr;//(DefaultAllocTechnique*)memoryPointer;
+            allocTechnique = new (memoryPointer) DefaultAllocTechnique();
+            techniqueSize = sizeof(DefaultAllocTechnique);
+            return allocTechnique;
             break;
         }
         return nullptr;

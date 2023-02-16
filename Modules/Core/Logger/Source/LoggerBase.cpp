@@ -17,6 +17,9 @@ namespace Quaint
         if(!mEnabled)
             return;
 
+        //std::stringstream stream;
+        //stream << "[" << mLoggerName << "]: " << logCategoryToString(category) << ": " << message << '\n';
+        //std::cout << stream.str();
         char buffer[4096];
         sprintf_s(buffer, "[%s]: %s : %s \n", mLoggerName, logCategoryToString(category), message);
         std::cout << buffer;

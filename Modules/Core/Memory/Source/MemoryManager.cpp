@@ -10,11 +10,10 @@ namespace Quaint
 
     MemoryContext MemoryManager::m_MemoryContexts[] = {};
     int MemoryManager::m_validContexts = 0;
-    //DefaultAllocTechnique MemoryManager::m_bootAllocTechnique = DefaultAllocTechnique();
-    //bool MemoryManager::m_initialized = false;
 
     bool MemoryManager::initialize()
     {
+        //WARN: DONOT create logs before
         if(m_initialized)
         {
             return true;
@@ -50,9 +49,6 @@ namespace Quaint
         {
             m_MemoryContexts[i].Shutdown();
         }
-        
-        //m_bootAllocTechnique.shutdown();
-        //m_MemoryContexts[0].Invalidate();
         return true;
     }
 

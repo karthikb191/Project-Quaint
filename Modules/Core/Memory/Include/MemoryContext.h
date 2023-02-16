@@ -43,6 +43,8 @@ namespace Quaint
         inline void Free(void* mem)
         {
             //TODO: Add an assert check for m_technique
+            if(!m_valid)
+                return;
             m_technique->free(mem);
 
             //char buffer[1024];
