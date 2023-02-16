@@ -3,26 +3,20 @@
 #include<set>
 #include<string>
 #include<memory>
+#include<Module.h>
+
 namespace Quaint
 {
-    class LoggerModule
+    class LoggerModule : public Module<LoggerModule>
     {
-        public:
-        LoggerModule() {}
-        static bool init();
-        static bool shutdown();
-        static LoggerModule* get();
+        BEFRIEND_MODULE(LoggerModule);
+    public:
         bool shouldPrintLogsInCategory(const char* loggerName);
-        bool isRunning() { return mRunning; }
 
-        private:
-        LoggerModule(const LoggerModule&) = delete;
-        LoggerModule(const LoggerModule&&) = delete;
-
-        //TODO: Remove this. Use Singleton<> instead if needed
-        static std::unique_ptr<LoggerModule>        mLoggerModule;
-        static std::set<std::string>                mRegisteredLogs; 
-        static bool                                 mRunning;
+    private:
+        LoggerModule() = default;
+        virtual ~LoggerModule() = default;
+        static std::set<std::string>                mRegisteredLogs;
         //TODO: Construct Delegates in utils library and add it here for Loggers to subscribe
     };
 }

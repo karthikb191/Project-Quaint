@@ -1,19 +1,26 @@
+#include <Module.h>
+//Initialize all modules doing anything.
+namespace Quaint
+{
+    CREATE_MODULE(LoggerModule);
+    INIT_MODULE(LoggerModule);
+
+    CREATE_MODULE(MemoryModule);
+    INIT_MODULE(MemoryModule);
+}
+
 #include <MemoryModule.h>
 #include <QuaintLogger.h>
 
 #include <iostream>
 #include <vector>
-#include <MemoryDefinitions.h>
 #include <chrono>
 
 int main()
 {
     std::cout << "Hello Memory Manager\n";
 
-    Quaint::LoggerModule::init();
-    Quaint::MemoryModule::initialize();
-
-    int validContexts = Quaint::MemoryManager::getValidContexts();
+    int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
     std::cout << "Valid Contexts: " << validContexts << std::endl;
     //for(int i = 0; i < validContexts; i++)
     //{
@@ -27,7 +34,13 @@ int main()
         int* temp = new int(10);
     }
     auto after = std::chrono::high_resolution_clock::now();
-
+    
     std::cout << "Time: " << (after - before).count() << std::endl;
-    Quaint::MemoryManager::shutdown();
+
+using namespace Quaint;
+    SHUTDOWN_MODULE(LoggerModule);
+    SHUTDOWN_MODULE(MemoryModule);
+
+    return 0;
 }
+

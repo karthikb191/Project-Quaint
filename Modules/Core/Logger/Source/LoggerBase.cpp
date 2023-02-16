@@ -9,7 +9,7 @@ namespace Quaint
     : mLoggerName(loggerName)
     , mEnabled(true)
     {
-        mEnabled = LoggerModule::get()->shouldPrintLogsInCategory(loggerName);
+        mEnabled = LoggerModule::get().shouldPrintLogsInCategory(loggerName);
     }
 
     void LoggerBase::log(Category category, const char* message)

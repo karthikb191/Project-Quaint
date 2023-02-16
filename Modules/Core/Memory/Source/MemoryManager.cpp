@@ -1,6 +1,6 @@
 #include <MemoryManager.h>
 #include <QuaintLogger.h>
-#include "MemoryDefinitions.h"
+#include <MemoryDefinitions.h>
 
 namespace Quaint
 {
@@ -9,9 +9,9 @@ namespace Quaint
     DEFINE_LOG_CATEGORY(MemoryManagerLogger);
 
     MemoryContext MemoryManager::m_MemoryContexts[] = {};
-    DefaultAllocTechnique MemoryManager::m_bootAllocTechnique = DefaultAllocTechnique();
     int MemoryManager::m_validContexts = 0;
-    bool MemoryManager::m_initialized = false;
+    //DefaultAllocTechnique MemoryManager::m_bootAllocTechnique = DefaultAllocTechnique();
+    //bool MemoryManager::m_initialized = false;
 
     bool MemoryManager::initialize()
     {

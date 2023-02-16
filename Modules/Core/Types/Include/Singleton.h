@@ -17,9 +17,9 @@ namespace Quaint
     private:
         Singleton() = default;
         Singleton(const Singleton &) = delete;
-        Singleton(Singleton &&) = delete;
+        Singleton(const Singleton &&) = delete;
         Singleton &operator=(const Singleton &) = delete;
-        Singleton &operator=(Singleton &&) = delete;
+        Singleton &operator=(const Singleton &&) = delete;
 
         friend typename T;
     //protected:

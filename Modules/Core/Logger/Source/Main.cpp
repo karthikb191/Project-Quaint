@@ -9,8 +9,6 @@ using namespace Quaint;
 #define WarnLogger
 #define ErrorLogger
 
-INIT_LOGGER_MODULE
-
 DECLARE_LOG_CATEGORY(TempLogger);
 DEFINE_LOG_CATEGORY(TempLogger);
 
@@ -37,7 +35,5 @@ int main()
     QLOG_W(WarnLogger, "Warn Logger Test");
     QLOG_E(ErrorLogger, "Error Logger Test");
 
-
-    SHUTDOWN_LOGGER_MODULE
     return 0;
 }

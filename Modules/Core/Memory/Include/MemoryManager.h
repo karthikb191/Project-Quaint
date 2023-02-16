@@ -13,25 +13,25 @@
 
 using namespace std;
 
-
 namespace Quaint
 {
+    class MemoryModule;
     /*Memory Manager lives outside the custom allocated memory blocks. This should be the last thing to be destroyed*/
     //TODO: Find a way to add to one of the memory contexts
-    class MemoryManager : public Singleton<MemoryManager>
+    class MemoryManager
     {
-        DECLARE_SINGLETON(MemoryManager);
+        friend class MemoryModule;
     public:
-        static bool initialize();
-        static bool shutdown();
+        bool initialize();
+        bool shutdown();
         /*Registers a new memory partition*/
         static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false, EAllocationTechnique technique = EAllocationTechnique::Default)
         {
             m_MemoryContexts[index] = MemoryContext(partitionName, size, dynamic);
             ++m_validContexts;
         }
-        static int              getValidContexts() { return m_validContexts; }
-        static MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
+        int              getValidContexts() { return m_validContexts; }
+        MemoryContext*   getMemoryContexts() { return m_MemoryContexts; }
 
         inline void*    defaultAlloc(size_t allocSize) { return m_bootAllocTechnique.alloc(allocSize); }
         inline void     defaultFree(void* mem) { m_bootAllocTechnique.free(mem); }
@@ -52,16 +52,16 @@ namespace Quaint
             free(m_bootMemory);
         };
         
-        void*                           m_bootMemory;
-        static DefaultAllocTechnique    m_bootAllocTechnique;
-        static MemoryContext            m_MemoryContexts[MAX_MEMORY_CONTEXTS];
-        static int                      m_validContexts;
+        static int                             m_validContexts;
+        static MemoryContext                   m_MemoryContexts[MAX_MEMORY_CONTEXTS];
+        
+        void*                                   m_bootMemory = nullptr;
+        DefaultAllocTechnique                   m_bootAllocTechnique;
 
-        static bool                     m_initialized;
+        bool                                    m_initialized = false;
     };
 
-    #define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE) \
+#define REGISTER_MEMORY_PARTITION(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE) \
             MemoryManager::registerMemoryPartition(INDEX, PARTITION_NAME, SIZE, DYNAMIC, TYPE);
-
 }
 #endif //_H_MEMORY_MANAGER
