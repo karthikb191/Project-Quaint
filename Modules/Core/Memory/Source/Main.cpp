@@ -52,7 +52,6 @@ int main()
     auto after = std::chrono::high_resolution_clock::now();
     
     std::cout << "Time: " << (after - before).count() << std::endl;
-
     
     for(int i = 0; i < 10000; i++)
     {
@@ -61,7 +60,9 @@ int main()
 
 using namespace Quaint;
     SHUTDOWN_MODULE(LoggerModule);
-    //SHUTDOWN_MODULE(MemoryModule);
+
+    //Calling this here is crashing the application. Probably cuz destructors of global statics now point to invalid memory location
+    //SHUTDOWN_MODULE(MemoryModule);    
 
     return 0;
 }

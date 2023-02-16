@@ -7,7 +7,6 @@ namespace MemoryVisualizer
     {
         public Form1()
         {
-            rand = new System.Random(100);
             MouseDownLocation = new System.Drawing.Point(0, 0);
             InitializeComponent();
 
@@ -38,30 +37,39 @@ namespace MemoryVisualizer
         }
         private void memDisplayPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if(MouseDown)
+
+            float Zoom = ZoomLevel / (float)DefaultZoomLevel;
+            Zoom = Math.Clamp(Zoom, 0.5f, 1000.0f);
+
+
+            if (MouseDown)
             {
-                float Zoom = ZoomLevel / (float)DefaultZoomLevel;
-                OffsetX += (int)((float)(e.Location.X - MouseDownLocation.X));
+                OffsetX += ((float)(e.Location.X - MouseDownLocation.X));
                 MouseDownLocation.X = e.Location.X;
                 debugLabel.Text = OffsetX.ToString();
+
                 Refresh();
             }
+            else
+            {
+                //Transform Pivot to the unscaled(Default) position
+                float newPivot = e.X;
+                float OldPivot = ZoomPivotX;
+                newPivot -= ZoomPivotX;
+                //newPivot = newPivot / (float)Zoom;
+                newPivot += ZoomPivotX;
+                ZoomPivotX = newPivot;
+
+                debugLabel.Text = ZoomPivotX.ToString();
+                ZoomPivotX = System.Math.Clamp(ZoomPivotX, 0, memDisplayPanel.Width);
+                
+                ZoomPivotY = e.Y;
+            }
+
         }
         private void memDisplayPanel_MouseWheel(object sender, MouseEventArgs e)
         {
-            debugLabel.Text = e.X.ToString() + "   " + e.Y.ToString();
-            float Zoom = (float)ZoomLevel / (float)DefaultZoomLevel;
-            
-            //Transform Pivot to the unscaled(Default) position
-            {
-                int newPivot = e.X;
-                newPivot -= ZoomPivotX;
-                newPivot = (int)(newPivot / (float)Zoom);
-                newPivot += ZoomPivotX;
-                ZoomPivotX = newPivot;
-            }
-            ZoomPivotY = (int)(e.Y);
-            ZoomLevel += Math.Sign(e.Delta);
+            ZoomLevel += Math.Sign(e.Delta) * ZoomSpeed;
             Refresh();
         }
 
@@ -83,19 +91,23 @@ namespace MemoryVisualizer
                 System.Drawing.Color.YellowGreen,
             };
 
-            float Zoom = (float)ZoomLevel / (float)DefaultZoomLevel;
+            float Zoom = ZoomLevel / (float)DefaultZoomLevel;
+            Zoom = Math.Clamp(Zoom, 0.5f, 1000.0f);
+            
             for (int i = 0; i < divisions; i++)
             {
                 //x and y are relative to panel
-                int x = (int)(i * ((float)panelWidth / (float)divisions)); //Original
-                x -= ZoomPivotX;
-                x = (int)(x * Zoom);
-                x += ZoomPivotX + OffsetX;
-                int y = 0;
-                int width = (int)((float)(panelWidth / 10) * Zoom);
-                int height = panelHeight;
-                System.Drawing.Rectangle rect =
-                    new System.Drawing.Rectangle(x, y, width, height);
+                float x = (i * (panelWidth / (float)divisions)); //Original
+
+                x -= memDisplayPanel.Width/2.0f - OffsetX;
+                x = x * Zoom;
+                x += memDisplayPanel.Width/2.0f;
+
+                float y = 0;
+                float width = (float)(panelWidth / 10) * Zoom;
+                float height = panelHeight;
+                System.Drawing.RectangleF rect =
+                    new System.Drawing.RectangleF(x, y, width, height);
                 //Grap
                 System.Drawing.SolidBrush brush =
                     new System.Drawing.SolidBrush(Colors[ i % Colors.Length ]);
@@ -104,11 +116,12 @@ namespace MemoryVisualizer
         }
         private System.Drawing.Point MouseDownLocation;
         private bool MouseDown = false;
-        private int OffsetX = 0;
-        private int ZoomPivotX = 0;
-        private int ZoomPivotY = 0;
-        private int DefaultZoomLevel = 50;
-        private int ZoomLevel = 50;
-        System.Random rand;
+        private float OffsetX = 0;
+        
+        private float ZoomPivotX = 0;
+        private float ZoomPivotY = 0;
+        private float DefaultZoomLevel = 50;
+        private float ZoomLevel = 50;
+        private float ZoomSpeed = 3;
     }
 }
