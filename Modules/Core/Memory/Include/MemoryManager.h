@@ -22,6 +22,7 @@ namespace Quaint
     {
         friend class MemoryModule;
     public:
+        /*Extremely critical function! There should not be any calls to new or delete. Will result in a deadlock otherwise*/
         bool initialize();
         bool shutdown();
         /*Registers a new memory partition*/

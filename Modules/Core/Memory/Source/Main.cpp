@@ -1,4 +1,6 @@
 #include <Module.h>
+#include <MemoryModule.h>
+#include <QuaintLogger.h>
 //Initialize all modules before doing anything.
 namespace Quaint
 {
@@ -7,10 +9,12 @@ namespace Quaint
 
     CREATE_MODULE(MemoryModule);
     INIT_MODULE(MemoryModule);
+
+    CREATE_MODULE(IPCModule);
+    INIT_MODULE(IPCModule);
 }
 
-#include <MemoryModule.h>
-#include <QuaintLogger.h>
+#include <IPCModule.h>
 
 #include <iostream>
 #include <vector>
@@ -49,7 +53,7 @@ int main()
     
     for(int i = 0; i < 10000; i++)
     {
-        std::cout << *testInt[i] << "\n";   
+        //std::cout << *testInt[i] << "\n";   
     }
 
 using namespace Quaint;

@@ -1,7 +1,7 @@
 {
     "cmake.sourceDirectory":"${workspaceFolder}",
     "cmake.buildDirectory": "${workspaceFolder}/Build/",
-    "cmake.useCMakePresets":"never", //Get to using presets later
+    "cmake.useCMakePresets": "never", //Get to using presets later
     "files.associations": {
         "memory": "cpp",
         "atomic": "cpp",

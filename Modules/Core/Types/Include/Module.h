@@ -1,6 +1,10 @@
 #ifndef _H_MODULE
 #define _H_MODULE
 
+/*
+* Modules should be initialized before control enters main. 
+* They ideally should not contain any non-local static objects that takes up storage on heap!!
+*/
 namespace Quaint
 {
     template<typename T>

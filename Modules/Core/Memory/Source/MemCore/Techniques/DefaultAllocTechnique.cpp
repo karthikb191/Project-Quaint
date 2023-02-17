@@ -17,7 +17,7 @@ namespace Quaint
             current = current->m_next;
         }
         char buffer[1024];
-        sprintf_s(buffer, "Memory chunk overhead cleared from DefaultAllocTechnique. Total available: %lu", m_availableSize);
+        sprintf_s(buffer, "Memory chunk overhead cleared from DefaultAllocTechnique. Total available: %zu", m_availableSize);
         QLOG_E(DefaultAllocLogger, buffer);
         m_isRunning = false;
     }

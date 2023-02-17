@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.10)
 
 # Module Name
 project(Core VERSION 1.0)
-
+if(${DEBUG_BUILD})
+message("[+]DEBUG BUILD!")
+else()
+message("[+]RELEASE BUILD!")
+set(CMAKE_BUILD_TYPE Release)
+endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-o3 -DNDEBUG")
 
 # If BUILD_<Lib>_LIB is OFF, then it's respective executable will be generated. This is to provide ease of testing until 

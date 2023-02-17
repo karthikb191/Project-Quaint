@@ -14,7 +14,7 @@ namespace Quaint
         Logger_##name() : LoggerBase(#name) {}\
     }
 
-    /*Effective C++ Item-4*/
+    /*Effective C++ Item-4. Converted this to local-static. object is created on first usage*/
     #define DEFINE_LOG_CATEGORY(name) Logger_##name& getLogger##name()\
     { \
         static Logger_##name logger;\

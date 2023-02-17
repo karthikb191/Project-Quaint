@@ -3,6 +3,7 @@
 #include <MemoryManager.h>
 #include <MemoryDefinitions.h>
 #include <Module.h>
+#include <string>
 namespace Quaint
 {
     //TODO: Extend from module class
@@ -19,7 +20,6 @@ namespace Quaint
 protected:
         void initModule_impl() override
         {
-            m_memoryManager.initialize();
         }
 
         void shutdown_impl() override
@@ -28,7 +28,10 @@ protected:
         }
 
     private:
-        MemoryModule() = default;
+        MemoryModule()
+        {
+            m_memoryManager.initialize();
+        }
         virtual ~MemoryModule() = default;
         MemoryModule(const MemoryModule&) = delete;
         MemoryModule(const MemoryModule&&) = delete;
@@ -36,8 +39,8 @@ protected:
         MemoryModule& operator= (const MemoryModule&&) = delete;
 
         MemoryManager       m_memoryManager;
+        
     };
-    
 }
 
 #endif //_H_MEMORY_MODULE
