@@ -6,10 +6,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch Quaint-Memory(Debug)",
+            "name": "(Windows) Launch Quaint-Core(Debug)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Build/Debug/QuaintMemory.exe",
+            "program": "${workspaceFolder}/Build/Debug/Output.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -17,10 +17,10 @@
             "console": "externalTerminal"
         },
         {
-            "name": "(Windows) Launch Quaint-Memory(Release)",
+            "name": "(Windows) Launch Quaint-Core(Release)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Build/Release/QuaintMemory.exe",
+            "program": "${workspaceFolder}/Build/Release/Output.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

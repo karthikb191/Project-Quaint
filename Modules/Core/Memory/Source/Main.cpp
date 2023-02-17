@@ -1,5 +1,5 @@
 #include <Module.h>
-//Initialize all modules doing anything.
+//Initialize all modules before doing anything.
 namespace Quaint
 {
     CREATE_MODULE(LoggerModule);
@@ -30,12 +30,6 @@ int main()
     std::cout << "Hello Memory Manager\n";
 
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
-    std::cout << "Valid Contexts: " << validContexts << std::endl;
-    //for(int i = 0; i < validContexts; i++)
-    //{
-    //    Quaint::MemoryContext* Context = (Quaint::MemoryManager::getMemoryContexts() + i);
-    //    std::cout << "Context: " <<  Context->m_name << " " << Context->m_size << " " << Context->m_valid << std::endl;
-    //}
 
     auto before = std::chrono::high_resolution_clock::now();
     int* testInt[10000];
@@ -43,7 +37,7 @@ int main()
     Test* testStruct = nullptr;
     for(int i = 0; i < 10000; i++)
     {
-        if( i == 100)
+        if( i == 300)
         {
             testStruct = new Test();
         }

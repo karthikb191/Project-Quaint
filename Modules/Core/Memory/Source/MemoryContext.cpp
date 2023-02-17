@@ -24,7 +24,7 @@ namespace Quaint
         }
         
         char buffer[1024];
-        sprintf_s(buffer, "Memory Context %s initialization successful! Allocated %lu bytes from OS", m_name, m_size);
+        sprintf_s(buffer, "Memory Context %s initialization successful! Allocated %zu bytes from OS", m_name, m_size);
         QLOG_I(MemoryContextLogger, buffer);
         
         //TODO: Assert check here
@@ -72,7 +72,7 @@ namespace Quaint
         }
         
         char buffer[1024];
-        sprintf_s(buffer, "Memory Context %s initialization successful! Allocated %lu bytes from OS", m_name, m_size);
+        sprintf_s(buffer, "Memory Context %s initialization successful! Allocated %zu bytes from OS", m_name, m_size);
         QLOG_I(MemoryContextLogger, buffer);
         
         //TODO: null check technique

@@ -1,0 +1,17 @@
+{
+    //Work needs to be done to get this working right
+    "tasks": [
+        {
+            "type" : "shell",
+            "label": "CMake: Configure Quaint-Memory Executable",
+            "command": "cmake",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "args": [
+                "-DBUILD_CORE_LIB=OFF"
+            ]
+        }
+    ],
+    "version": "2.0.0"
+}

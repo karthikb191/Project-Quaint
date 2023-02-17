@@ -65,7 +65,6 @@ namespace MemoryVisualizer
                 
                 ZoomPivotY = e.Y;
             }
-
         }
         private void memDisplayPanel_MouseWheel(object sender, MouseEventArgs e)
         {
