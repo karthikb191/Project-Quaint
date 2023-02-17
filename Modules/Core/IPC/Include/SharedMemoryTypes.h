@@ -10,19 +10,23 @@ namespace Quaint
         Pipe,
         DoublePipe,
         SharedFile,
-        SharedMemory,
+        SharedOSMemory,
         SocketCOM,
         Invalid
     };
-
+    
     struct SharedMemoryHandle
     {
-        SharedMemoryHandle(const char* name)
-        : m_name(name)
-        {}
-        const char*                     m_name;
+        void init(const char* name, const ESharedMemoryType type, const size_t size)
+        {
+            sprintf_s(m_name, name);
+            m_type = type;
+            m_size = size;
+        }
+        char                            m_name[256] = {0};
         void*                           m_memHandle = nullptr;
-        ESharedMemoryType               m_type = ESharedMemoryType::SharedMemory;
+        void*                           m_dataBuffer = nullptr;
+        ESharedMemoryType               m_type = ESharedMemoryType::SharedOSMemory;
         size_t                          m_size = 0;
         bool                            m_valid = false;
 
@@ -34,6 +38,14 @@ namespace Quaint
         bool operator!=(const SharedMemoryHandle& other)
         {
             return !(*this == other);
+        }
+        bool operator==(const char* name)
+        {
+            return strcmp(m_name, name) == 0;
+        }
+        bool operator!=(const char* name)
+        {
+            return !(*this == name);
         }
     };
 }
