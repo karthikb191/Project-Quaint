@@ -17,7 +17,7 @@ namespace Quaint
         void shutdown();
 
         const SharedMemoryHandle* requestSharedMemory(const char* name, const ESharedMemoryType type, const size_t size);
-        void releaseSharedMemory(const SharedMemoryHandle& handle);
+        void releaseSharedMemory(const SharedMemoryHandle* handle);
 
     private:
         SharedMemoryHandle& getFreeHandle();

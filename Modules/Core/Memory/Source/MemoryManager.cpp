@@ -62,4 +62,11 @@ namespace Quaint
         return nullptr;
     }
 
+#ifdef _DEBUG
+    void MemoryManager::populateTrackerInformation(void* sharedMemory)
+    {
+        //TODO: Populating only the first context for now. Add support to populate all contexts later
+        m_MemoryContexts[0].writeMemoryTrackInfo(sharedMemory, 0, sizeof(ContextHeader));
+    }
+#endif
 }

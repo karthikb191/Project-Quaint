@@ -163,4 +163,40 @@ namespace Quaint
             current = current->m_next;
         }
     }
+
+    size_t DefaultAllocTechnique::getTrackerBlocks(std::vector<TrackerBlock>& trackerBlocks)
+    {
+        MemoryChunk* current = m_rootChunk;
+        size_t numBlocks = 0;
+
+        while(current != nullptr)
+        {
+            if(current->m_isUsed)
+            {
+                ++numBlocks;
+            }
+            current = current->m_next;
+        }
+
+        trackerBlocks.reserve(numBlocks);
+        
+        current = m_rootChunk;
+        numBlocks = 0;
+
+        while(current != nullptr)
+        {
+            if(current->m_isUsed)
+            {
+                TrackerBlock block;
+                sprintf_s(block.m_name, "Temp");
+                block.m_size = sizeof(MemoryChunk) + current->m_size;
+                block.m_startAddress = *(int*)(current);
+                trackerBlocks.emplace_back(block);
+                ++numBlocks;
+            }
+            current = current->m_next;
+        }
+
+        return numBlocks;
+    }
 }

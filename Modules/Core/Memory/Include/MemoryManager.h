@@ -46,6 +46,10 @@ namespace Quaint
         MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
         MemoryContext*          getMemoryContextByName(const char* name);
 
+#ifdef _DEBUG
+        void populateTrackerInformation(void* sharedMemory);
+#endif
+
     private:
         /*When heap allocation is first requested, boot allocation technique is constructed*/
         MemoryManager() = default;

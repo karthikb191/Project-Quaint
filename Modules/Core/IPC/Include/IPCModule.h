@@ -9,6 +9,7 @@ namespace Quaint
     {
         BEFRIEND_MODULE(IPCModule)
         public:
+            IPCManager* getIPCManager() { return &m_IPCManager; } 
             
         protected:
             void initModule_impl() override;

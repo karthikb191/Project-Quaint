@@ -23,6 +23,10 @@ namespace Quaint
         void reboot(size_t size, void* rawMemory) override;
         void* alloc(size_t allocSize) override;
         void free(void* mem) override;
+        size_t getHeaderSize() { return sizeof(DefaultAllocTechnique); }
+    #ifdef _DEBUG
+        size_t getTrackerBlocks(std::vector<TrackerBlock>& trackerBlocks) override;
+    #endif
         void shutdown() override;
 
     protected:

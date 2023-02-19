@@ -101,4 +101,33 @@ namespace Quaint
         return true;
     }
 
+#ifdef _DEBUG
+    void* MemoryContext::writeMemoryTrackInfo(void* memoryPoiter, size_t contextHeaderoffset, size_t trackerBlocksOffset)
+    {
+        void* headerAddress = (char*)memoryPoiter + contextHeaderoffset;
+        void* blocksAddress = (char*)memoryPoiter + trackerBlocksOffset;
+
+        std::vector<TrackerBlock> trackerBlocks;
+        size_t numBlocks = m_technique->getTrackerBlocks(trackerBlocks);
+
+        //Fill Context header
+        ContextHeader* header = new (headerAddress) ContextHeader();
+        header->m_headerSize = sizeof(m_technique->getHeaderSize());
+        header->m_numTrackerBlocks = numBlocks;
+
+        size_t blockOffset = sizeof(TrackerBlock);
+        void* targetAddress = blocksAddress;
+        for(int i = 0; i < numBlocks; i++)
+        {
+            TrackerBlock* block = nullptr;
+            block = new (targetAddress) TrackerBlock();
+            *block = trackerBlocks[i];
+            targetAddress = (char*) targetAddress + blockOffset;
+        }
+
+        return targetAddress;
+    }
+    
+#endif
+
 }

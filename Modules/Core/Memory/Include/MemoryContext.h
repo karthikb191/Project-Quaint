@@ -51,6 +51,12 @@ namespace Quaint
             //sprintf_s(buffer, "Freed from MemoryContext %s. Available: %lu", m_name, m_technique->getAvailableSize());
             //QLOG_E(MemoryContextLogger, buffer);
         }
+
+        #ifdef _DEBUG
+        /* After writing, should return address to the immediate address */
+        void* writeMemoryTrackInfo(void* memoryPoiter, size_t contextHeaderoffset, size_t trackerBlocksOffset);
+        #endif
+
     private:
         bool RequestMemoryFromOS();
     

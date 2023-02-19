@@ -1,6 +1,7 @@
 #include <Module.h>
 #include <MemoryModule.h>
 #include <QuaintLogger.h>
+#include <windows.h>
 //Initialize all modules before doing anything.
 namespace Quaint
 {
@@ -51,9 +52,32 @@ int main()
     
     std::cout << "Time: " << (after - before).count() << std::endl;
     
-    for(int i = 0; i < 10000; i++)
+    const Quaint::SharedMemoryHandle* handle = 
+    Quaint::IPCModule::get()
+    .getIPCManager()->requestSharedMemory("Test", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
+
+    if(handle == nullptr)
     {
-        //std::cout << *testInt[i] << "\n";   
+        std::cout << "Could not allocate shared memory!" << std::endl;
+    }
+    else
+    {
+        Quaint::MemoryModule::get().getMemoryManager().populateTrackerInformation(handle->m_dataBuffer);
+    }
+
+    int i = 0;
+    while(true)
+    {
+        Sleep(10);
+        ++i;
+        std::cout << "Woke up!!" << std::endl;
+        if(i == 10)
+            break;
+    }
+
+    if(handle != nullptr)
+    {
+        Quaint::IPCModule::get().getIPCManager()->releaseSharedMemory(handle);
     }
 
 using namespace Quaint;

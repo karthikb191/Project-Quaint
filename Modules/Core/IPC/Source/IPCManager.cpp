@@ -18,7 +18,7 @@ namespace Quaint
         {
             if(handle.m_valid)
             {
-                releaseSharedMemory(handle); 
+                releaseSharedMemory(&handle); 
             }
         }
 
@@ -65,9 +65,9 @@ namespace Quaint
         return &handle;
     }
 
-    void IPCManager::releaseSharedMemory(const SharedMemoryHandle& handle)
+    void IPCManager::releaseSharedMemory(const SharedMemoryHandle* handle)
     {
-        auto it = std::find(m_memoryHandles.begin(), m_memoryHandles.end(), handle);
+        auto it = std::find(m_memoryHandles.begin(), m_memoryHandles.end(), *handle);
         
         if(it != m_memoryHandles.end())
         {
