@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO.MemoryMappedFiles;
 
 namespace MemoryVisualizer
 {
@@ -12,6 +13,19 @@ namespace MemoryVisualizer
      */
     class SharedMemoryLooker
     {
+        public static MemoryMappedViewStream? ReadFromSharedMemoryLocation()
+        {
+            MemoryMappedFile file = MemoryMappedFile.OpenExisting(sharedMemoryName);
+            if (file == null)
+                return null;
 
+            MemoryMappedViewStream stream = file.CreateViewStream(0, sharedMemorySize, MemoryMappedFileAccess.Read);
+
+            return stream;
+        }
+
+        //TODO: This should be read from a settings file
+        const string sharedMemoryName = "TestMemoryMap";
+        const uint sharedMemorySize = 10 * 1024 * 1024;
     }
 }

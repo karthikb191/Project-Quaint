@@ -171,10 +171,7 @@ namespace Quaint
 
         while(current != nullptr)
         {
-            if(current->m_isUsed)
-            {
-                ++numBlocks;
-            }
+            ++numBlocks;
             current = current->m_next;
         }
 
@@ -185,15 +182,14 @@ namespace Quaint
 
         while(current != nullptr)
         {
-            if(current->m_isUsed)
-            {
-                TrackerBlock block;
-                sprintf_s(block.m_name, "Temp");
-                block.m_size = sizeof(MemoryChunk) + current->m_size;
-                block.m_startAddress = *(int*)(current);
-                trackerBlocks.emplace_back(block);
-                ++numBlocks;
-            }
+            TrackerBlock block;
+            sprintf_s(block.m_name, "Temp");
+            block.m_size = sizeof(MemoryChunk) + current->m_size;
+            block.m_startAddress = (size_t)(current);
+            block.m_used = current->m_isUsed;
+            trackerBlocks.emplace_back(block);
+
+            ++numBlocks;
             current = current->m_next;
         }
 

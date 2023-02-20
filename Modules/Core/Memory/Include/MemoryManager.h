@@ -26,7 +26,7 @@ namespace Quaint
         bool initialize();
         bool shutdown();
         /*Registers a new memory partition*/
-        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, size_t size, bool dynamic = false, EAllocationTechnique technique = EAllocationTechnique::Default)
+        static constexpr void registerMemoryPartition(uint32_t index, const char* partitionName, uint32_t size, bool dynamic = false, EAllocationTechnique technique = EAllocationTechnique::Default)
         {
             m_MemoryContexts[index] = MemoryContext(partitionName, size, dynamic);
             ++m_validContexts;

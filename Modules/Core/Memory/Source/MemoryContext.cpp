@@ -112,12 +112,14 @@ namespace Quaint
 
         //Fill Context header
         ContextHeader* header = new (headerAddress) ContextHeader();
+        header->m_size = m_size;
         header->m_headerSize = sizeof(m_technique->getHeaderSize());
         header->m_numTrackerBlocks = numBlocks;
+        header->m_startAddress = (size_t)m_rawMemory;
 
         size_t blockOffset = sizeof(TrackerBlock);
         void* targetAddress = blocksAddress;
-        for(int i = 0; i < numBlocks; i++)
+        for(size_t i = 0; i < numBlocks; i++)
         {
             TrackerBlock* block = nullptr;
             block = new (targetAddress) TrackerBlock();

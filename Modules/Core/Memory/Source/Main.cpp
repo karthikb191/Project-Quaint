@@ -54,7 +54,7 @@ int main()
     
     const Quaint::SharedMemoryHandle* handle = 
     Quaint::IPCModule::get()
-    .getIPCManager()->requestSharedMemory("Test", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
+    .getIPCManager()->requestSharedMemory("TestMemoryMap", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
 
     if(handle == nullptr)
     {
@@ -71,8 +71,8 @@ int main()
         Sleep(10);
         ++i;
         std::cout << "Woke up!!" << std::endl;
-        if(i == 10)
-            break;
+        //if(i == 10)
+        //    break;
     }
 
     if(handle != nullptr)

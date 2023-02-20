@@ -52,7 +52,7 @@ partial class Form1
             this.ControlPanel.Margin = new System.Windows.Forms.Padding(15);
             this.ControlPanel.Name = "ControlPanel";
             this.ControlPanel.Padding = new System.Windows.Forms.Padding(15);
-            this.ControlPanel.Size = new System.Drawing.Size(250, 124);
+            this.ControlPanel.Size = new System.Drawing.Size(237, 124);
             this.ControlPanel.TabIndex = 1;
             // 
             // initConenction
@@ -60,7 +60,7 @@ partial class Form1
             this.initConenction.Dock = System.Windows.Forms.DockStyle.Top;
             this.initConenction.Location = new System.Drawing.Point(15, 15);
             this.initConenction.Name = "initConenction";
-            this.initConenction.Size = new System.Drawing.Size(218, 29);
+            this.initConenction.Size = new System.Drawing.Size(205, 29);
             this.initConenction.TabIndex = 0;
             this.initConenction.Text = "InitConnection";
             this.initConenction.UseVisualStyleBackColor = true;
@@ -71,19 +71,21 @@ partial class Form1
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.memDisplayPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.memDisplayPanel.Location = new System.Drawing.Point(3, 164);
+            this.memDisplayPanel.Location = new System.Drawing.Point(3, 108);
             this.memDisplayPanel.Name = "memDisplayPanel";
-            this.memDisplayPanel.Size = new System.Drawing.Size(578, 154);
+            this.memDisplayPanel.Size = new System.Drawing.Size(917, 198);
             this.memDisplayPanel.TabIndex = 2;
             this.memDisplayPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.memDisplayPanel_Paint);
             // 
             // rightPanel
             // 
+            this.rightPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.rightPanel.Controls.Add(this.ControlPanel);
-            this.rightPanel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.rightPanel.Location = new System.Drawing.Point(673, 0);
+            this.rightPanel.Location = new System.Drawing.Point(686, 0);
             this.rightPanel.Name = "rightPanel";
-            this.rightPanel.Size = new System.Drawing.Size(250, 485);
+            this.rightPanel.Size = new System.Drawing.Size(237, 175);
             this.rightPanel.TabIndex = 3;
             // 
             // tableLayoutPanel1
@@ -95,13 +97,12 @@ partial class Form1
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.memDisplayPanel, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.debugLabel, 0, 0);
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 176);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 3;
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.19588F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32.98969F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.60825F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(584, 485);
+            this.tableLayoutPanel1.RowCount = 2;
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.98058F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 66.01942F));
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(923, 309);
             this.tableLayoutPanel1.TabIndex = 4;
             // 
             // debugLabel
