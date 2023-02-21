@@ -21,6 +21,8 @@ namespace Quaint
 #include <vector>
 #include <chrono>
 
+#include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
+
 class Test
 {
     int i = 100;
@@ -37,48 +39,62 @@ int main()
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
 
     auto before = std::chrono::high_resolution_clock::now();
-    int* testInt[10000];
+    //int* testInt[10000];
 
-    Test* testStruct = nullptr;
-    for(int i = 0; i < 10000; i++)
-    {
-        if( i == 300)
-        {
-            testStruct = new Test();
-        }
-        testInt[i] = new int(10);
-    }
-    auto after = std::chrono::high_resolution_clock::now();
+    Quaint::RBTree tree;
+    tree.insert(10);
+    tree.insert(20);
+    tree.insert(5);
+    tree.insert(1);
+    tree.insert(78);
+    tree.insert(190);
+
+    tree.insert(7);
+    tree.insert(7);
+    tree.insert(7);
+
+    tree.print();
+
+    //Test* testStruct = nullptr;
+    //for(int i = 0; i < 10000; i++)
+    //{
+    //    if( i == 300)
+    //    {
+    //        testStruct = new Test();
+    //    }
+    //    testInt[i] = new int(10);
+    //}
+    //auto after = std::chrono::high_resolution_clock::now();
+    //
+    //std::cout << "Time: " << (after - before).count() << std::endl;
     
-    std::cout << "Time: " << (after - before).count() << std::endl;
-    
-    const Quaint::SharedMemoryHandle* handle = 
-    Quaint::IPCModule::get()
-    .getIPCManager()->requestSharedMemory("TestMemoryMap", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
+    //const Quaint::SharedMemoryHandle* handle = 
+    //Quaint::IPCModule::get()
+    //.getIPCManager()->requestSharedMemory("TestMemoryMap", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
 
-    if(handle == nullptr)
-    {
-        std::cout << "Could not allocate shared memory!" << std::endl;
-    }
-    else
-    {
-        Quaint::MemoryModule::get().getMemoryManager().populateTrackerInformation(handle->m_dataBuffer);
-    }
+    //if(handle == nullptr)
+    //{
+    //    std::cout << "Could not allocate shared memory!" << std::endl;
+    //}
+    //else
+    //{
+    //    Quaint::MemoryModule::get().getMemoryManager().populateTrackerInformation(handle->m_dataBuffer);
+    //}
 
-    int i = 0;
-    while(true)
-    {
-        Sleep(10);
-        ++i;
-        std::cout << "Woke up!!" << std::endl;
-        //if(i == 10)
-        //    break;
-    }
+    //int i = 0;
+    //while(true)
+    //{
+    //    Sleep(10);
+    //    ++i;
+    //    std::cout << "Woke up!!" << std::endl;
+    //    //if(i == 10)
+    //    //    break;
+    //}
 
-    if(handle != nullptr)
-    {
-        Quaint::IPCModule::get().getIPCManager()->releaseSharedMemory(handle);
-    }
+    //if(handle != nullptr)
+    //{
+    //    Quaint::IPCModule::get().getIPCManager()->releaseSharedMemory(handle);
+    //}
 
 using namespace Quaint;
     SHUTDOWN_MODULE(LoggerModule);
