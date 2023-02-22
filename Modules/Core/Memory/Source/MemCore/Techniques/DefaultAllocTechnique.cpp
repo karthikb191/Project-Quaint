@@ -164,6 +164,7 @@ namespace Quaint
         }
     }
 
+#ifdef _DEBUG
     size_t DefaultAllocTechnique::getTrackerBlocks(std::vector<TrackerBlock>& trackerBlocks)
     {
         MemoryChunk* current = m_rootChunk;
@@ -195,4 +196,5 @@ namespace Quaint
 
         return numBlocks;
     }
+#endif
 }

@@ -38,91 +38,82 @@ int main()
 
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
 
+
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(10));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(20));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(5));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(1));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(78));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(190));
+//
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(7));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(34));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(65));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(94));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(11));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(5));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(21));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(24));
+    //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(67));
+//
+    //Quaint::RBTree::print();
+//
+    //std::cout << "\n\n\n";
+//
+    //Quaint::RBTree::RBNode* node = Quaint::RBTree::find(7);
+//
+    //node = Quaint::RBTree::find(10);
+    //if(node != nullptr)
+    //{
+    //    Quaint::RBTree::remove(node);
+    //}
+//
+    //std::cout << "\n\n\n";
+    //Quaint::RBTree::print();
+//
+    //node = Quaint::RBTree::find(7);
+    //if(node != nullptr)
+    //{
+    //    Quaint::RBTree::remove(node);
+    //}
+    //node = Quaint::RBTree::find(20);
+    //if(node != nullptr)
+    //{
+    //    Quaint::RBTree::remove(node);
+    //}
+    //node = Quaint::RBTree::find(34);
+    //if(node != nullptr)
+    //{
+    //    Quaint::RBTree::remove(node);
+    //}
+    //node = Quaint::RBTree::find(1);
+    //if(node != nullptr)
+    //{
+    //    Quaint::RBTree::remove(node);
+    //}
+    //std::cout << "\n\n\n";
+    //Quaint::RBTree::print();
+
     auto before = std::chrono::high_resolution_clock::now();
-    //int* testInt[10000];
-
-    Quaint::RBTree tree;
-    tree.insert(10);
-    tree.insert(20);
-    tree.insert(5);
-    tree.insert(1);
-    tree.insert(78);
-    tree.insert(190);
-
-    tree.insert(7);
-    tree.insert(34);
-    tree.insert(65);
-    tree.insert(94);
-    tree.insert(11);
-    tree.insert(5);
-    tree.insert(21);
-    tree.insert(24);
-    tree.insert(67);
-
-    tree.print();
-
-    std::cout << "\n\n\n";
-
-    Quaint::RBNode* node = tree.find(7);
-    //if(node != nullptr)
-    //{
-    //    tree.remove(node);
-    //}
-    //node = tree.find(7);
-    //if(node != nullptr)
-    //{
-    //    tree.remove(node);
-    //}
-    //node = tree.find(7);
-    //if(node != nullptr)
-    //{
-    //    tree.remove(node);
-    //}
-    //node = tree.find(7);
-    //if(node != nullptr)
-    //{
-    //    tree.remove(node);
-    //}
-    node = tree.find(10);
-    if(node != nullptr)
+    int* testInt[10000];
+    Test* testStruct = nullptr;
+    for(int i = 0; i < 10000; i++)
     {
-        tree.remove(node);
+        if( i == 300)
+        {
+            testStruct = new Test();
+        }
+        testInt[i] = new int(10);
     }
-    node = tree.find(7);
-    if(node != nullptr)
-    {
-        tree.remove(node);
-    }
-    node = tree.find(20);
-    if(node != nullptr)
-    {
-        tree.remove(node);
-    }
-    node = tree.find(34);
-    if(node != nullptr)
-    {
-        tree.remove(node);
-    }
-    node = tree.find(1);
-    if(node != nullptr)
-    {
-        tree.remove(node);
-    }
-    tree.print();
-
-    //Test* testStruct = nullptr;
+    auto after = std::chrono::high_resolution_clock::now();
+    
+    std::cout << "Time: " << (after - before).count() << std::endl;
+    
     //for(int i = 0; i < 10000; i++)
     //{
-    //    if( i == 300)
-    //    {
-    //        testStruct = new Test();
-    //    }
-    //    testInt[i] = new int(10);
+    //    std::cout << *testInt[i] << "\n";
     //}
-    //auto after = std::chrono::high_resolution_clock::now();
-    //
-    //std::cout << "Time: " << (after - before).count() << std::endl;
-    
+
     //const Quaint::SharedMemoryHandle* handle = 
     //Quaint::IPCModule::get()
     //.getIPCManager()->requestSharedMemory("TestMemoryMap", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);

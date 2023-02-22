@@ -30,7 +30,7 @@ namespace Quaint
         //TODO: Assert check here
         //TODO: Instead of using new to create allocator technique, use the memory given by OS
         size_t techniqueSize = 0;
-        m_technique = AllocationTechniqueFactory::createAllocationTechique(EAllocationTechnique::Default, m_rawMemory, techniqueSize);
+        m_technique = AllocationTechniqueFactory::createAllocationTechique(m_techniqueType, m_rawMemory, techniqueSize);
         void* targetMemory = (char*)m_rawMemory + techniqueSize;
         m_technique->boot(m_name, m_size - techniqueSize, targetMemory, m_dynamic);
 

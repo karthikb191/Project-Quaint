@@ -18,7 +18,7 @@ namespace Quaint
         constexpr MemoryContext(const char* name, size_t size, bool dynamic = false, 
         EAllocationTechnique technique = EAllocationTechnique::Default)
             : m_name(name), m_size(size), m_valid(size > 1024), m_dynamic(dynamic), m_rawMemory(nullptr)
-            , m_techniqueType(EAllocationTechnique::Default), m_technique(nullptr)
+            , m_techniqueType(technique), m_technique(nullptr)
         {}
 
         const char* getContextName() const { return m_name; }

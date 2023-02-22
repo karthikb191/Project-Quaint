@@ -1,5 +1,6 @@
 #include "MemCore/AllocationTechniqueFactory.h"
 #include "MemCore/Techniques/DefaultAllocTechnique.h"
+#include "MemCore/Techniques/BestFitPoolAllocTechnique.h"
 
 namespace Quaint
 {
@@ -9,11 +10,21 @@ namespace Quaint
         switch (technique)
         {
         case EAllocationTechnique::Default:
-            DefaultAllocTechnique* allocTechnique = nullptr;//(DefaultAllocTechnique*)memoryPointer;
+        {
+            DefaultAllocTechnique* allocTechnique = nullptr;
             allocTechnique = new (memoryPointer) DefaultAllocTechnique();
             techniqueSize = sizeof(DefaultAllocTechnique);
             return allocTechnique;
-            break;
+        }
+        break;
+        case EAllocationTechnique::BestFitPoolAllocTechnique:
+        {
+            BestFitPoolAllocTechnique* allocTechnique = nullptr;
+            allocTechnique = new (memoryPointer) BestFitPoolAllocTechnique();
+            techniqueSize = sizeof(BestFitPoolAllocTechnique);
+            return allocTechnique;
+        }
+        break;
         }
         return nullptr;
     }   

@@ -5,6 +5,7 @@ namespace Quaint
     enum class EAllocationTechnique
     {
         Default,
+        BestFitPoolAllocTechnique,
         Invalid
         /*Each allocation technique should be accompanied by a class*/
     };
