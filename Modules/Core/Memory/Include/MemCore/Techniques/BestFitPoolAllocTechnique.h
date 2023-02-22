@@ -4,12 +4,16 @@
 #include <iostream>
 namespace Quaint
 {
+    
+    struct RBTree;
+    struct RBNode;
+    extern RBNode m_sentinel;
     struct RBNode
     {
         RBNode(int data) : m_data(data) {}
-        RBNode*     m_parent = { nullptr };
-        RBNode*     m_left = { nullptr };
-        RBNode*     m_right = { nullptr };
+        RBNode*     m_parent = &m_sentinel;
+        RBNode*     m_left = &m_sentinel;
+        RBNode*     m_right = &m_sentinel;
         int         m_data = { 0 };
         bool        m_isRed = false;
     };
@@ -25,7 +29,7 @@ namespace Quaint
             RBNode* y = x->m_right;
             y->m_parent = x->m_parent;
             x->m_parent = y;
-            if(y->m_parent == nullptr)
+            if(y->m_parent == &m_sentinel)
             {
                 m_root = y;
             }
@@ -40,7 +44,7 @@ namespace Quaint
 
             //x becomes y's left node. y's left node becomes x's right node
             x->m_right = y->m_left;
-            if(x->m_right != nullptr)
+            if(x->m_right != &m_sentinel)
             {
                 x->m_right->m_parent = x;
             }
@@ -54,7 +58,7 @@ namespace Quaint
             RBNode* y = x->m_left;
             y->m_parent = x->m_parent;
             x->m_parent = y;
-            if(y->m_parent == nullptr)
+            if(y->m_parent == &m_sentinel)
             {
                 m_root = y;
             }
@@ -68,16 +72,16 @@ namespace Quaint
             }
 
             x->m_left = y->m_right;
-            if(x->m_left != nullptr)
+            if(x->m_left != &m_sentinel)
             {
                 x->m_left->m_parent = x;
             }
             y->m_right = x;
         }
 
-        void RBFixup(RBNode* node)
+        void RBInsertFixup(RBNode* node)
         {
-            while(node->m_parent != nullptr && node->m_parent->m_parent != nullptr && node->m_parent->m_isRed)
+            while(node->m_parent != &m_sentinel && node->m_parent->m_parent != &m_sentinel && node->m_parent->m_isRed)
             {
                 //If Node's parent is red, we have a violation in RB-Tree Property
                 if(node->m_parent->m_parent->m_right == node->m_parent)
@@ -86,10 +90,10 @@ namespace Quaint
                     //Case - 1: We know that node->parent->parent(NPP) is black. So, if NPP's left child is red, 
                     //we can simply switch colors
                     RBNode* uncle = node->m_parent->m_parent->m_left;
-                    if(uncle != nullptr && uncle->m_isRed)
+                    if(uncle != &m_sentinel && uncle->m_isRed)
                     {
                         node->m_parent->m_parent->m_isRed = true;
-                        node->m_parent->m_parent->m_left->m_isRed = false;
+                        uncle->m_isRed = false;
                         node->m_parent->m_isRed = false;
                         node = node->m_parent->m_parent;
                     }
@@ -117,10 +121,10 @@ namespace Quaint
                 {
                     //If the current node's parent is left child
                     RBNode* uncle = node->m_parent->m_parent->m_right;
-                    if(uncle != nullptr && uncle->m_isRed)
+                    if(uncle != &m_sentinel && uncle->m_isRed)
                     {
                         node->m_parent->m_parent->m_isRed = true;
-                        node->m_parent->m_parent->m_right->m_isRed = false;
+                        uncle->m_isRed = false;
                         node->m_parent->m_isRed = false;
                         node = node->m_parent->m_parent;
                     }
@@ -144,7 +148,7 @@ namespace Quaint
         void insert(int data)
         {
             RBNode* newNode = new RBNode(data);
-            if(m_root == nullptr)
+            if(m_root == &m_sentinel)
             {
                 m_root = newNode;
                 return;
@@ -152,7 +156,7 @@ namespace Quaint
 
             RBNode* current = m_root;
             RBNode* target = m_root;
-            while(current != nullptr)
+            while(current != &m_sentinel)
             {
                 target = current;
                 if(newNode->m_data > current->m_data)
@@ -175,11 +179,194 @@ namespace Quaint
             }
             newNode->m_parent = target;
             newNode->m_isRed = true;
-            RBFixup(newNode);
+            RBInsertFixup(newNode);
+        }
+
+        void transplant(RBNode* u, RBNode* v)
+        {
+            if(u->m_parent == &m_sentinel)
+            {
+                m_root = v;
+            }
+            else if(u->m_parent->m_left == u)
+            {
+                u->m_parent->m_left = v;
+            }
+            else
+            {
+                u->m_parent->m_right = v;
+            }
+
+            v->m_parent = u->m_parent;
+        }
+
+        RBNode* getMinimumInSubTree(RBNode* node)
+        {
+            RBNode* current = node;
+            while(current->m_left != &m_sentinel)
+            {
+                current = current->m_left;
+            }
+            return current;
+        }
+
+        void RBDeleteFixup(RBNode* node)
+        {
+            while(node != m_root && !node->m_isRed)
+            {
+                if(node->m_parent->m_right == node)
+                {
+                    //Uncle should always be present
+                    RBNode* uncle = node->m_parent->m_left;
+                    if(uncle->m_isRed)
+                    {
+                        uncle->m_isRed = false;
+                        uncle->m_parent->m_isRed = true;
+                        RightRotate(uncle->m_parent);
+                        uncle = node->m_parent->m_left;
+                    }
+                    //Case - 2: Uncle is black and Left and right children of uncle are null or red
+                    if(!uncle->m_left->m_isRed && !uncle->m_right->m_isRed)
+                    {
+                        uncle->m_isRed = true;
+                        // Extra blackness is added to parent, making in RB or BB to compensate for removing 
+                        // a black on uncle and node
+                        node = node->m_parent; 
+                    }
+                    else
+                    {   
+                        //Uncle's right is red, transform to make both left and right as black 
+                        if(uncle->m_right->m_isRed)
+                        {
+                            uncle->m_right->m_isRed = false;
+                            uncle->m_isRed = true;
+                            LeftRotate(uncle);
+                            uncle = node->m_parent->m_left;
+                        }
+                        uncle->m_isRed = node->m_parent->m_isRed;
+                        node->m_parent->m_isRed = false;
+                        uncle->m_left->m_isRed = false;
+
+                        RightRotate(node->m_parent);
+                        node = m_root;
+                    }
+                }
+                else
+                {
+                    //Uncle should always be present
+                    RBNode* uncle = node->m_parent->m_right;
+                    if(uncle->m_isRed)
+                    {
+                        uncle->m_isRed = false;
+                        uncle->m_parent->m_isRed = true;
+                        LeftRotate(uncle->m_parent);
+                        uncle = node->m_parent->m_right;
+                    }
+                    //Case - 2: Uncle is black and Left and right children of uncle are null or red
+                    if(!uncle->m_right->m_isRed && !uncle->m_left->m_isRed)
+                    {
+                        uncle->m_isRed = true;
+                        // Extra blackness is added to parent, making in RB or BB to compensate for removing 
+                        // a black on uncle and node
+                        node = node->m_parent;
+                    }
+                    else
+                    {   
+                        //Uncle's left is red, transform to make both left and right as black 
+                        if(uncle->m_left->m_isRed)
+                        {
+                            uncle->m_left->m_isRed = false;
+                            uncle->m_isRed = true;
+                            RightRotate(uncle);
+                            uncle = node->m_parent->m_right;
+                        }
+                        uncle->m_isRed = node->m_parent->m_isRed;
+                        node->m_parent->m_isRed = false;
+                        uncle->m_right->m_isRed = false;
+                    
+                        LeftRotate(node->m_parent);
+                        node = m_root;
+                    }
+                }
+            }
+            node->m_isRed = false;
+        }
+        
+        //TODO: Convert this to delete based on Node address
+        void remove(RBNode* node)
+        {
+            static RBNode sentinel(-1);
+            RBNode* y = node;
+            bool yOriginalColorIsRed = y->m_isRed;
+
+            RBNode* x = &m_sentinel;
+            
+            if(node->m_left == &m_sentinel)
+            {
+                x = node->m_right;
+                transplant(node, node->m_right);
+            }
+            else if(node->m_right == &m_sentinel)
+            {
+                x = node->m_left;
+                transplant(node, node->m_left);
+            }
+            else
+            {
+                //Node has 2 valid children
+                y = getMinimumInSubTree(node->m_right);
+                yOriginalColorIsRed = y->m_isRed;
+                // we color Y the same color as z.
+                // y->right take's Y's place.
+                x = y->m_right;
+                //Node being deleted is not immediate parent of Y.
+                if(y->m_parent == node)
+                {
+                    //This check is for sentinel. If y has no children, we store the parent info in sentinel
+                    x->m_parent = y;
+                }
+                else
+                {
+                    //Move X To Y's place
+                    transplant(y, x);
+                    y->m_right = node->m_right;
+                    y->m_right->m_parent = y;   
+                }
+                //Move Y To Z'a Place and take it's color
+                transplant(node, y);
+                y->m_left = node->m_left;
+                node->m_left->m_parent = y;
+                y->m_isRed = node->m_isRed;
+            }
+            if(!yOriginalColorIsRed)
+            {
+                RBDeleteFixup(x);
+            }
+        }
+
+        RBNode* find(int n)
+        {
+            RBNode* current = m_root;
+            while(current != &m_sentinel)
+            {
+                if(current->m_data == n)
+                {
+                    return current;
+                }
+                if(n > current->m_data)
+                {
+                    current = current->m_right;
+                }
+                else
+                {
+                    current = current->m_left;
+                }
+            }
+            return nullptr;
         }
 
 
-        RBNode* m_root = nullptr;
+        RBNode* m_root = &m_sentinel;
 #ifdef _DEBUG
         void print()
         {
@@ -188,14 +375,14 @@ namespace Quaint
 private:
         void printTree(RBNode* node, int tabs)
         {
-            if(node->m_right != nullptr)
+            if(node->m_right != &m_sentinel)
                 printTree(node->m_right, tabs + 1);
 
             for(int i = 0; i < tabs; i++)
                 std::cout << "\t";
             std::cout << node->m_data << (node->m_isRed ? "r" : "b") << std::endl;
 
-            if(node->m_left != nullptr)
+            if(node->m_left != &m_sentinel)
                 printTree(node->m_left, tabs + 1);
 
         }

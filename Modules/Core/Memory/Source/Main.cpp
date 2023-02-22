@@ -50,9 +50,64 @@ int main()
     tree.insert(190);
 
     tree.insert(7);
-    tree.insert(7);
-    tree.insert(7);
+    tree.insert(34);
+    tree.insert(65);
+    tree.insert(94);
+    tree.insert(11);
+    tree.insert(5);
+    tree.insert(21);
+    tree.insert(24);
+    tree.insert(67);
 
+    tree.print();
+
+    std::cout << "\n\n\n";
+
+    Quaint::RBNode* node = tree.find(7);
+    //if(node != nullptr)
+    //{
+    //    tree.remove(node);
+    //}
+    //node = tree.find(7);
+    //if(node != nullptr)
+    //{
+    //    tree.remove(node);
+    //}
+    //node = tree.find(7);
+    //if(node != nullptr)
+    //{
+    //    tree.remove(node);
+    //}
+    //node = tree.find(7);
+    //if(node != nullptr)
+    //{
+    //    tree.remove(node);
+    //}
+    node = tree.find(10);
+    if(node != nullptr)
+    {
+        tree.remove(node);
+    }
+    node = tree.find(7);
+    if(node != nullptr)
+    {
+        tree.remove(node);
+    }
+    node = tree.find(20);
+    if(node != nullptr)
+    {
+        tree.remove(node);
+    }
+    node = tree.find(34);
+    if(node != nullptr)
+    {
+        tree.remove(node);
+    }
+    node = tree.find(1);
+    if(node != nullptr)
+    {
+        tree.remove(node);
+    }
     tree.print();
 
     //Test* testStruct = nullptr;

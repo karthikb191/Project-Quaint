@@ -21,6 +21,7 @@ namespace Quaint
         virtual ~IAllocationTechnique() {};
     protected:
         size_t          m_availableSize = 0;
+        bool            m_isRunning = false;
     };
 }
 #endif //_H_I_ALLOCATION_Technique
