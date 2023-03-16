@@ -351,7 +351,7 @@ namespace Quaint
             }
         }
 
-        RBNode* find(int n)
+        RBNode* find(size_t n)
         {
             RBNode* current = root;
             while(current != &sentinel)

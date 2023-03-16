@@ -14,17 +14,18 @@ namespace Quaint
     CREATE_MODULE(IPCModule);
     INIT_MODULE(IPCModule);
 }
-
 #include <IPCModule.h>
 
 #include <iostream>
 #include <vector>
 #include <chrono>
-
+#include <type_traits>
 #include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
+#include <Types/Concurrency/QThread.h>
 
 class Test
 {
+public:
     int i = 100;
     char J = 'c';
     long k = 1994724892;
@@ -32,13 +33,15 @@ class Test
     char* ptr = nullptr;
 };
 
+
 int main()
 {
+    
     std::cout << "Hello Memory Manager\n";
-
+    
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
-
-
+    
+#pragma region Test
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(10));
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(20));
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(5));
@@ -93,6 +96,7 @@ int main()
     //}
     //std::cout << "\n\n\n";
     //Quaint::RBTree::print();
+#pragma endregion
 
     auto before = std::chrono::high_resolution_clock::now();
     int* testInt[10000];

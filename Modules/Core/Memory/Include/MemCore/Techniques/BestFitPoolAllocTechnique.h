@@ -29,7 +29,7 @@ namespace Quaint
         void RBDeleteFixup(RBNode* node);
         //TODO: Convert this to delete based on Node address
         void remove(RBNode* node);
-        RBNode* find(int n);
+        RBNode* find(size_t n);
         bool containsNode(RBNode* node);
 #ifdef _DEBUG
         void printTree(RBNode* node, int tabs);

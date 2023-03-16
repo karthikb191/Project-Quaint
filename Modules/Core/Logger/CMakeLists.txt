@@ -41,3 +41,9 @@ set(${PROJECT_NAME}_HEADER_PATH ${CMAKE_CURRENT_LIST_DIR}/Include)
 #TODO: Register sub modules here
 #add_subdirectory(Renderer)   # look in hello subdirectory for CMakeLists.txt to process
 #add_subdirectory(Logger)    # look in apps subdirectory for CMakeLists.txt to process
+
+if(NOT ${BUILD_CORE_LIB})
+    if(BUILD_TYPES_LIB)
+        target_link_libraries(${PROJECT_NAME} PUBLIC QuaintTypes)
+    endif()
+endif()

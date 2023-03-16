@@ -3,23 +3,20 @@
     "folders": [
       {
         "name": "Quaint Engine",
-        "path": "./"
+        "path": "./Engine"
       },
       //Modules
       {
         "name": "Bolt Renderer",
-        "path": "../Modules/Bolt"
+        "path": "./Modules/Bolt"
       },
       {
         "name": "Quaint Core",
-        "path": "../Modules/Core"
+        "path": "./Modules/Core"
       }
     ],
     
     "settings": {
-      "workbench.colorCustomizations" : {
-          "terminal.ansiRed": "#f88"
-      },
       "cmake.sourceDirectory" :"${workspaceFolder}",
       "cmake.buildDirectory": "${workspaceFolder}/Build",
       "files.associations": {
@@ -86,7 +83,12 @@
         "xlocbuf": "cpp",
         "xlocmes": "cpp",
         "xlocmon": "cpp",
-        "xloctime": "cpp"
-      }
+        "xloctime": "cpp",
+        "functional": "cpp",
+        "list": "cpp",
+        "unordered_map": "cpp",
+        "xhash": "cpp"
+      },
+      "C_Cpp.loggingLevel": "Debug"
   }
 }
