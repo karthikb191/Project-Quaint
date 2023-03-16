@@ -22,8 +22,9 @@ namespace Quaint
     private:
         static DWORD WINAPI jobCallback(LPVOID lpParam);
         
-        LPDWORD         m_threadId;
+        DWORD           m_threadId;
         HANDLE          m_threadHandle;
+        bool            m_running = false;
         //TODO: Add a synchroniztion primitive
     };
 }

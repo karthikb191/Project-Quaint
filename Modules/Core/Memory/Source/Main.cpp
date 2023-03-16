@@ -33,6 +33,10 @@ public:
     char* ptr = nullptr;
 };
 
+void TestJob(void* param)
+{
+    std::cout << "Test job Running\n";
+}
 
 int main()
 {
@@ -41,6 +45,14 @@ int main()
     
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
     
+    Quaint::ThreadParams params;
+    params.m_job = Quaint::ThreadParams::JobType(TestJob);
+    params.m_threadInitState = Quaint::EThreadInitState::Started;
+
+    Quaint::QThread Thread;
+    Thread.initializeThread(params);
+    Thread.run();
+
 #pragma region Test
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(10));
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(20));
@@ -149,9 +161,7 @@ int main()
 using namespace Quaint;
     SHUTDOWN_MODULE(LoggerModule);
 
-    //Calling this here is crashing the application. Probably cuz destructors of global statics now point to invalid memory location
-    //SHUTDOWN_MODULE(MemoryModule);    
-
+    //TODO: Kill all running threads
     return 0;
 }
 

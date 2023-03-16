@@ -8,8 +8,7 @@ namespace Quaint
     enum class EThreadInitState
     {
         Started,
-        Suspended,
-        Error
+        Suspended
     };
     struct ThreadParams
     {
