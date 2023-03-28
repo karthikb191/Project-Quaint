@@ -1,5 +1,5 @@
-#ifndef _H_QPLATFORM_THREAD
-#define _H_QPLATFORM_THREAD
+#ifndef _H_I_Q_PLATFORM_THREAD
+#define _H_I_Q_PLATFORM_THREAD
 
 #include <functional>
 
@@ -12,8 +12,8 @@ namespace Quaint
     };
     struct ThreadParams
     {
-        using JobType = std::function<void(void*)>;
-        typename JobType    m_job = nullptr;
+        typedef void(*JobType)(void*);
+        JobType             m_job = nullptr;
         void*               m_jobParam = nullptr;
         size_t              m_stackSize = 4096; //setting stack size is 4MB
         EThreadInitState    m_threadInitState = EThreadInitState::Started; 
@@ -27,10 +27,11 @@ namespace Quaint
         virtual void run() = 0;
         /*Waits on internal Synchronization primitive. Responsibility of thread to code this implementation*/
         virtual void wait() = 0;
+        /*Joins this thread with the calling thread*/
+        virtual void join() = 0;
         /*Waits on external Synchronization primitive*/
         virtual void WaitOnExternalSyncPrimitive() = 0;
         virtual void waitOnPredicate(std::function<bool()> predicate) = 0;
-        virtual void signal() = 0;
         virtual void shutdown() = 0;
 
         IQPlatformThread() = default;
@@ -46,4 +47,4 @@ namespace Quaint
     };
 }
 
-#endif // _H_QPLATFORM_THREAD
+#endif // _H_I_Q_PLATFORM_THREAD

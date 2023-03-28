@@ -2,16 +2,23 @@
 #include <string>
 namespace Quaint
 {
-    DWORD WINAPI QThread_Win::jobCallback(LPVOID lpParam)
+    QPlatformThread::~QPlatformThread()
     {
-        QThread_Win* winThread = static_cast<QThread_Win*>(lpParam);
+        //TODO: Move this to shutdown instead
+        TerminateThread(m_threadHandle, 0);
+    }
+
+    DWORD WINAPI QPlatformThread::jobCallback(LPVOID lpParam)
+    {
+        QPlatformThread* winThread = static_cast<QPlatformThread*>(lpParam);
         if(winThread->m_threadParams.m_job == nullptr)
         {
             return -1;
         }
 
         //Calls Job function
-        while(true)
+        //TODO: Implement a proper shutdown. Right now, thread completes the job and just returns
+        //while(!m_shutdown)
         {
             winThread->m_running = true;
             winThread->m_threadParams.m_job(winThread->m_threadParams.m_jobParam);
@@ -22,7 +29,7 @@ namespace Quaint
         return 0;
     }
 
-    bool QThread_Win::initialize(const ThreadParams& params)
+    bool QPlatformThread::initialize(const ThreadParams& params)
     {
         m_threadParams = params;
         DWORD flags = params.m_threadInitState == EThreadInitState::Started ? 0
@@ -31,6 +38,7 @@ namespace Quaint
 
         if(m_threadHandle == NULL)
         {
+            //TODO Log an error message
             return false;
         }
         
@@ -62,7 +70,7 @@ namespace Quaint
         return true;
     }
 
-    void QThread_Win::run()
+    void QPlatformThread::run()
     {
         if(m_threadHandle == NULL)
         {
@@ -76,23 +84,23 @@ namespace Quaint
         ResumeThread(m_threadHandle);
     }
 
-    void QThread_Win::wait()
+    void QPlatformThread::wait()
     {
         //TODO
     }
 
-    void QThread_Win::waitOnPredicate(std::function<bool()> predicate)
+    void QPlatformThread::join()
+    {
+        WaitForSingleObject(m_threadHandle, INFINITE);
+    }
+
+    void QPlatformThread::waitOnPredicate(std::function<bool()> predicate)
     {
         
     }
 
-    void QThread_Win::signal()
+    void QPlatformThread::shutdown()
     {
-
-    }
-
-    void QThread_Win::shutdown()
-    {
-
+        m_shutdown = true;
     }
 }

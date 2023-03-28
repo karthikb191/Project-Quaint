@@ -22,6 +22,7 @@ namespace Quaint
 #include <type_traits>
 #include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
 #include <Types/Concurrency/QThread.h>
+#include <Types/Concurrency/QCondition.h>
 
 class Test
 {
@@ -33,9 +34,16 @@ public:
     char* ptr = nullptr;
 };
 
+Quaint::QCondition condition;
+
 void TestJob(void* param)
 {
-    std::cout << "Test job Running\n";
+    for(int i = 0; i < 1000; i++)
+    {
+        std::cout << i << "  ";
+    }
+    std::cout << "\nFinished Processing in one thread\n\n\n";
+    condition.signal();
 }
 
 int main()
@@ -49,9 +57,30 @@ int main()
     params.m_job = Quaint::ThreadParams::JobType(TestJob);
     params.m_threadInitState = Quaint::EThreadInitState::Started;
 
-    Quaint::QThread Thread;
-    Thread.initializeThread(params);
-    Thread.run();
+    Quaint::QThread Thread1;
+    Thread1.initializeThread(params);
+    Thread1.run();
+    condition.wait();
+
+    Quaint::QThread Thread2;
+    Thread2.initializeThread(params);
+    Thread2.run();
+    condition.wait();
+
+    Quaint::QThread Thread3;
+    Thread3.initializeThread(params);
+    Thread3.run();
+    condition.wait();
+
+    Quaint::QThread Thread4;
+    Thread4.initializeThread(params);
+    Thread4.run();
+    condition.wait();
+
+    Thread1.join();
+    Thread2.join();
+    Thread3.join();
+    Thread4.join();
 
 #pragma region Test
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(10));
@@ -125,11 +154,13 @@ int main()
     
     std::cout << "Time: " << (after - before).count() << std::endl;
     
+
+#pragma region MemoryTracker
     //for(int i = 0; i < 10000; i++)
     //{
     //    std::cout << *testInt[i] << "\n";
     //}
-
+    
     //const Quaint::SharedMemoryHandle* handle = 
     //Quaint::IPCModule::get()
     //.getIPCManager()->requestSharedMemory("TestMemoryMap", Quaint::ESharedMemoryType::SharedOSMemory, 10 * 1024 * 1024);
@@ -157,6 +188,7 @@ int main()
     //{
     //    Quaint::IPCModule::get().getIPCManager()->releaseSharedMemory(handle);
     //}
+#pragma endregion
 
 using namespace Quaint;
     SHUTDOWN_MODULE(LoggerModule);

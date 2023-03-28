@@ -1,8 +1,9 @@
 #ifndef _H_QTHREAD
 #define _H_QTHREAD
 
-//TODO: 
+//TODO: Surround this with a plat-spec macro
 #include "Win/QThread_Win.h"
+
 namespace Quaint
 {
     class QThread
@@ -11,7 +12,7 @@ namespace Quaint
         QThread() = default;
         ~QThread()
         {
-            delete m_platformThread;
+            //TODO: Add a thread state
         }
         QThread(const QThread&) = delete;
         QThread& operator=(const QThread&) = delete;
@@ -20,16 +21,14 @@ namespace Quaint
         QThread& operator=(QThread&&) = default;
 
         void initializeThread(const ThreadParams& params );
-        void run() { m_platformThread->run(); }
-        void wait() { m_platformThread->wait(); }
-        void waitOnPredicate(std::function<bool()> predicate) { m_platformThread->waitOnPredicate(predicate); }
-        void signal() { m_platformThread->signal(); }
-        void shutdown() { m_platformThread->shutdown(); }
-
+        void run() { m_platformThread.run(); }
+        void wait() { m_platformThread.wait(); }
+        void join() { m_platformThread.join(); }
+        void waitOnPredicate(std::function<bool()> predicate) { m_platformThread.waitOnPredicate(predicate); }
+        void shutdown() { m_platformThread.shutdown(); }
             
     private:
-
-        IQPlatformThread* m_platformThread = nullptr;
+        QPlatformThread     m_platformThread;
     };
 }
 

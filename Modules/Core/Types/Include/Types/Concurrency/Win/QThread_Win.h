@@ -3,21 +3,22 @@
 
 //TODO: Include a windows compile check
 
-#include "../IQPlatformThread.h"
+#include "../Interface/IQPlatformThread.h"
 #include <windows.h>
 
 namespace Quaint
 {
-    class QThread_Win : public IQPlatformThread 
+    class QPlatformThread : public IQPlatformThread 
     {
     public:
-        bool initialize(const ThreadParams& params) override;
-        void run() override;
-        void wait() override;
-        void WaitOnExternalSyncPrimitive() override {};
-        void waitOnPredicate(std::function<bool()> predicate) override;
-        void signal() override;
-        void shutdown() override;
+        virtual ~QPlatformThread();
+        virtual bool initialize(const ThreadParams& params) override;
+        virtual void run() override;
+        virtual void wait() override;
+        virtual void join() override;
+        virtual void WaitOnExternalSyncPrimitive() override {};
+        virtual void waitOnPredicate(std::function<bool()> predicate) override;
+        virtual void shutdown() override;
 
     private:
         static DWORD WINAPI jobCallback(LPVOID lpParam);
@@ -25,6 +26,7 @@ namespace Quaint
         DWORD           m_threadId;
         HANDLE          m_threadHandle;
         bool            m_running = false;
+        bool            m_shutdown = false;
         //TODO: Add a synchroniztion primitive
     };
 }
