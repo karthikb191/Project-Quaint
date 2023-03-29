@@ -1,7 +1,9 @@
 #ifndef _H_BEST_FIT_POOL_ALLOC_TECHNIQUE
 #define _H_BEST_FIT_POOL_ALLOC_TECHNIQUE
 #include "IAllocationTechnique.h"
+#include "MemoryConstants.h"
 #include <iostream>
+
 namespace Quaint
 {
     namespace RBTree
@@ -48,6 +50,7 @@ namespace Quaint
         void boot(const char* ContextName, size_t size, void* rawMemory, bool dynamic = false) override;
         void reboot(size_t size, void* rawMemory) override;
         void* alloc(size_t allocSize) override;
+        void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT);
         void free(void* mem) override;
         void shutdown() override;
         size_t getHeaderSize() { return sizeof(MemoryChunk); };

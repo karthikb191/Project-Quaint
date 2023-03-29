@@ -139,8 +139,13 @@ int main()
     //Quaint::RBTree::print();
 #pragma endregion
 
+    int* temp = new int(100);
+    delete temp;
+
     auto before = std::chrono::high_resolution_clock::now();
     int* testInt[10000];
+    int* testInt2[10000];
+
     Test* testStruct = nullptr;
     for(int i = 0; i < 10000; i++)
     {
@@ -148,8 +153,36 @@ int main()
         {
             testStruct = new Test();
         }
-        testInt[i] = new int(10);
+        testInt[i] = new int(i);
     }
+
+    for(int i = 0; i < 10000; i++)
+    {
+        if( i%50 == 0 )
+        {
+            delete testInt[i];
+        }
+    }
+
+    Quaint::RBTree::print();
+
+    std::cout <<"\n\n\n\n";
+
+    //for(int i = 0; i < 10000; i++)
+    //{
+    //    if(i%2 != 0)
+    //    {
+    //        std::cout << *testInt[i] << "\n";
+    //    }
+    //}
+
+    for(int i = 0; i < 100; i++)
+    {
+        testInt2[i] = new int(i);
+    }
+
+    Quaint::RBTree::print();
+
     auto after = std::chrono::high_resolution_clock::now();
     
     std::cout << "Time: " << (after - before).count() << std::endl;

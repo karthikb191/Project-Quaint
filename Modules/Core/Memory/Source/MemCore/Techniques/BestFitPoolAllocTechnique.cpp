@@ -1,7 +1,6 @@
 #include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
 namespace Quaint
 {
-
     namespace RBTree
     {
         RBTree::RBNode sentinel = RBTree::RBNode(0);
@@ -339,7 +338,7 @@ namespace Quaint
                     y->m_right = node->m_right;
                     y->m_right->m_parent = y;   
                 }
-                //Move Y To Z'a Place and take it's color
+                //Move Y To Z's Place and take it's color
                 transplant(node, y);
                 y->m_left = node->m_left;
                 node->m_left->m_parent = y;
@@ -455,6 +454,7 @@ namespace Quaint
 
     }
 
+    /*Returns ptr to RB-Tree node. Not Memory Chunk*/
     RBTree::RBNode* BestFitPoolAllocTechnique::getBestFit(size_t allocSize)
     {
         RBTree::RBNode* bestFit = RBTree::root;
@@ -468,7 +468,7 @@ namespace Quaint
         while(current != &RBTree::sentinel)
         {
             bestFit = current;
-            if(allocSize >= current->m_size)
+            if(allocSize < current->m_size)
             {
                 current = current->m_right;
             }
@@ -478,22 +478,43 @@ namespace Quaint
             }
         }
 
-        return bestFit;
+        return (bestFit == &RBTree::sentinel) ? nullptr : bestFit;
     }
 
     void* BestFitPoolAllocTechnique::alloc(size_t allocSize)
     {
-        RBTree::RBNode* bestFit = getBestFit(allocSize);
+        return allocAligned(allocSize);
+    }
+
+    void* BestFitPoolAllocTechnique::allocAligned(size_t allocSize, size_t alignment)
+    {
+        //TODO: Add an assert
+
+        //Retrieved block should fit padding info (4 bytes) and alignment padding 
+        size_t totalSize = allocSize + PADDING_INFO_SIZE + alignment;
+        RBTree::RBNode* bestFit = getBestFit(totalSize);
         if(bestFit == nullptr)
         {
             //TODO: Assert here
             return nullptr;
         }
 
-        //Split Node
-        //Points to RB-Tree's header
+        //We start modifying the space occupied by RB-Tree node. Remove it here before proceeding
+        RBTree::remove(bestFit);
+
+        //Get start address as a multiple of alignment
+        void* startAddress = (void*)(alignment * ( (size_t(bestFit) + alignment - 1) / alignment ));
+        
+        if((size_t)startAddress - (size_t)bestFit < PADDING_INFO_SIZE)
+        {
+            startAddress = (char*)startAddress + alignment;
+        }
+        PADDING_TYPE* padding = (PADDING_TYPE*)startAddress - 1;
+        *padding = (size_t)startAddress - (size_t)bestFit;
+
         MemoryChunk* chunk = (MemoryChunk*)((char*)bestFit - sizeof(MemoryChunk));
-        size_t chunkEndAddr = (size_t)((char*)chunk + sizeof(MemoryChunk) + allocSize);
+        size_t chunkEndAddr = (size_t)((char*)chunk + sizeof(MemoryChunk) + totalSize);
+
         size_t sizeDiff = 0;
         if(chunk->m_right == nullptr)
         {
@@ -504,13 +525,13 @@ namespace Quaint
             sizeDiff = (size_t)chunk->m_right - chunkEndAddr;
         }
 
-        RBTree::remove(bestFit);
         //TODO: Make this a constant
         //If size diff is greater than a certain threshold, split the node 
         //and add a new empty node entry in the tree
+        //Split Node
         if(sizeDiff > 1024)
         {
-            void* targetMemory = (char*)chunk + sizeof(MemoryChunk) + allocSize;
+            void* targetMemory = (char*)chunk + sizeof(MemoryChunk) + totalSize;
             MemoryChunk* newChunk = new (targetMemory) MemoryChunk();
 
             chunk->m_right = newChunk;
@@ -521,15 +542,18 @@ namespace Quaint
             RBTree::insert(newNode);
         }
 
-        m_availableSize -= allocSize - sizeof(MemoryChunk);
+        m_availableSize -= totalSize - sizeof(MemoryChunk);
 
-        return bestFit;
+        return startAddress;
     }
+
     void BestFitPoolAllocTechnique::free(void* mem)
     {
-        void* freeChunkAddress = mem;
         size_t freeChunkSize = 0;
-        MemoryChunk* chunk = (MemoryChunk*)((char*)mem - sizeof(MemoryChunk));
+        size_t padding = *((PADDING_TYPE*)mem - 1);
+
+        void* freeChunkAddress = (char*)mem - padding;
+        MemoryChunk* chunk = (MemoryChunk*)((char*)mem - padding - sizeof(MemoryChunk));
 
         if(chunk->m_right == nullptr)
         {
@@ -546,9 +570,13 @@ namespace Quaint
             //chunk->right is free. Merge it
             if(RBTree::containsNode(node))
             {
-                freeChunkSize += node->m_size + sizeof(MemoryChunk); 
                 chunk->m_right = chunk->m_right->m_right;
-                chunk->m_right->m_left = chunk;
+                if(chunk->m_right != nullptr)
+                {
+                    chunk->m_right->m_left = chunk;
+                }
+
+                freeChunkSize += node->m_size + sizeof(MemoryChunk); 
                 m_availableSize += sizeof(MemoryChunk);
                 RBTree::remove(node);
             }
@@ -560,12 +588,19 @@ namespace Quaint
             {
                 //Remove current memory
                 chunk->m_left->m_right = chunk->m_right;
-                chunk->m_right->m_left = chunk->m_left;
+                if(chunk->m_right != nullptr)
+                {
+                    chunk->m_right->m_left = chunk->m_left;
+                }
                 freeChunkAddress = node;
+
                 freeChunkSize = node->m_size + sizeof(MemoryChunk);
+                m_availableSize += sizeof(MemoryChunk);
                 RBTree::remove(node);
             }
         }
+
+        //TODO: check if this node is already in tree and trigger heap corruption
 
         RBTree::RBNode* newNode = new (freeChunkAddress) RBTree::RBNode(freeChunkSize);
         RBTree::insert(newNode);

@@ -10,5 +10,8 @@
 #define BOOT_MEMORY_NAME "DEFAULT"
 #define BOOT_MEMORY_SIZE  10 * 1024 * 1024 //10Mib
 
+#define DEFAULT_ALIGNMENT 8
+#define PADDING_TYPE      size_t
+#define PADDING_INFO_SIZE sizeof(size_t)
 
 #endif //_H_MEMORY_CONSTANTS
