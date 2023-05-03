@@ -5,10 +5,11 @@
 #include <Memory>
 #include <MemCore/MemoryData.h>
 #include <MemCore/Techniques/IAllocationTechnique.h>
+#include <Interface/IMemoryContext.h>
 
 namespace Quaint
 {
-    class MemoryContext
+    class MemoryContext : public IMemoryContext
     {
     public:
         constexpr MemoryContext() 
@@ -30,7 +31,7 @@ namespace Quaint
         void Invalidate();
         bool Shutdown();
         bool InitializeContextAndTechnique(IAllocationTechnique* technique);
-        inline void* Alloc(size_t allocSize)
+        inline virtual void* Alloc(size_t allocSize) override
         {
             //TODO: Add an assert check for m_technique
             void* mem = m_technique->alloc(allocSize);
@@ -40,7 +41,7 @@ namespace Quaint
             //QLOG_E(MemoryContextLogger, buffer);
             return mem;
         }
-        inline void Free(void* mem)
+        inline virtual void Free(void* mem) override
         {
             //TODO: Add an assert check for m_technique
             if(!m_valid)

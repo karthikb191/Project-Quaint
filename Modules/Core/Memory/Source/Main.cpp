@@ -23,6 +23,59 @@ namespace Quaint
 #include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
 #include <Types/Concurrency/QThread.h>
 #include <Types/Concurrency/QCondition.h>
+#include <Types/QFastDelegates.h>
+
+class A
+{
+public:
+    virtual void TestFunc(int var) const
+    {
+        std::cout << "Test Func in class A" << var << "\n";
+    }
+    static void StaticMemberFunc(int n)
+    {
+        std::cout << "Called static member Fun" << n << "\n";
+    }
+
+    virtual void TwoParams(int a, int b)
+    {
+        std::cout << "Two Params Test: " << a << " " << b << "\n";
+    }
+    
+    virtual void ThreeParams(int a, int b, int c)
+    {
+        std::cout << "Three Params Test: " << a << " " << b << " " << c << "\n";
+    }
+    
+    virtual void FourParams(int a, int b, int c, int d)
+    {
+        std::cout << "Four Params Test: " << a << " " << b << " " << c << " " << d << "\n";
+    }
+    
+    virtual void FiveParams(int a, int b, int c, int d, int e)
+    {
+        std::cout << "Five Params Test: " << a << " " << b << " " << c << " " << d << " " << e << "\n";
+    }
+    
+    virtual void SixParams(int a, int b, int c, int d, int e, int f)
+    {
+        std::cout << "Six Params Test: " << a << " " << b << " " << c << " " << d << " " << e << " " << f << "\n";
+    }
+    
+    virtual void SevenParams(int a, int b, int c, int d, int e, int f, int g) const
+    {
+        std::cout << "Seven Params Test: " << a << " " << b << " " << c << " " << d << " " << e << " " << f  << " " << g << "\n";
+    }
+};
+
+class B : public A
+{
+public:
+    virtual void TestFunc(int var) const
+    {
+        std::cout << "Test Func in class B" << var << "\n";
+    }
+};
 
 class Test
 {
@@ -51,7 +104,66 @@ int main()
     
     std::cout << "Hello Memory Manager\n";
     
-    int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts(); 
+    int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts();
+    Quaint::MemoryManager* memoryManager = &Quaint::MemoryModule::get().getMemoryManager();
+    Quaint::IMemoryContext* context = memoryManager->getDefaultMemoryContext();
+    using namespace Quaint;
+    A a;
+    B b;
+    auto del = CREATE_AND_BIND_DELEAGATE_1(&a, &A::TestFunc, context);
+    del(100);
+    A* bder = &b;
+    auto del1 = CREATE_AND_BIND_DELEAGATE_1(bder, &A::TestFunc, context);
+    del1(200);
+
+    auto del2 = CREATE_AND_BIND_DELEAGATE_1(bder, &B::TestFunc, context);
+    del2(250);
+
+    auto del4 = CREATE_AND_BIND_DELEAGATE_1(&A::StaticMemberFunc, context);
+    del4(400);
+
+    
+    //lambda.operator()(1000);
+    auto del5 = QFastDelegate1<float, int>(context);
+    float outerValue = 101.1f;
+    del5.BindLambda(
+        [outerValue](int param) -> float
+        {    
+            std::cout << outerValue << " Called Delegate " << param << "\n";
+            return 101.1f;
+        }
+    );
+    float res = del5(2000);
+    std::cout << "res: " << res << "\n";
+
+    auto del6 = del5;
+    del6(4000);
+    
+    auto twop = CREATE_AND_BIND_DELEAGATE_2(&a, &A::TwoParams, context);
+    twop(11, 12);
+
+    auto threep = CREATE_AND_BIND_DELEAGATE_3(&a, &A::ThreeParams, context);
+    threep(11, 12, 13);
+
+    auto fourp = CREATE_AND_BIND_DELEAGATE_4(&a, &A::FourParams, context);
+    fourp(11, 12, 13, 14);
+
+    auto fivep = CREATE_AND_BIND_DELEAGATE_5(&a, &A::FiveParams, context);
+    fivep(11, 12, 13, 14, 15);
+
+    auto sixp = CREATE_AND_BIND_DELEAGATE_6(&a, &A::SixParams, context);
+    sixp(11, 12, 13, 14, 15, 16);
+
+    auto sevenp = CREATE_AND_BIND_DELEAGATE_7(&a, &A::SevenParams, context);
+    sevenp(11, 12, 13, 14, 15, 16, 17);
+
+    DECLARE_DELEGATE_Seven_Params(MyOwnDel, void, int, int, int, int, int, int, int);
+    MyOwnDel dd(context);
+    dd.Bind(&a, &A::SevenParams);
+    dd(101, 102, 103, 104, 105, 106, 107);
+
+
+
     
     Quaint::ThreadParams params;
     params.m_job = Quaint::ThreadParams::JobType(TestJob);

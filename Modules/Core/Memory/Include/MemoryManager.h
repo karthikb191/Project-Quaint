@@ -42,7 +42,7 @@ namespace Quaint
         { 
             m_MemoryContexts[0].Free(mem); 
         }
-
+        inline MemoryContext*          getDefaultMemoryContext() { return &m_MemoryContexts[0]; }
         MemoryContext*          getMemoryContenxtByIndex(uint32_t index);
         MemoryContext*          getMemoryContextByName(const char* name);
 
@@ -57,6 +57,7 @@ namespace Quaint
         {
             shutdown();
         };
+        //Disable copy, assignment and move
         
         static int                             m_validContexts;
         static MemoryContext                   m_MemoryContexts[MAX_MEMORY_CONTEXTS];
