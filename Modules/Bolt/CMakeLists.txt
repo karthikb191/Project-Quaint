@@ -38,10 +38,12 @@ else()
 endif()
 
 # Make headers available to other libraries
+target_include_directories(Bolt PUBLIC ${WORKSPACE_ROOT}/External/Libs/Vulkan-1.2.176.1/Include)
 target_include_directories(Bolt PUBLIC ${CMAKE_CURRENT_LIST_DIR}/Include)
 
 add_dependencies(Bolt Core)
 target_link_libraries(Bolt ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/Core.lib)
+target_link_libraries(Bolt ${WORKSPACE_ROOT}/External/Libs/Vulkan-1.2.176.1/Lib32/vulkan-1.lib)
 
 #message("[+]Registered headers under:" ${CMAKE_CURRENT_LIST_DIR}/Include)
 #set(${PROJECT_NAME}_HEADER_PATH ${CMAKE_CURRENT_LIST_DIR}/Include)
