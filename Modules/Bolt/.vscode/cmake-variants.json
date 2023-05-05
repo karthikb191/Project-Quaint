@@ -5,11 +5,17 @@
         "choices": {
             "Debug":{
                 "short": "Debug Build",
-                "buildType": "Debug"
+                "buildType": "Debug",
+                "settings": {
+                    "DEBUG_BUILD":1
+                }
             },
             "Release":{
                 "short":"Release Build",
-                "buildType": "Release"
+                "buildType": "Release",
+                "settings": {
+                    "DEBUG_BUILD":0
+                }
             }
         }
     }

@@ -8,7 +8,7 @@ if(${DEBUG_BUILD})
 else()
     message("[+]RELEASE BUILD!")
     set(CMAKE_BUILD_TYPE Release)
-    set(CMAKE_CXX_FLAGS_RELEASE "-o3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 endif()
 
 # If BUILD_<Lib>_LIB is OFF, then it's respective executable will be generated. This is to provide ease of testing until 
@@ -33,12 +33,13 @@ if(${BUILD_CORE_LIB})
     add_library(${PROJECT_NAME})
 endif()
 
-message(${CMAKE_BINARY_DIR} ......  ${CMAKE_BUILD_TYPE})
+message("[+]Core Binary Dir: " ${CMAKE_BINARY_DIR} " Build Type: "  ${CMAKE_BUILD_TYPE})
 #Include External Modules(CMakeLists.txt) here
 #add_subdirectory(Logger ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
 #add_subdirectory(Memory ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
 #add_subdirectory(IPC ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
 #add_subdirectory(Types ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+
 include("${CMAKE_CURRENT_LIST_DIR}/Logger/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Memory/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/IPC/CMakeLists.txt")
