@@ -24,6 +24,8 @@ namespace Quaint
 #include <Types/Concurrency/QThread.h>
 #include <Types/Concurrency/QCondition.h>
 #include <Types/QFastDelegates.h>
+#include <Types/QFastArray.h>
+#include <Types/QStaticString.h>
 
 class A
 {
@@ -103,6 +105,21 @@ int main()
 {
     
     std::cout << "Hello Memory Manager\n";
+
+    Quaint::QFastArray<int, 4> arr = {10, 01, 10, 10};
+    
+    Quaint::QFastArray<int, 5> arr2({100, 100, 100, 100, 100});
+
+    arr2.copyFrom(arr);
+
+    Quaint::QStaticString<64> str("Test Test");
+    
+    Quaint::QStaticString<64> str1 = str;
+    str1.append("lloo");
+    str1 = "Test Again";
+
+    Quaint::QStaticString<4> str2("One");
+    str1 = str2;
     
     int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts();
     Quaint::MemoryManager* memoryManager = &Quaint::MemoryModule::get().getMemoryManager();

@@ -2,7 +2,6 @@
 #define _H_BOLT
 #include <memory>
 #include <iostream>
-
 namespace Bolt
 {
     class BoltRenderer
