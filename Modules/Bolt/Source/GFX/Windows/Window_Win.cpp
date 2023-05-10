@@ -24,6 +24,7 @@ namespace Bolt
             wc.lpszClassName = params.className;
             wc.hInstance = m_instance;
             wc.lpfnWndProc = params.callback;
+            wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
 
             RegisterClass(&wc);
 
@@ -35,10 +36,11 @@ namespace Bolt
             
             if(m_windowsHandle == NULL)
             {
-                return false;
                 QLOG_E(Window_Win_Logger, "Could not create window");
+                return false;
             }
 
+            QLOG_I(Window_Win_Logger, "Window created successfully");
             return true;
         }
         void showWindow()

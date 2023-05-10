@@ -7,6 +7,8 @@
 #include <MemCore/Techniques/IAllocationTechnique.h>
 #include <Interface/IMemoryContext.h>
 
+//#define Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
+
 namespace Quaint
 {
     class MemoryContext : public IMemoryContext
@@ -33,6 +35,7 @@ namespace Quaint
         bool InitializeContextAndTechnique(IAllocationTechnique* technique);
         inline virtual void* Alloc(size_t allocSize) override
         {
+#ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
             //TODO: Add an assert check for m_technique
             void* mem = m_technique->alloc(allocSize);
 
@@ -40,14 +43,20 @@ namespace Quaint
             //sprintf_s(buffer, "Allocated %lu in MemoryContext %s. Available: %lu", allocSize, m_name, m_technique->getAvailableSize());
             //QLOG_E(MemoryContextLogger, buffer);
             return mem;
+#else
+            return malloc(allocSize);
+#endif
         }
         inline virtual void Free(void* mem) override
         {
+#ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
             //TODO: Add an assert check for m_technique
             if(!m_valid)
                 return;
             m_technique->free(mem);
-
+#else       
+            free(mem);
+#endif
             //char buffer[1024];
             //sprintf_s(buffer, "Freed from MemoryContext %s. Available: %lu", m_name, m_technique->getAvailableSize());
             //QLOG_E(MemoryContextLogger, buffer);

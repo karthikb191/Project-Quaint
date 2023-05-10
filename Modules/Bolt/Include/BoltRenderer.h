@@ -2,6 +2,9 @@
 #define _H_BOLT
 #include <memory>
 #include <iostream>
+#include <GFX/Interface/IRenderer.h>
+#include <Interface/IMemoryContext.h>
+
 namespace Bolt
 {
     class BoltRenderer
@@ -18,10 +21,13 @@ namespace Bolt
         }
         ~BoltRenderer();
 
-        void startEngine();
+        void startEngine(Quaint::IMemoryContext* context);
         void shutdown();
 
     private:
+        IRenderer*                  m_renderer_impl     = nullptr;
+        Quaint::IMemoryContext*     m_context           = nullptr;
+
         static std::unique_ptr<BoltRenderer> m_renderer;
         bool m_engineRunning;
     };

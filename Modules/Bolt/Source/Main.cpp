@@ -1,10 +1,22 @@
 #include <iostream>
 #include <vulkan/vulkan.h>
-#include <Bolt.h>
+#include <BoltRenderer.h>
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
 #include <Types/QStaticString_W.h>
 #include <GFX/Window.h>
+
+#include <MemoryModule.h>
+#include <LoggerModule.h>
+namespace Quaint
+{
+    CREATE_MODULE(LoggerModule);
+    INIT_MODULE(LoggerModule);
+
+    CREATE_MODULE(MemoryModule);
+    INIT_MODULE(MemoryModule);
+}
+
 
 Quaint::QFastArray<const char*, 4> tt =
 {
@@ -30,7 +42,7 @@ LRESULT CALLBACK msgHandleLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 int main()
 {
     std::cout << "Hello Renderer!" << std::endl;
-    Bolt::BoltRenderer::get()->startEngine();
+    Bolt::BoltRenderer::get()->startEngine(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();

@@ -1,4 +1,4 @@
-#include "../../Include/Bolt.h"
+#include <BoltRenderer.h>
 
 namespace Bolt
 {
@@ -8,7 +8,7 @@ namespace Bolt
         std::cout << "Renderer destroyed!!!!" << "\n";
     }
 
-    void BoltRenderer::startEngine()
+    void BoltRenderer::startEngine(Quaint::IMemoryContext* context)
     {
         std::cout << "Renderer Started!!!" << "\n";
         m_engineRunning = true;

@@ -4,14 +4,14 @@
 #include <Private/LoggerBase.h>
 #include <LoggerModule.h>
 
-namespace Quaint
-{
+//namespace Quaint
+//{
 
     //Init Logger must be called before registering Sub-Loggers
     #define DECLARE_LOG_CATEGORY(name)\
-    class Logger_##name : public LoggerBase {\
+    class Logger_##name : public Quaint::LoggerBase {\
         public:\
-        Logger_##name() : LoggerBase(#name) {}\
+        Logger_##name() : Quaint::LoggerBase(#name) {}\
     }
 
     /*Effective C++ Item-4. Converted this to local-static. object is created on first usage*/
@@ -34,5 +34,5 @@ namespace Quaint
 
     #define QLOGGER_NAME(name) logger_##name.getLoggerName();
 
-}
+//}
 #endif //_H_QUAINT_LOGGER
