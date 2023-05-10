@@ -106,12 +106,6 @@ int main()
     
     std::cout << "Hello Memory Manager\n";
 
-    Quaint::QFastArray<int, 4> arr = {10, 01, 10, 10};
-    
-    Quaint::QFastArray<int, 5> arr2({100, 100, 100, 100, 100});
-
-    arr2.copyFrom(arr);
-
     Quaint::QStaticString<64> str("Test Test");
     
     Quaint::QStaticString<64> str1 = str;

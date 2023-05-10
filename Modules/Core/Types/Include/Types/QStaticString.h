@@ -20,7 +20,7 @@ public:
     {
         static_assert(SZ > 0, "Assigning an empty string is invalid");
         static_assert(N >= SZ, "Passed string is larger than the type can hold");
-        memcpy(m_rawData, str, SZ);
+        strcpy_s(m_rawData, SZ, str);
     }
 
     const char* getRawData() const { return m_rawData; }
@@ -61,8 +61,7 @@ public:
         static_assert(N >= SZ, "Passed string is larger than the type can hold");
 
         memset(m_rawData, '\0', N);
-        
-        strcpy_s(m_rawData, SZ, other.getRawData());
+        memcpy(m_rawData, other.getRawData(), SZ);
         return *this;
     }
     
