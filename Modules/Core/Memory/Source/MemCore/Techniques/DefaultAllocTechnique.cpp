@@ -164,6 +164,12 @@ namespace Quaint
         }
     }
 
+    size_t DefaultAllocTechnique::getBlockSize(void* mem)
+    {
+        return 0;
+        //TODO:
+    }
+
 #ifdef _DEBUG
     size_t DefaultAllocTechnique::getTrackerBlocks(std::vector<TrackerBlock>& trackerBlocks)
     {

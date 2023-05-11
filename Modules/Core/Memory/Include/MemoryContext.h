@@ -62,6 +62,11 @@ namespace Quaint
             //QLOG_E(MemoryContextLogger, buffer);
         }
 
+        inline virtual size_t GetBlockSize(void* mem) override
+        {
+            return m_technique->getBlockSize(mem);
+        }
+
         #ifdef _DEBUG
         /* After writing, should return address to the immediate address */
         void* writeMemoryTrackInfo(void* memoryPoiter, size_t contextHeaderoffset, size_t trackerBlocksOffset);

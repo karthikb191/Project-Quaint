@@ -14,6 +14,7 @@ namespace Quaint
         virtual void free(void* mem) = 0;
         virtual void shutdown() = 0;
         virtual size_t getHeaderSize() = 0;
+        virtual size_t getBlockSize(void* mem) = 0;
     #ifdef _DEBUG
         virtual size_t getTrackerBlocks(std::vector<TrackerBlock>& trackerBlocks) = 0;
     #endif

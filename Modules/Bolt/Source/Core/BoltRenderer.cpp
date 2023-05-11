@@ -8,30 +8,32 @@ namespace Bolt
     std::unique_ptr<BoltRenderer> BoltRenderer::m_renderer = nullptr;
     BoltRenderer::~BoltRenderer()
     {
-        std::cout << "Renderer destroyed!!!!" << "\n";
+        std::cout << "Renderer destroyed!!!!\n";
     }
 
     void BoltRenderer::startEngine(Quaint::IMemoryContext* context)
     {
-        std::cout << "Renderer Started!!!" << "\n";
-        m_engineRunning = true;
-        
+        std::cout << "Renderer Started Successfully!!!\n";
+        m_context = context;
+
         int* arr = QUAINT_NEW_ARRAY(context, int, 100, 200);
 
-        m_renderer_impl = QUAINT_NEW(VulkanRenderer, context);
-        m_renderer_impl->init(context);
-        QUAINT_DELETE(m_renderer_impl, context);
+        QUAINT_DELETE_ARRAY(context, arr);
 
-        int i = 100;
-        i -= 10;
+        m_renderer_impl = QUAINT_NEW(context, VulkanRenderer);
+        m_renderer_impl->init(context);
+        
+        m_engineRunning = true;
     }
 
     void BoltRenderer::shutdown()
     {
-        std::cout << "Renderer shutdown!!!!" << "\n";
         m_engineRunning = false;
-
+        
         m_renderer_impl->shutdown();
-        delete m_renderer_impl;
+        QUAINT_DELETE(m_context, m_renderer_impl);
+        
+        m_context = nullptr;
+        std::cout << "Renderer shutdown successful!\n";
     }
 }

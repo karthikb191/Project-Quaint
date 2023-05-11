@@ -44,6 +44,7 @@ namespace Quaint
         {
             MemoryChunk*    m_left = nullptr;
             MemoryChunk*    m_right = nullptr;
+            size_t          m_dataSize = 0;
         };
 
     public:
@@ -52,6 +53,7 @@ namespace Quaint
         void* alloc(size_t allocSize) override;
         void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT);
         void free(void* mem) override;
+        size_t getBlockSize(void* mem) override;
         void shutdown() override;
         size_t getHeaderSize() { return sizeof(MemoryChunk); };
     #ifdef _DEBUG

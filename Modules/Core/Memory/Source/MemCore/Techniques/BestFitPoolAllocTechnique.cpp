@@ -513,6 +513,7 @@ namespace Quaint
         *padding = (size_t)startAddress - (size_t)bestFit;
 
         MemoryChunk* chunk = (MemoryChunk*)((char*)bestFit - sizeof(MemoryChunk));
+        chunk->m_dataSize = allocSize;
         size_t chunkEndAddr = (size_t)((char*)chunk + sizeof(MemoryChunk) + totalSize);
 
         size_t sizeDiff = 0;
@@ -605,6 +606,18 @@ namespace Quaint
         RBTree::RBNode* newNode = new (freeChunkAddress) RBTree::RBNode(freeChunkSize);
         RBTree::insert(newNode);
     }
+
+    size_t BestFitPoolAllocTechnique::getBlockSize(void* mem)
+    {
+        size_t freeChunkSize = 0;
+        size_t padding = *((PADDING_TYPE*)mem - 1);
+
+        void* freeChunkAddress = (char*)mem - padding;
+        MemoryChunk* chunk = (MemoryChunk*)((char*)mem - padding - sizeof(MemoryChunk));
+        
+        return chunk->m_dataSize;
+    }
+
     void BestFitPoolAllocTechnique::shutdown()
     {
         //TODO:
