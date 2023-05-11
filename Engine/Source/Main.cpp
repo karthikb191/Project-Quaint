@@ -12,7 +12,7 @@ namespace Quaint
 #include<MemoryModule.h>
 
 #include <iostream>
-#include <Bolt.h>
+#include <BoltRenderer.h>
 int main()
 {
     std::cout << "Hello Engine!" << std::endl;

@@ -17,15 +17,6 @@ namespace Quaint
     INIT_MODULE(MemoryModule);
 }
 
-
-Quaint::QFastArray<const char*, 4> tt =
-{
-    "First String",
-    "Second String",
-    "Third String",
-    "Fourth String"
-};
-
 LRESULT CALLBACK msgHandleLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch(uMsg)
@@ -46,13 +37,6 @@ int main()
 
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();
-
-    for(size_t i = 0; i < tt.getSize(); i++)
-    {
-        std::cout << tt[i] << " ";
-    }
-    std::cout << "\n";
-
 
     Bolt::WindowCreationParams params;
     params.className = "Main Render Class";

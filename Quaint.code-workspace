@@ -21,6 +21,7 @@
       "cmake.configureSettings": { 
         "WORKSPACE_ROOT": "D:\\Works\\Project-Quaint" 
       },
+      "cmake.autoSelectActiveFolder": false,
       "cmake.sourceDirectory" :"${workspaceFolder}",
       "cmake.buildDirectory": "${workspaceFolder}/Build",
       "files.associations": {

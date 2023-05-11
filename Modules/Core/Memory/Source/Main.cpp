@@ -26,6 +26,7 @@ namespace Quaint
 #include <Types/QFastDelegates.h>
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
+#include <Types/QArray.h>
 
 class A
 {
@@ -101,6 +102,66 @@ void TestJob(void* param)
     condition.signal();
 }
 
+
+namespace Quaint
+{
+    void printArray(const QArray<int>& arr)
+    {
+        for(auto itr = arr.begin_c(); itr != arr.end_c(); ++itr)
+        {
+            std::cout << *itr << " ";
+        }
+        std::cout << "\n";
+    }
+    void QArrayTests()
+    {
+        MemoryManager* memoryManager = &MemoryModule::get().getMemoryManager();
+        QArray<int> arr1(memoryManager->getDefaultMemoryContext());
+        arr1.pushBack(0);
+        arr1.pushBack(1);
+        arr1.pushBack(2);
+        arr1.pushBack(3);
+        arr1.pushBack(4);
+        arr1.pushBack(5);
+        arr1.pushBack(6);
+        arr1.pushBack(7);
+        arr1.pushBack(8);
+        arr1.pushBack(9);
+
+        printArray(arr1);
+
+        arr1.removeAt(9);
+        printArray(arr1);
+
+        arr1.removeRange(arr1.begin(), arr1.begin() + 3);
+        printArray(arr1);
+
+        arr1.insertRangeAt(0, {90, 80, 70, 60, 50});
+        printArray(arr1);
+
+        arr1.insertAt(arr1.getSize() - 1, 787);
+
+        QArray<int> arr2(arr1);
+        printArray(arr2);
+
+        arr2.insertAt(0, 101);
+        arr2.insertAt(0, 102);
+        arr2.insertAt(0, 103);
+        arr2.pushBack(104);
+        arr2.pushBack(105);
+        arr2.pushBack(106);
+        arr2.insertAt(arr2.getSize()/2, 107);
+        printArray(arr2);
+
+        arr1.insertRangeAt(5, arr2, arr2.begin_c(), arr2.end_c() - 1);
+
+        QArray<int> arr3(std::move(arr1));
+        printArray(arr3);
+
+        printArray(arr1);
+    }
+}
+
 int main()
 {
     
@@ -108,6 +169,8 @@ int main()
 
     Quaint::QStaticString<64> str("Test Test");
     
+    Quaint::QArrayTests();
+
     Quaint::QStaticString<64> str1 = str;
     str1.append("lloo");
     str1 = "Test Again";
