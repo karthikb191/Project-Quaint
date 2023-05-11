@@ -11,4 +11,4 @@ namespace Quaint
     };
 }
 
-#endif
+#endif //_H_I_MEMORY_CONTEXT

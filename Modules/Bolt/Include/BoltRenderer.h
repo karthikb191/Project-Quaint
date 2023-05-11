@@ -15,7 +15,7 @@ namespace Bolt
             if(m_renderer == nullptr)
             {
                 m_renderer = std::make_unique<BoltRenderer>();
-                std::cout << "Constructed Bolt Renderer" << "\n";
+                std::cout << "Constructed Bolt Renderer\n";
             }
             return m_renderer.get();
         }
@@ -25,7 +25,7 @@ namespace Bolt
         void shutdown();
 
     private:
-        IRenderer*                  m_renderer_impl     = nullptr;
+        static IRenderer*                  m_renderer_impl;//     = nullptr;
         Quaint::IMemoryContext*     m_context           = nullptr;
 
         static std::unique_ptr<BoltRenderer> m_renderer;

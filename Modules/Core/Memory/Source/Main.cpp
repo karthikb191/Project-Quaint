@@ -158,6 +158,8 @@ namespace Quaint
         QArray<int> arr3(std::move(arr1));
         printArray(arr3);
 
+        std::cout << "AT: " << arr3.at(3) << "\n";
+
         printArray(arr1);
     }
 }

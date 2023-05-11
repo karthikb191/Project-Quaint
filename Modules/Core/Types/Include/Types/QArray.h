@@ -126,10 +126,10 @@ namespace Quaint
             assert((start >= other.begin_c() && last < other.end_c() && last >= start) && "Trying to insert invalid range");
             
             //TODO
-            size_t requiredSize = m_size + last - start + 1; 
+            size_t requiredSize = m_size + last - start + 1;
             if(requiredSize > m_reservedSize)
             {
-                reserve( (requiredSize + 8 / 4) * 4 );
+                reserve((requiredSize + 8 / 4) * 4);
             }
 
             size_t numElemsToInsert = (last - start) + 1;
@@ -146,7 +146,7 @@ namespace Quaint
             assert((index >= 0 && index < m_size) && "Trying to insert at invalid index");
             if(m_size + SZ > m_reservedSize)
             {
-                reserve( ((m_size + SZ + 8) / 4) * 4 );
+                reserve(((m_size + SZ + 8) / 4) * 4);
             }
 
             memmove(m_rawData + index + SZ, m_rawData + index, (m_size - index) * TYPE_SIZE);
@@ -154,21 +154,28 @@ namespace Quaint
 
             m_size += SZ;
         }
+
+        /*Remove an element from back*/
         void popBack()
         {
             assert(m_size > 0 && "Trying to remove element from an empty array");
             --m_size;
         }
+        /*Remove an element at index*/
         void removeAt(size_t index)
         {
             assert((index >= 0 && index < m_size) && "Trying to remove element with invalid index");
             
             removeRange(begin() + index, begin() + index);
         }
+        void removeAt(Const_Iterator itr)
+        {
+            removeRange(itr, itr);
+        }
         /*Removes [start, last] from array*/
         void removeRange(Iterator start, Iterator last)
         {
-            assert( start >= begin() && last < end() && "Trying to remove invalid element range");
+            assert(start >= begin() && last < end() && "Trying to remove invalid element range");
             
             size_t n = (last - start) + 1;
             void* movDst = (void*)(start);
@@ -181,10 +188,14 @@ namespace Quaint
             m_size -= n;
         }
 
-        T& operator[](int index)
+        T& at(size_t index)
+        {
+            return operator[](index);
+        }
+        T& operator[](size_t index)
         {
             assert((index >= 0 && index < m_size) && "Trying to access invalid element");
-            return *m_rawData[index];
+            return *(m_rawData + index);
         }
 
         size_t getReservedSize() const { return m_reservedSize; }

@@ -9,6 +9,8 @@ namespace Bolt
     {
     public:
        virtual void init(Quaint::IMemoryContext*) = 0;
+       virtual void shutdown() = 0;
+       virtual ~IRenderer(){}
     };
 }
 
