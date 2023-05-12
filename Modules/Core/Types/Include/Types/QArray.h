@@ -132,7 +132,7 @@ namespace Quaint
             size_t requiredSize = m_size + last - start + 1;
             if(requiredSize > m_reservedSize)
             {
-                reserve((requiredSize + 8 / 4) * 4);
+                reserve(((requiredSize + 8) / 4) * 4);
             }
 
             size_t numElemsToInsert = (last - start) + 1;

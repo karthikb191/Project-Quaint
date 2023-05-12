@@ -25,8 +25,6 @@ T* allocFromContext(Quaint::IMemoryContext* context, ARGS... args)
     new(allocPtr)T(args...);
     return allocPtr;
 }
-
-//TODO: Array allocation is a little broken. Address this
 template<typename T, typename ...ARGS>
 T* allocArrayFromContext(Quaint::IMemoryContext* context, size_t elements, ARGS... args)
 {
