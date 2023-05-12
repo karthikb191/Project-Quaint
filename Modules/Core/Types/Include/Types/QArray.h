@@ -3,8 +3,9 @@
 
 #include <cstring>
 #include <limits.h>
-#include <Interface/IMemoryContext.h>
 #include <assert.h>
+#include <Interface/IMemoryContext.h>
+#include <MemCore/GlobalMemoryOverrides.h>
 
 namespace Quaint
 {
@@ -66,7 +67,8 @@ namespace Quaint
             {
                 if(m_context != nullptr)
                 {
-                    m_context->Free(m_rawData);
+                    QUAINT_DELETE_ARRAY(m_context, m_rawData);
+                    //m_context->Free(m_rawData);
                 }
                 else
                 {
@@ -87,7 +89,8 @@ namespace Quaint
             
             if(m_context != nullptr)
             {
-                m_context->Free(m_rawData);
+                QUAINT_DELETE_ARRAY(m_context, m_rawData);
+                //m_context->Free(m_rawData);
             }
             else
             {
@@ -220,11 +223,13 @@ namespace Quaint
             
             if(m_context != nullptr)
             {
-                m_rawData = (T*)m_context->Alloc(m_reservedSize * TYPE_SIZE);
+                m_rawData = QUAINT_NEW_ARRAY(m_context, T, m_reservedSize); 
+                //(T*)m_context->Alloc(m_reservedSize * TYPE_SIZE);
                 if(oldData != nullptr)
                 {
                     memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
-                    m_context->Free(oldData);
+                    QUAINT_DELETE_ARRAY(m_context, oldData);
+                    //m_context->Free(oldData);
                 }
             }
             else

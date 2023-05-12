@@ -32,6 +32,7 @@ T* allocArrayFromContext(Quaint::IMemoryContext* context, size_t elements, ARGS.
 {
     T* allocPtr = (T*)context->Alloc(elements * sizeof(T));
 
+    //Calls Constructor with provided args
     for(size_t i = 0; i < elements; i++)
     {
         new(allocPtr + i)T(args...);
@@ -50,6 +51,7 @@ template<typename T>
 void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
 {
     size_t numElems = context->GetBlockSize(mem) / sizeof(T);
+    //Loops through and calls destructor
     for(size_t i = 0; i < numElems; i++)
     {
         (mem + i)->~T();
@@ -58,10 +60,13 @@ void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
 }
 
 //#define QUAINT_NEW(TYPE, CONTEXT, ...) new (allocFromContext<TYPE>(CONTEXT)) TYPE (__VA_ARGS__);
-#define QUAINT_NEW(CONTEXT, TYPE, ...) allocFromContext<TYPE>(CONTEXT, __VA_ARGS__);
-#define QUAINT_NEW_ARRAY(CONTEXT, TYPE, ELEMENTS, ...) allocArrayFromContext<TYPE>(CONTEXT, ELEMENTS, __VA_ARGS__);
+#define QUAINT_NEW(CONTEXT, TYPE, ...) allocFromContext<TYPE>(CONTEXT, __VA_ARGS__)
+#define QUAINT_NEW_ARRAY(CONTEXT, TYPE, ELEMENTS, ...) allocArrayFromContext<TYPE>(CONTEXT, ELEMENTS, __VA_ARGS__)
 
-#define QUAINT_DELETE(CONTEXT, MEMORY) deleteFromContext(CONTEXT, MEMORY);
-#define QUAINT_DELETE_ARRAY(CONTEXT, MEMORY) deleteArrayFromContext(CONTEXT, MEMORY);
+#define QUAINT_DELETE(CONTEXT, MEMORY) deleteFromContext(CONTEXT, MEMORY)
+#define QUAINT_DELETE_ARRAY(CONTEXT, MEMORY) deleteArrayFromContext(CONTEXT, MEMORY)
+
+#define QUAINT_ALLOC_MEMORY(CONTEXT, SIZE) context->Alloc(SIZE)
+#define QUAINT_DEALLOC_MEMORY(CONTEXT, MEMORY) context->Free(MEMORY)
 
 #endif //_H_GLOBAL_MEMORY_OVERRIDES
