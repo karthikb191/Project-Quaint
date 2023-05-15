@@ -68,14 +68,21 @@ public:
         memcpy((void*)m_data, (void*)src.getRawData(), SZ * sizeof(T));
     }
 
-private:
     //No default copy and move
-    QFastArray(const QFastArray&) = delete;
-    QFastArray(QFastArray&&) = delete;
-    QFastArray& operator=(const QFastArray&) = delete;
-    QFastArray& operator=(QFastArray&&) = delete;
+    QFastArray(const QFastArray&) = default;
+    QFastArray(QFastArray&&) = default;
+    QFastArray& operator=(const QFastArray&) = default;
+    QFastArray& operator=(QFastArray&&) = default;
 
+private:
     T                   m_data[N];
 };
+
+template<typename T, size_t SZ>
+static QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
+{
+    return QFastArray<T, SZ>(list);
+}
+
 }
 #endif

@@ -9,18 +9,29 @@ namespace Quaint
     namespace RBTree
     {
         struct RBNode;
-        extern RBNode sentinel;
+        extern RBNode* sentinel;
         extern RBNode* root;
+        
         struct RBNode
         {
             RBNode(size_t size) : m_size(size) {}
-            RBNode*         m_parent = &sentinel;
-            RBNode*         m_left = &sentinel;
-            RBNode*         m_right = &sentinel;
-            size_t          m_size = { 0 };
+
+            // TODO: Bad!! Should probably move this to a RBTree structure
+            // This lefts us bypass global variable initialization across multiple translational units and retrieve sentinel on demand
+            static RBNode* GetSentinel()
+            {
+                static RBNode sentinel = RBNode(0);
+                return &sentinel;
+            }
+
+            RBNode*         m_parent = sentinel;
+            RBNode*         m_left = sentinel;
+            RBNode*         m_right = sentinel;
+            size_t          m_size = 0;
             bool            m_isRed = false;
         };
 
+        void InitTree();
         void LeftRotate(RBNode* x);
         void RightRotate(RBNode* x);
         void RBInsertFixup(RBNode* node);
@@ -51,7 +62,7 @@ namespace Quaint
         void boot(const char* ContextName, size_t size, void* rawMemory, bool dynamic = false) override;
         void reboot(size_t size, void* rawMemory) override;
         void* alloc(size_t allocSize) override;
-        void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT);
+        void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT) override;
         void free(void* mem) override;
         size_t getBlockSize(void* mem) override;
         void shutdown() override;

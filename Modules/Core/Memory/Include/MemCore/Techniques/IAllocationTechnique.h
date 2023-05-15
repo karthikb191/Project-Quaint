@@ -2,6 +2,7 @@
 #define _H_I_ALLOCATION_Technique
 #include <vector>
 #include <Tracker/MemoryTrackerData.h>
+#include <MemoryConstants.h>
 
 namespace Quaint
 {
@@ -11,6 +12,7 @@ namespace Quaint
         virtual void boot(const char* ContextName, size_t size, void* rawMemory, bool dynamic = false) = 0;
         virtual void reboot(size_t size, void* rawMemory) = 0;
         virtual void* alloc(size_t allocSize) = 0;
+        virtual void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT) = 0;
         virtual void free(void* mem) = 0;
         virtual void shutdown() = 0;
         virtual size_t getHeaderSize() = 0;

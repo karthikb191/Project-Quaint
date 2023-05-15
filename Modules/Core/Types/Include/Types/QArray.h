@@ -26,10 +26,21 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
-        QArray(IMemoryContext* context, size_t rs = 4)
+        QArray(IMemoryContext* context, size_t size = 4)
         {
             m_context = context;
-            reserve(rs);
+            m_size = size;
+            reserve(((size + 8) / 4) * 4);
+        }
+        template<size_t SZ>
+        QArray(const T(&list)[SZ])
+        {
+            m_size = SZ;
+            reserve(((m_size + 8) / 4) * 4);
+            for(size_t i = 0; i < m_size; i++)
+            {
+                *(m_rawData + i) = list[i];
+            }
         }
         /*Copy constructing. Therefore uses other's memory context and deep copies data from other*/
         QArray(const QArray<T>& other)
@@ -204,6 +215,8 @@ namespace Quaint
         size_t getReservedSize() const { return m_reservedSize; }
         size_t getSize() const { return m_size; }
         const T* getBuffer() const { return m_rawData; }
+        T* getBuffer_NonConst() { return m_rawData; }
+
         IMemoryContext* getMemoryContext() const { return m_context; }
 
     private:

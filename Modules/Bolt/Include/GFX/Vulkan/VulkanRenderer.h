@@ -22,11 +22,18 @@ namespace Bolt
         void shutdown() override;
         
     private:
+        static void* VKAPI_PTR allocationFunction(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
+        static void VKAPI_PTR freeFunction(void* pUserData, void* pMemory);
+        static void* VKAPI_PTR reallocFunction(void* pUserData, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
+        static void VKAPI_PTR internalAllocationFunction
+        (void* pUserData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope);
+        static void VKAPI_PTR internalFreeFunction
+        (void* pUserData, void* pMemory, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope);
+
         void createInstance();
         void createAllocationCallbacks();
 
         VulkanRenderer();
-        VulkanRenderer(int a);
         virtual ~VulkanRenderer();
         
         VulkanRenderer(const VulkanRenderer&) = delete;
@@ -36,7 +43,9 @@ namespace Bolt
 
         bool                        m_running = false;
         Quaint::IMemoryContext*     m_context;
+        
         VkAllocationCallbacks       m_defGraphicsAllocator;
+        VkInstance                  m_instance;
     };
 }
 

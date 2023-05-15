@@ -1,6 +1,7 @@
 #include "MemCore/Techniques/DefaultAllocTechnique.h"
 #include "MemCore/GlobalMemoryOverrides.h"
 #include <QuaintLogger.h>
+#include <assert.h>
 
 namespace Quaint
 {
@@ -143,6 +144,12 @@ namespace Quaint
         m_availableSize -= allocSize;
 
         return chunk->m_rawData;
+    }
+
+    void* DefaultAllocTechnique::allocAligned(size_t allocSize, size_t alignment)
+    {
+        assert(true && "Not yet implemented");
+        return nullptr;
     }
 
     void DefaultAllocTechnique::free(void* mem)

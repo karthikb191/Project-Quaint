@@ -65,6 +65,7 @@ void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
 #define QUAINT_DELETE_ARRAY(CONTEXT, MEMORY) deleteArrayFromContext(CONTEXT, MEMORY)
 
 #define QUAINT_ALLOC_MEMORY(CONTEXT, SIZE) context->Alloc(SIZE)
+#define QUAINT_ALLOC_MEMORY_ALIGNED(CONTEXT, SIZE, ALIGNMENT) context->AllocAligned(SIZE, ALIGNMENT);
 #define QUAINT_DEALLOC_MEMORY(CONTEXT, MEMORY) context->Free(MEMORY)
 
 #endif //_H_GLOBAL_MEMORY_OVERRIDES

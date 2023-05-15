@@ -22,6 +22,7 @@ namespace Quaint
         void boot(const char* ContextName, size_t size, void* rawMemory, bool dynamic = false) override;
         void reboot(size_t size, void* rawMemory) override;
         void* alloc(size_t allocSize) override;
+        void* allocAligned(size_t allocSize, size_t alignment = DEFAULT_ALIGNMENT) override;
         void free(void* mem) override;
         size_t getBlockSize(void* mem) override;
         size_t getHeaderSize() { return sizeof(DefaultAllocTechnique); }

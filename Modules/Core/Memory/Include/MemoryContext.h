@@ -6,6 +6,7 @@
 #include <MemCore/MemoryData.h>
 #include <MemCore/Techniques/IAllocationTechnique.h>
 #include <Interface/IMemoryContext.h>
+#include <stdlib.h>
 
 //#define Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
 
@@ -47,6 +48,16 @@ namespace Quaint
             return malloc(allocSize);
 #endif
         }
+        inline virtual void* AllocAligned(size_t allocSize, size_t alignment) override
+        {
+#ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
+            return m_technique->allocAligned(allocSize, alignment);
+#else
+            //TODO: _aligned_malloc is MSVC specific. Add wordarounds for other platforms 
+            return _aligned_malloc(allocSize, alignment);
+#endif
+        }
+
         inline virtual void Free(void* mem) override
         {
 #ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
