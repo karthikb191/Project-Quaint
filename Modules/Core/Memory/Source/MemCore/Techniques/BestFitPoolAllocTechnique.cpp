@@ -522,7 +522,8 @@ namespace Quaint
         // Retrieved block should fit padding info (4 bytes) and alignment padding 
         // Also, block should have a minimum size of RBTree::RBNode. If this is violated, tree node data might get stomped when merging free chunks
         size_t totalSize = GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, allocSize);// alignment * ((allocSize + PADDING_INFO_SIZE + alignment + alignment - 1) / alignment);
-        totalSize = totalSize >= sizeof(RBTree::RBNode) ? totalSize : sizeof(RBTree::RBNode);
+        totalSize = totalSize >= sizeof(RBTree::RBNode) ? 
+        totalSize : GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, sizeof(RBTree::RBNode));
         
         RBTree::RBNode* bestFit = getBestFit(totalSize);
         if(bestFit == nullptr)
