@@ -28,13 +28,16 @@ namespace Bolt
         }
         //Vulkan Instance creation
         createInstance();
+        setupDebugMessenger();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
+        //destroyDebugMessenger();
 
+        vkDestroyInstance(m_instance, &m_defGraphicsAllocator);
     }
     
     //Custom Allocation code uses memory context ....................................
@@ -94,6 +97,35 @@ namespace Bolt
     }
     //............................................................................
 
+    bool areAllValidationLayersAvailable(Quaint::IMemoryContext* context, Quaint::QArray<const char*>& validationLayers)
+    {
+        size_t availableLayers = 0;
+        vkEnumerateInstanceLayerProperties(&availableLayers, nullptr);
+        Quaint::QArray<VkLayerProperties> layerProperties(context, availableLayers);
+        vkEnumerateInstanceLayerProperties(&availableLayers, layerProperties.getBuffer_NonConst());
+
+        bool allFound = true;
+        for(const char* layerName : validationLayers)
+        {
+            bool found = false;
+            for(const auto& property : layerProperties)
+            {
+                if(strcmp(layerName, property.layerName) == 0)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if(!found)
+            {
+                allFound = false;
+                break;
+            }
+        }
+
+        return allFound;
+    }
+
     void VulkanRenderer::createInstance()
     {
         //TODO: Probably get this info from an xml or json
@@ -113,20 +145,22 @@ namespace Bolt
         //TODO: Create a platform agnostic implementation
         auto instanceExtensions = Quaint::createFastArray(
         {
-            "VK_KHR_device_group_creation",// REQUIRED! This extension provides instance-level commands to enumerate groups of physical devices, and to create a logical device from a subset of one of those groups
-            "VK_KHR_external_fence_capabilities", //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” fence handles an implementation supports for a given set of use cases
-            "VK_KHR_external_memory_capabilities", //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” memory handles an implementation supports for a given set of use cases
-            //"VK_KHR_external_semaphore_capabilities", //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” semaphore handles an implementation supports for a given set of use cases
-            "VK_KHR_get_physical_device_properties2", //REQUIRED! This extension provides new entry points to query device features, device properties, and format properties in a way that can be easily extended by other extensions, without introducing any further entry points
-            "VK_KHR_get_surface_capabilities2", //REQUIRED! Provides an entry point to query device surface capabilities
-            "VK_KHR_surface", //REQUIRED! Abstracts native platform surfaces for use with Vulkan. Provides a way to determine whether queue family in a device supports presenting to a surface   
-            //"VK_KHR_surface_protected_capabilities", //??? This extension extends VkSurfaceCapabilities2KHR, providing applications a way to query whether swapchains can be created with the VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR flag set
-            "VK_KHR_win32_surface",  //REQUIRED! Required for rendering to windows. Provided mechanism to create "VkSurfaceKHR" object 
-            "VK_EXT_debug_report", //OPTIONAL! Enabled detailed debug reports
-            "VK_EXT_debug_utils\0", //OPTIONAL! Enables support of passing a callback to handle debug messages and much more
-            //"VK_EXT_swapchain_colorspace", //??? Might be needed. Not much information available
-            //"VK_NV_external_memory_capabilities", //??? Applications may wish to import memory from the Direct 3D API, or export memory to other Vulkan instances. This extension provides a set of capability queries that allow applications determine what types of win32 memory handles an implementation supports for a given set of use cases.
-            //"VK_KHR_portability_enumeration", //OPTIONAL! This extension allows applications to control whether devices that expose the VK_KHR_portability_subset extension are included in the results of physical device enumeration.
+            "VK_KHR_device_group_creation"// REQUIRED! This extension provides instance-level commands to enumerate groups of physical devices, and to create a logical device from a subset of one of those groups
+            , "VK_KHR_external_fence_capabilities" //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” fence handles an implementation supports for a given set of use cases
+            , "VK_KHR_external_memory_capabilities" //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” memory handles an implementation supports for a given set of use cases
+            //, "VK_KHR_external_semaphore_capabilities", //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” semaphore handles an implementation supports for a given set of use cases
+            , "VK_KHR_get_physical_device_properties2" //REQUIRED! This extension provides new entry points to query device features, device properties, and format properties in a way that can be easily extended by other extensions, without introducing any further entry points
+            , "VK_KHR_get_surface_capabilities2" //REQUIRED! Provides an entry point to query device surface capabilities
+            , "VK_KHR_surface" //REQUIRED! Abstracts native platform surfaces for use with Vulkan. Provides a way to determine whether queue family in a device supports presenting to a surface   
+            //, "VK_KHR_surface_protected_capabilities", //??? This extension extends VkSurfaceCapabilities2KHR, providing applications a way to query whether swapchains can be created with the VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR flag set
+            , "VK_KHR_win32_surface"  //REQUIRED! Required for rendering to windows. Provided mechanism to create "VkSurfaceKHR" object 
+        #ifdef DEBUG_BUILD
+            , "VK_EXT_debug_report" //OPTIONAL! Enabled detailed debug reports
+            , VK_EXT_DEBUG_UTILS_EXTENSION_NAME //OPTIONAL! Enables support of passing a callback to handle debug messages and much more
+        #endif
+            //, "VK_EXT_swapchain_colorspace", //??? Might be needed. Not much information available
+            //, "VK_NV_external_memory_capabilities", //??? Applications may wish to import memory from the Direct 3D API, or export memory to other Vulkan instances. This extension provides a set of capability queries that allow applications determine what types of win32 memory handles an implementation supports for a given set of use cases.
+            //, "VK_KHR_portability_enumeration", //OPTIONAL! This extension allows applications to control whether devices that expose the VK_KHR_portability_subset extension are included in the results of physical device enumeration.
         });
 
         instanceInfo.enabledExtensionCount = instanceExtensions.getSize();
@@ -142,10 +176,96 @@ namespace Bolt
         //    QLOG_I(VULKAN_RENDERER_LOGGER, extensions[i].extensionName);
         //}
 
+        //Validation layers are debug only feature
+#ifdef DEBUG_BUILD
+        Quaint::QArray<const char*> validationLayers = Quaint::QArray<const char*>( m_context,
+            {
+                "VK_LAYER_KHRONOS_validation"
+            }
+        );
+        if(!areAllValidationLayersAvailable(m_context, validationLayers))
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "[-] Some/All of validation layers provided are not available. This will fail isntance creation. Bailing out");
+            return;
+        }
+        instanceInfo.enabledLayerCount = validationLayers.getSize();
+        instanceInfo.ppEnabledLayerNames = validationLayers.getBuffer();
+#else
+        instanceInfo.enabledLayerCount = 0;
+        instanceInfo.ppEnabledLayerNames = nullptr;
+#endif
+
         VkResult result = vkCreateInstance(&instanceInfo, &m_defGraphicsAllocator, &m_instance);
         if(result != VK_SUCCESS)
         {
             QLOG_E(VULKAN_RENDERER_LOGGER, "FATAL ERROR! Failed to create a Vulkan Instance");
         }
+        else
+        {
+            QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Vulkan Instance creation successful");
+        }
     }
+
+
+#ifdef DEBUG_BUILD
+//TODO: Currently Instance Creation and Destruction is not handled by our debug messenger. Will address this later
+
+    void VulkanRenderer::setupDebugMessenger()
+    {
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_instance, "vkCreateDebugUtilsMessengerEXT");
+        if(func == nullptr)
+        {
+            QLOG_W(VULKAN_RENDERER_LOGGER, "Could not retrieve 'vkCreateDebugUtilsMessengerEXT'. Failed to create debug messenger");
+            return;
+        }
+        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallbackFunction;
+        createInfo.pUserData = nullptr;
+
+        if(func(m_instance, &createInfo, &m_defGraphicsAllocator, &m_debugMessenger) == VK_SUCCESS)
+        {
+            m_debugMessengerActive = true;
+        }
+    }
+
+    void VulkanRenderer::destroyDebugMessenger()
+    {
+        if(!m_debugMessengerActive) return;
+
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
+        if(func == nullptr)
+        {
+            QLOG_W(VULKAN_RENDERER_LOGGER, "Could not retrieve 'vkCreateDebugUtilsMessengerEXT'. Failed to create debug messenger");
+            return;
+        }
+        func(m_instance, m_debugMessenger, &m_defGraphicsAllocator);
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL VulkanRenderer::debugCallbackFunction(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData)
+    {
+        //TODO: Add a much richers set of message filtering
+        
+        if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        {
+            QLOG_W(VULKAN_RENDERER_LOGGER, pCallbackData->pMessage);
+        }
+        else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            QLOG_W(VULKAN_RENDERER_LOGGER, pCallbackData->pMessage);
+        }
+        else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            QLOG_I(VULKAN_RENDERER_LOGGER, pCallbackData->pMessage);
+        }
+
+        return VK_FALSE;
+    }
+#endif
 }

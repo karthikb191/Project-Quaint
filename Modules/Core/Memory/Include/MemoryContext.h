@@ -62,7 +62,7 @@ namespace Quaint
         {
 #ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
             //TODO: Add an assert check for m_technique
-            if(!m_valid)
+            if(!m_valid || mem == nullptr)
                 return;
             m_technique->free(mem);
 #else       

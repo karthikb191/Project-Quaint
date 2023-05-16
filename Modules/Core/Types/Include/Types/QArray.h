@@ -33,8 +33,9 @@ namespace Quaint
             reserve(((size + 8) / 4) * 4);
         }
         template<size_t SZ>
-        QArray(const T(&list)[SZ])
+        QArray(IMemoryContext* context, const T(&list)[SZ])
         {
+            m_context = context;
             m_size = SZ;
             reserve(((m_size + 8) / 4) * 4);
             for(size_t i = 0; i < m_size; i++)

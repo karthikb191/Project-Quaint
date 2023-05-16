@@ -22,6 +22,7 @@ namespace Bolt
         void shutdown() override;
         
     private:
+    //------ Static Allocation Functions
         static void* VKAPI_PTR allocationFunction(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
         static void VKAPI_PTR freeFunction(void* pUserData, void* pMemory);
         static void* VKAPI_PTR reallocFunction(void* pUserData, void* pOriginal, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
@@ -29,9 +30,25 @@ namespace Bolt
         (void* pUserData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope);
         static void VKAPI_PTR internalFreeFunction
         (void* pUserData, void* pMemory, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope);
+    //----------------------------------
+
+    //------ Static Message Handlers
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunction(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData);
+
+    //------------------------------
 
         void createInstance();
         void createAllocationCallbacks();
+
+    #ifdef DEBUG_BUILD
+        void setupDebugMessenger();
+        void destroyDebugMessenger();        
+    #endif
 
         VulkanRenderer();
         virtual ~VulkanRenderer();
@@ -46,6 +63,11 @@ namespace Bolt
         
         VkAllocationCallbacks       m_defGraphicsAllocator;
         VkInstance                  m_instance;
+
+    #ifdef DEBUG_BUILD
+        VkDebugUtilsMessengerEXT    m_debugMessenger;
+        bool                        m_debugMessengerActive = false;
+    #endif
     };
 }
 

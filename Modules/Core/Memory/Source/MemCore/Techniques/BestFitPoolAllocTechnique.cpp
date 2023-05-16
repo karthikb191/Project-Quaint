@@ -597,6 +597,18 @@ namespace Quaint
 
         m_availableSize -= totalSize - sizeof(MemoryChunk);
 
+        //assert to check accidental overflow
+#ifdef DEBUG_BUILD
+        if(chunk->m_right != nullptr)
+        {
+            assert((size_t)startAddress + allocSize <= (size_t)chunk->m_right && "Data overflow. You might have corrupted data");
+        }
+        else
+        {
+            assert((size_t)startAddress + allocSize <= (size_t)m_endAddress && "Data overflow. You might have corrupted data");
+        }
+#endif
+
         //std::cout << "\nAlloc " << startAddress << " " << allocSize << " Remaining: " << m_availableSize << "\n";
         return startAddress;
     }
