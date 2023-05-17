@@ -18,6 +18,25 @@ namespace Bolt
         friend T* ::allocFromContext(Quaint::IMemoryContext* context, ARGS...);
 
     public:
+        struct QueueFamily
+        {
+        public:
+            void set(uint32_t idx) {index = idx; valid = true;}
+            void unset() {index = 0; valid = false;}
+            bool isSet(){ return valid; }
+
+        private:
+            uint32_t        index  = 0;
+            bool            valid       = false;
+        };
+        struct QueueFamilies
+        {
+            QueueFamily     graphics{};
+
+            bool allSet() { return graphics.isSet(); }
+        };
+
+    public:
         void init(Quaint::IMemoryContext* context) override;
         void shutdown() override;
         
@@ -42,8 +61,9 @@ namespace Bolt
 
     //------------------------------
 
-        void createInstance();
         void createAllocationCallbacks();
+        void createInstance();
+        void selectPhysicalDevice();
 
     #ifdef DEBUG_BUILD
         void setupDebugMessenger();
@@ -62,11 +82,11 @@ namespace Bolt
         Quaint::IMemoryContext*     m_context;
         
         VkAllocationCallbacks       m_defGraphicsAllocator;
-        VkInstance                  m_instance;
+        VkInstance                  m_instance = VK_NULL_HANDLE;
+        VkPhysicalDevice            m_physicalDevice = VK_NULL_HANDLE;
 
     #ifdef DEBUG_BUILD
-        VkDebugUtilsMessengerEXT    m_debugMessenger;
-        bool                        m_debugMessengerActive = false;
+        VkDebugUtilsMessengerEXT    m_debugMessenger = VK_NULL_HANDLE;
     #endif
     };
 }

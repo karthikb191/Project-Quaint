@@ -28,15 +28,20 @@ namespace Bolt
         }
         //Vulkan Instance creation
         createInstance();
+#ifdef DEBUG_BUILD
         setupDebugMessenger();
+#endif
+        selectPhysicalDevice();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
-        //destroyDebugMessenger();
 
+#ifdef DEBUG_BUILD
+        destroyDebugMessenger();
+#endif
         vkDestroyInstance(m_instance, &m_defGraphicsAllocator);
     }
     
@@ -206,6 +211,74 @@ namespace Bolt
         }
     }
 
+    void getQueueFamilies(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, VulkanRenderer::QueueFamilies& families)
+    {
+        uint32_t propCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, nullptr);
+
+        Quaint::QArray<VkQueueFamilyProperties> properties(context, propCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, properties.getBuffer_NonConst());
+
+        for(size_t i = 0; i < propCount; i++)
+        {
+            if(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            {
+                families.graphics.set(i);
+            }
+
+            if(families.allSet()) break;
+        }
+    }
+
+    size_t getDeviceSuitability(Quaint::IMemoryContext* context, const VkPhysicalDevice& device)
+    {
+        size_t score = 0;
+        VkPhysicalDeviceFeatures features;
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceFeatures(device, &features);
+        vkGetPhysicalDeviceProperties(device, &properties);
+
+        VulkanRenderer::QueueFamilies families;
+        getQueueFamilies(context, device, families);
+        
+        //Application can't function without graphics queue
+        if(!families.graphics.isSet()) return 0;
+        //Application can't function without geometry shader
+        if(!features.geometryShader) return 0;
+
+        if(features.tessellationShader) score += 100;
+        if(features.imageCubeArray) score += 100;
+        if(properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 100;
+
+        //score += properties.limits.maxImageDimension2D;
+        //score += properties.limits.maxImageDimension3D;
+
+        return score;
+    }
+
+    void VulkanRenderer::selectPhysicalDevice()
+    {
+        uint32_t numDevices = 0;
+        vkEnumeratePhysicalDevices(m_instance, &numDevices, nullptr);
+        assert(numDevices > 0 && "Vulkan could not retrieve any physical devices");
+
+        Quaint::QArray<VkPhysicalDevice> physicalDevices(m_context, numDevices);
+        vkEnumeratePhysicalDevices(m_instance, &numDevices, physicalDevices.getBuffer_NonConst());
+
+        size_t score = 0;
+        for(const VkPhysicalDevice& device : physicalDevices)
+        {
+            size_t deviceScore = getDeviceSuitability(m_context, device);
+            if(deviceScore && deviceScore > score)
+            {
+                score = deviceScore;
+                m_physicalDevice = device;
+            }
+        }
+
+        assert(m_physicalDevice != VK_NULL_HANDLE && "Could not retrieve a valid physical device");
+    }
+
 
 #ifdef DEBUG_BUILD
 //TODO: Currently Instance Creation and Destruction is not handled by our debug messenger. Will address this later
@@ -225,15 +298,15 @@ namespace Bolt
         createInfo.pfnUserCallback = debugCallbackFunction;
         createInfo.pUserData = nullptr;
 
-        if(func(m_instance, &createInfo, &m_defGraphicsAllocator, &m_debugMessenger) == VK_SUCCESS)
+        if(func(m_instance, &createInfo, &m_defGraphicsAllocator, &m_debugMessenger) != VK_SUCCESS)
         {
-            m_debugMessengerActive = true;
+            m_debugMessenger = VK_NULL_HANDLE;
         }
     }
 
     void VulkanRenderer::destroyDebugMessenger()
     {
-        if(!m_debugMessengerActive) return;
+        if(m_debugMessenger == VK_NULL_HANDLE) return;
 
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
         if(func == nullptr)
