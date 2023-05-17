@@ -20,10 +20,12 @@ namespace Quaint
 protected:
         void initModule_impl() override
         {
+            Module<MemoryModule>::initModule_impl();
         }
 
         void shutdown_impl() override
         {
+            Module<MemoryModule>::shutdown_impl();
             m_memoryManager.shutdown();
         }
 

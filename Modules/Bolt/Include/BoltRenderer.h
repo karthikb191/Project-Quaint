@@ -4,31 +4,33 @@
 #include <iostream>
 #include <GFX/Interface/IRenderer.h>
 #include <Interface/IMemoryContext.h>
+#include <MemCore/GlobalMemoryOverrides.h>
 
 namespace Bolt
 {
+    class RenderModule;
+
     class BoltRenderer
     {
+        friend class RenderModule;
+        
+        template<typename T, typename ...ARGS>
+        friend T* ::allocFromContext(Quaint::IMemoryContext* context, ARGS...);
+        template<typename T>
+        friend void ::deleteFromContext(Quaint::IMemoryContext* context, T* mem);
+
     public:
-        static BoltRenderer* get()
-        {
-            if(m_renderer == nullptr)
-            {
-                m_renderer = std::make_unique<BoltRenderer>();
-                std::cout << "Constructed Bolt Renderer\n";
-            }
-            return m_renderer.get();
-        }
-        ~BoltRenderer();
 
         void startEngine(Quaint::IMemoryContext* context);
         void shutdown();
 
     private:
-        static IRenderer*                  m_renderer_impl;//     = nullptr;
-        Quaint::IMemoryContext*     m_context           = nullptr;
+        BoltRenderer();
+        ~BoltRenderer();
 
-        static std::unique_ptr<BoltRenderer> m_renderer;
+        IRenderer*                          m_renderer_impl     = nullptr;
+        Quaint::IMemoryContext*             m_context           = nullptr;
+
         bool m_engineRunning;
     };
 }

@@ -12,7 +12,7 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(Window_Win_Logger);
     DEFINE_LOG_CATEGORY(Window_Win_Logger);
 
-    class Window_Impl : public Window::IWindow_Impl
+    class Window_Impl : public IWindow_Impl_Win
     {
     public:
         Window_Impl(){}
@@ -62,6 +62,8 @@ namespace Bolt
             }
             ShowWindow(m_windowsHandle, SW_HIDE);
         }
+
+        HWND getWindowHandle() { return m_windowsHandle; }
 
     private:
         //TODO: Store window params

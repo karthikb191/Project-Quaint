@@ -8,6 +8,7 @@
 
 #include <MemoryModule.h>
 #include <LoggerModule.h>
+#include <RenderModule.h>
 namespace Quaint
 {
     CREATE_MODULE(LoggerModule);
@@ -15,6 +16,13 @@ namespace Quaint
 
     CREATE_MODULE(MemoryModule);
     INIT_MODULE(MemoryModule);
+
+}
+
+namespace Bolt
+{
+    CREATE_MODULE(RenderModule);
+    INIT_MODULE(RenderModule);
 }
 
 LRESULT CALLBACK msgHandleLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -33,8 +41,7 @@ LRESULT CALLBACK msgHandleLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 int main()
 {
     std::cout << "Hello Renderer!" << std::endl;
-    Bolt::BoltRenderer::get()->startEngine(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
-
+    
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();
 
@@ -45,14 +52,20 @@ int main()
     Bolt::Window window = Bolt::Window::createWindow(params);
     window.showWindow();
 
+    Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
+    //Bolt::BoltRenderer::get()->startEngine(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
+
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
-    Bolt::BoltRenderer::get()->shutdown();
+    Bolt::RenderModule::get().stop();
+    Bolt::RenderModule::shutdown();
+    
+    //SHUTDOWN_MODULE(RenderModule);
+    //Bolt::BoltRenderer::get()->shutdown();
     
     return 0;
 }

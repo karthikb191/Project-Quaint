@@ -4,8 +4,11 @@
 
 namespace Bolt
 {
-    IRenderer*                  BoltRenderer::m_renderer_impl = nullptr;
-    std::unique_ptr<BoltRenderer> BoltRenderer::m_renderer = nullptr;
+
+    BoltRenderer::BoltRenderer()
+    {
+        std::cout << "Constructed Bolt Renderer\n";
+    }
     BoltRenderer::~BoltRenderer()
     {
         std::cout << "Renderer destroyed!!!!\n";

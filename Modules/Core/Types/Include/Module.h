@@ -44,8 +44,8 @@ namespace Quaint
             module.m_initialized = false;
         }
 
-        Module() = default;
         virtual ~Module() = default;
+        Module() = default;
     private:
         Module(const Module&) = delete;
         Module(const Module&&) = delete;
@@ -53,13 +53,14 @@ namespace Quaint
         Module& operator=(const Module&&) = delete;
         bool m_initialized = false;
     };
-#define BEFRIEND_MODULE(TYPE) friend typename Module<TYPE>; 
+}
 
+#define BEFRIEND_MODULE(TYPE) friend typename Quaint::Module<TYPE>; 
 
 #define CREATE_MODULE(TYPE)\
 class TYPE;\
 int createModule##TYPE(){\
-    TYPE& module = Module<TYPE>::get();\
+    TYPE& module = Quaint::Module<TYPE>::get();\
     return 0;\
 }\
 int create_##TYPE = createModule##TYPE();
@@ -67,13 +68,13 @@ int create_##TYPE = createModule##TYPE();
 #define INIT_MODULE(TYPE)\
 class TYPE;\
 int initModule##TYPE(){\
-    Module<TYPE>::initModule();\
+    Quaint::Module<TYPE>::initModule();\
     return 0;\
 }\
 int init_##TYPE = initModule##TYPE();
 
 #define SHUTDOWN_MODULE(TYPE)\
-    Module<TYPE>::shutdown();
+    Quaint::Module<TYPE>::shutdown();
 
-}
+
 #endif
