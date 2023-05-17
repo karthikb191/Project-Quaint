@@ -8,7 +8,7 @@
 #define MAX_MEMORY_CONTEXTS 50
 
 #define BOOT_MEMORY_NAME "DEFAULT"
-#define BOOT_MEMORY_SIZE  10 * 1024 * 1024 //10Mib
+#define BOOT_MEMORY_SIZE  50 * 1024 * 1024 //10Mib
 
 #define DEFAULT_ALIGNMENT 8
 #define PADDING_TYPE      size_t

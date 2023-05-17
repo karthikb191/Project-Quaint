@@ -10,6 +10,13 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
 
+    Quaint::QFastArray<const char*, 1> validationLayers =
+    {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    
+    #define VALIDATION_LAYER_TYPE decltype(validationLayers)
+
     VulkanRenderer::~VulkanRenderer()
     {
     }
@@ -32,13 +39,14 @@ namespace Bolt
         setupDebugMessenger();
 #endif
         selectPhysicalDevice();
+        createLogicalDevice();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
-
+        vkDestroyDevice(m_device, &m_defGraphicsAllocator);
 #ifdef DEBUG_BUILD
         destroyDebugMessenger();
 #endif
@@ -102,7 +110,7 @@ namespace Bolt
     }
     //............................................................................
 
-    bool areAllValidationLayersAvailable(Quaint::IMemoryContext* context, Quaint::QArray<const char*>& validationLayers)
+    bool areAllValidationLayersAvailable(Quaint::IMemoryContext* context, const VALIDATION_LAYER_TYPE& validationLayers)
     {
         size_t availableLayers = 0;
         vkEnumerateInstanceLayerProperties(&availableLayers, nullptr);
@@ -169,7 +177,7 @@ namespace Bolt
         });
 
         instanceInfo.enabledExtensionCount = instanceExtensions.getSize();
-        instanceInfo.ppEnabledExtensionNames = instanceExtensions.getRawData();
+        instanceInfo.ppEnabledExtensionNames = instanceExtensions.getBuffer();
 
         //Uncomment to print available instances
         //uint32_t extensionsCount = 0;
@@ -183,11 +191,7 @@ namespace Bolt
 
         //Validation layers are debug only feature
 #ifdef DEBUG_BUILD
-        Quaint::QArray<const char*> validationLayers = Quaint::QArray<const char*>( m_context,
-            {
-                "VK_LAYER_KHRONOS_validation"
-            }
-        );
+        
         if(!areAllValidationLayersAvailable(m_context, validationLayers))
         {
             QLOG_E(VULKAN_RENDERER_LOGGER, "[-] Some/All of validation layers provided are not available. This will fail isntance creation. Bailing out");
@@ -277,6 +281,44 @@ namespace Bolt
         }
 
         assert(m_physicalDevice != VK_NULL_HANDLE && "Could not retrieve a valid physical device");
+    }
+
+    void VulkanRenderer::createLogicalDevice()
+    {
+        QueueFamilies queueFamilies;
+        getQueueFamilies(m_context, m_physicalDevice, queueFamilies);
+
+        float priority = 1.0f;
+        //Device queue create structure. Describes the number of queues we want for a single queue family
+        VkDeviceQueueCreateInfo queueInfo{};
+        queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueInfo.queueFamilyIndex = queueFamilies.graphics.get();
+        queueInfo.queueCount = 1;
+        queueInfo.pQueuePriorities = &priority;
+
+        //TODO: TO Be filled later
+        VkPhysicalDeviceFeatures deviceFeatures{};
+
+        VkDeviceCreateInfo deviceInfo{};
+        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceInfo.queueCreateInfoCount = 1;
+        deviceInfo.pQueueCreateInfos = &queueInfo;
+        //TODO: To be filled later
+        deviceInfo.enabledExtensionCount = 0;
+
+#ifdef DEBUG_BUILD
+        deviceInfo.enabledLayerCount = 1;
+        deviceInfo.ppEnabledLayerNames = validationLayers.getBuffer();
+#else
+        deviceInfo.enabledLayerCount = 0;
+        deviceInfo.ppEnabledLayerNames = nullptr;
+#endif
+
+        VkResult res = vkCreateDevice(m_physicalDevice, &deviceInfo, &m_defGraphicsAllocator, &m_device);
+        assert(res == VK_SUCCESS && "Logical device creation failed!");
+        
+        //Once Logical device is created, retrieve queues to interface with
+        vkGetDeviceQueue(m_device, queueFamilies.graphics.get(), 0, &m_graphicsQueue);
     }
 
 

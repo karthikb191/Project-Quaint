@@ -23,6 +23,7 @@ namespace Bolt
         public:
             void set(uint32_t idx) {index = idx; valid = true;}
             void unset() {index = 0; valid = false;}
+            uint32_t get() { return index; }
             bool isSet(){ return valid; }
 
         private:
@@ -64,6 +65,7 @@ namespace Bolt
         void createAllocationCallbacks();
         void createInstance();
         void selectPhysicalDevice();
+        void createLogicalDevice();
 
     #ifdef DEBUG_BUILD
         void setupDebugMessenger();
@@ -84,6 +86,8 @@ namespace Bolt
         VkAllocationCallbacks       m_defGraphicsAllocator;
         VkInstance                  m_instance = VK_NULL_HANDLE;
         VkPhysicalDevice            m_physicalDevice = VK_NULL_HANDLE;
+        VkDevice                    m_device = VK_NULL_HANDLE;
+        VkQueue                     m_graphicsQueue = VK_NULL_HANDLE;
 
     #ifdef DEBUG_BUILD
         VkDebugUtilsMessengerEXT    m_debugMessenger = VK_NULL_HANDLE;

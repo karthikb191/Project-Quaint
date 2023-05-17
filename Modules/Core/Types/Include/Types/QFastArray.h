@@ -12,7 +12,12 @@ template<typename T, size_t N>
 class QFastArray
 {
 public:
-    //TODO: Add Iterator support
+    using value_type        = T;
+    using reference         = const T&;
+    using const_reference   = const T&;
+    using size_type         = size_t;
+    using Iterator          = T*;
+    using Const_Iterator    = const T*;
 
     explicit constexpr QFastArray()
     : m_data()
@@ -40,6 +45,11 @@ public:
     
     ~QFastArray() = default;
 
+    Iterator begin() { return (T*)m_data; }
+    Iterator end() { return (T*)m_data + N; }
+    Const_Iterator begin() const { return (T*)m_data; }
+    Const_Iterator end() const { return (T*)m_data + N; }
+
     constexpr void operator=(const T(&list)[N])
     {
         for(size_t i = 0; i < N; i++)
@@ -58,7 +68,8 @@ public:
         return N;
     }
 
-    const T* getRawData() const { return m_data; }
+    const T* getBuffer() const { return m_data; }
+    T* getBuffer_NonConst() { return m_data; }
     
     //Explicit copy
     template<size_t SZ>
@@ -79,7 +90,7 @@ private:
 };
 
 template<typename T, size_t SZ>
-static QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
+static constexpr QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
 {
     return QFastArray<T, SZ>(list);
 }

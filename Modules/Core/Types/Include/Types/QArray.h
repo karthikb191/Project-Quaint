@@ -111,9 +111,9 @@ namespace Quaint
         }
 
         Iterator begin(){ return m_rawData; }
-        Const_Iterator begin_c() const { return m_rawData; }
+        Const_Iterator begin() const { return m_rawData; }
         Iterator end() { return m_rawData + m_size; }
-        Const_Iterator end_c() const { return m_rawData + m_size; }
+        Const_Iterator end() const { return m_rawData + m_size; }
 
         void reserve(size_t size)
         {
