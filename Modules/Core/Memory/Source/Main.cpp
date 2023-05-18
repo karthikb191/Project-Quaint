@@ -107,7 +107,7 @@ namespace Quaint
 {
     void printArray(const QArray<int>& arr)
     {
-        for(auto itr = arr.begin_c(); itr != arr.end_c(); ++itr)
+        for(auto itr = arr.begin(); itr != arr.end(); ++itr)
         {
             std::cout << *itr << " ";
         }
@@ -153,7 +153,7 @@ namespace Quaint
         arr2.insertAt(arr2.getSize()/2, 107);
         printArray(arr2);
 
-        arr1.insertRangeAt(5, arr2, arr2.begin_c(), arr2.end_c() - 1);
+        arr1.insertRangeAt(5, arr2, arr2.begin(), arr2.end() - 1);
 
         QArray<int> arr3(std::move(arr1));
         printArray(arr3);

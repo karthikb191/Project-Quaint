@@ -26,7 +26,13 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
-        QArray(IMemoryContext* context, size_t size = 4)
+        QArray(IMemoryContext* context)
+        {
+            m_context = context;
+            m_size = 0;
+            reserve(4);
+        }
+        QArray(IMemoryContext* context, size_t size)
         {
             m_context = context;
             m_size = size;

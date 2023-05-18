@@ -25,10 +25,12 @@ namespace Bolt
         virtual void hideWindow() = 0;
     };
 
+    //TODO: Surround with plat-spec macro
     class IWindow_Impl_Win : public IWindow_Impl
     {
     public:
-        virtual HWND getWindowHandle() = 0;
+        virtual HWND getWindowHandle() const = 0;
+        virtual HINSTANCE getHInstance() const = 0;
     };
 }
 

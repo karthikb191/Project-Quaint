@@ -6,6 +6,9 @@
 #include <Interface/IMemoryContext.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 
+//TODO: This should be moved to Application Module
+#include <GFX/Window.h>
+
 namespace Bolt
 {
     class RenderModule;
@@ -22,14 +25,18 @@ namespace Bolt
     public:
 
         void startEngine(Quaint::IMemoryContext* context);
+        void update();
         void shutdown();
 
+        const Window& getWindow() { return m_window; }
     private:
         BoltRenderer();
         ~BoltRenderer();
 
         IRenderer*                          m_renderer_impl     = nullptr;
         Quaint::IMemoryContext*             m_context           = nullptr;
+
+        Window                              m_window;
 
         bool m_engineRunning;
     };

@@ -1,11 +1,14 @@
 #ifndef _H_VULKAN_RENDERER
 #define _H_VULKAN_RENDERER
 
-#include <vulkan/vulkan.h>
 #include <GFX/Interface/IRenderer.h>
 #include <Interface/IMemoryContext.h>
 #include <QuaintLogger.h>
 #include <MemCore/GlobalMemoryOverrides.h>
+
+//TODO: Surround with plat-spec macro
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.h>
 
 namespace Bolt
 {
@@ -33,8 +36,9 @@ namespace Bolt
         struct QueueFamilies
         {
             QueueFamily     graphics{};
+            QueueFamily     presentation{};
 
-            bool allSet() { return graphics.isSet(); }
+            bool allSet() { return graphics.isSet() && presentation.isSet(); }
         };
 
     public:
@@ -64,9 +68,12 @@ namespace Bolt
 
         void createAllocationCallbacks();
         void createInstance();
+        void createSurface();
         void selectPhysicalDevice();
         void createLogicalDevice();
 
+        //TODO: Surround this with platform spec macro
+        void createWindowsSurface(); //Surface creation might affect physical device selection
     #ifdef DEBUG_BUILD
         void setupDebugMessenger();
         void destroyDebugMessenger();        
@@ -86,9 +93,12 @@ namespace Bolt
         VkAllocationCallbacks       m_defGraphicsAllocator;
         VkInstance                  m_instance = VK_NULL_HANDLE;
         VkPhysicalDevice            m_physicalDevice = VK_NULL_HANDLE;
+        VkSurfaceKHR                m_surface = VK_NULL_HANDLE;
         VkDevice                    m_device = VK_NULL_HANDLE;
-        VkQueue                     m_graphicsQueue = VK_NULL_HANDLE;
 
+        VkQueue                     m_graphicsQueue = VK_NULL_HANDLE;
+        VkQueue                     m_presentQueue = VK_NULL_HANDLE;
+        
     #ifdef DEBUG_BUILD
         VkDebugUtilsMessengerEXT    m_debugMessenger = VK_NULL_HANDLE;
     #endif

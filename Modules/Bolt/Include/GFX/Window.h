@@ -16,9 +16,9 @@ namespace Bolt
         void hideWindow() { m_impl->hideWindow(); }
 
         //TODO: Surround with plat-spec macro
-        IWindow_Impl_Win* getWindowsWindow() { return static_cast<IWindow_Impl_Win*>(m_impl); }
+        const IWindow_Impl_Win* getWindowsWindow() const { return static_cast<IWindow_Impl_Win*>(m_impl); }
+    
     private:
-        
         IWindow_Impl*    m_impl = nullptr;
     };
 }

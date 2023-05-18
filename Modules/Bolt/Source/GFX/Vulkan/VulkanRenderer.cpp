@@ -2,7 +2,12 @@
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
 #include <QuaintLogger.h>
+#include <RenderModule.h>
+#include <BoltRenderer.h>
 #include <MemCore/GlobalMemoryOverrides.h>
+
+//TODO: Remove this once there's a custom version available
+#include <set>
 
 namespace Bolt
 {
@@ -38,6 +43,7 @@ namespace Bolt
 #ifdef DEBUG_BUILD
         setupDebugMessenger();
 #endif
+        createSurface();
         selectPhysicalDevice();
         createLogicalDevice();
 
@@ -47,6 +53,7 @@ namespace Bolt
     void VulkanRenderer::shutdown()
     {
         vkDestroyDevice(m_device, &m_defGraphicsAllocator);
+        vkDestroySurfaceKHR(m_instance, m_surface, &m_defGraphicsAllocator);
 #ifdef DEBUG_BUILD
         destroyDebugMessenger();
 #endif
@@ -215,14 +222,34 @@ namespace Bolt
         }
     }
 
-    void getQueueFamilies(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, VulkanRenderer::QueueFamilies& families)
+    void VulkanRenderer::createSurface()
+    {
+        //TODO: Surround with plat-spec macro
+        createWindowsSurface();
+    }
+    void VulkanRenderer::createWindowsSurface()
+    {
+        const IWindow_Impl_Win* window = RenderModule::get().getBoltRenderer()->getWindow().getWindowsWindow();
+        assert(window != nullptr && "Invalid window retrieved");
+
+         VkWin32SurfaceCreateInfoKHR winSurfaceInfo{};
+         winSurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+         winSurfaceInfo.hwnd = window->getWindowHandle();
+         winSurfaceInfo.hinstance = window->getHInstance();
+
+         VkResult res = vkCreateWin32SurfaceKHR(m_instance, &winSurfaceInfo, &m_defGraphicsAllocator, &m_surface);
+         assert(res == VK_SUCCESS && "Failed to create a windows surface");
+         QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Windows Surface Creation successful");
+    }
+
+    void getQueueFamilies(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface, VulkanRenderer::QueueFamilies& families)
     {
         uint32_t propCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, nullptr);
 
         Quaint::QArray<VkQueueFamilyProperties> properties(context, propCount);
         vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, properties.getBuffer_NonConst());
-
+        
         for(size_t i = 0; i < propCount; i++)
         {
             if(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
@@ -230,11 +257,19 @@ namespace Bolt
                 families.graphics.set(i);
             }
 
+            //Check if a
+            VkBool32 supported = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supported);
+            if(supported)
+            {
+                families.presentation.set(i);
+            }
+
             if(families.allSet()) break;
         }
     }
 
-    size_t getDeviceSuitability(Quaint::IMemoryContext* context, const VkPhysicalDevice& device)
+    size_t getDeviceSuitability(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
     {
         size_t score = 0;
         VkPhysicalDeviceFeatures features;
@@ -243,10 +278,10 @@ namespace Bolt
         vkGetPhysicalDeviceProperties(device, &properties);
 
         VulkanRenderer::QueueFamilies families;
-        getQueueFamilies(context, device, families);
+        getQueueFamilies(context, device, surface, families);
         
-        //Application can't function without graphics queue
-        if(!families.graphics.isSet()) return 0;
+        //Application can't function without all the supported queues
+        if(!families.allSet()) return 0;
         //Application can't function without geometry shader
         if(!features.geometryShader) return 0;
 
@@ -272,7 +307,7 @@ namespace Bolt
         size_t score = 0;
         for(const VkPhysicalDevice& device : physicalDevices)
         {
-            size_t deviceScore = getDeviceSuitability(m_context, device);
+            size_t deviceScore = getDeviceSuitability(m_context, device, m_surface);
             if(deviceScore && deviceScore > score)
             {
                 score = deviceScore;
@@ -286,23 +321,34 @@ namespace Bolt
     void VulkanRenderer::createLogicalDevice()
     {
         QueueFamilies queueFamilies;
-        getQueueFamilies(m_context, m_physicalDevice, queueFamilies);
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, queueFamilies);
+
+        //TODO: Replace with a custom set
+        std::set<uint32_t> queueIndices { queueFamilies.graphics.get(), queueFamilies.presentation.get() };
 
         float priority = 1.0f;
-        //Device queue create structure. Describes the number of queues we want for a single queue family
-        VkDeviceQueueCreateInfo queueInfo{};
-        queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueInfo.queueFamilyIndex = queueFamilies.graphics.get();
-        queueInfo.queueCount = 1;
-        queueInfo.pQueuePriorities = &priority;
+        Quaint::QArray<VkDeviceQueueCreateInfo> queues(m_context);
+
+        for(uint32_t index : queueIndices)
+        {
+            //Device queue create structure. Describes the number of queues we want for a single queue family        
+            VkDeviceQueueCreateInfo queueInfo{};
+            queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfo.queueFamilyIndex = index;
+            queueInfo.queueCount = 1;
+            queueInfo.pQueuePriorities = &priority;
+            
+            queues.pushBack(queueInfo);
+        }
 
         //TODO: TO Be filled later
         VkPhysicalDeviceFeatures deviceFeatures{};
 
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.queueCreateInfoCount = 1;
-        deviceInfo.pQueueCreateInfos = &queueInfo;
+        deviceInfo.queueCreateInfoCount = queues.getSize();
+        deviceInfo.pQueueCreateInfos = queues.getBuffer();
+        deviceInfo.pEnabledFeatures = &deviceFeatures;
         //TODO: To be filled later
         deviceInfo.enabledExtensionCount = 0;
 
@@ -319,6 +365,7 @@ namespace Bolt
         
         //Once Logical device is created, retrieve queues to interface with
         vkGetDeviceQueue(m_device, queueFamilies.graphics.get(), 0, &m_graphicsQueue);
+        vkGetDeviceQueue(m_device, queueFamilies.presentation.get(), 0, &m_presentQueue);
     }
 
 

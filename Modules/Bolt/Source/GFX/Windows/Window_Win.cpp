@@ -63,7 +63,8 @@ namespace Bolt
             ShowWindow(m_windowsHandle, SW_HIDE);
         }
 
-        HWND getWindowHandle() { return m_windowsHandle; }
+        HWND getWindowHandle() const override { return m_windowsHandle; }
+        HINSTANCE getHInstance() const override { return m_instance; }
 
     private:
         //TODO: Store window params
