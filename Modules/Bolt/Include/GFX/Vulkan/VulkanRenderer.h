@@ -5,7 +5,7 @@
 #include <Interface/IMemoryContext.h>
 #include <QuaintLogger.h>
 #include <MemCore/GlobalMemoryOverrides.h>
-
+#include <Types/QArray.h>
 //TODO: Surround with plat-spec macro
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
@@ -41,8 +41,20 @@ namespace Bolt
             bool allSet() { return graphics.isSet() && presentation.isSet(); }
         };
 
+        struct SwapchainSupportInfo
+        {
+            SwapchainSupportInfo(Quaint::IMemoryContext* context)
+            : surfaceCapabilities{VK_NULL_HANDLE}
+            , surfaceFormat(context)
+            , presentMode(context)
+            {}
+            VkSurfaceCapabilitiesKHR            surfaceCapabilities;
+            Quaint::QArray<VkSurfaceFormatKHR>  surfaceFormat;
+            Quaint::QArray<VkPresentModeKHR>    presentMode;
+        };
+
     public:
-        void init(Quaint::IMemoryContext* context) override;
+        void init() override;
         void shutdown() override;
         
     private:
@@ -71,7 +83,8 @@ namespace Bolt
         void createSurface();
         void selectPhysicalDevice();
         void createLogicalDevice();
-
+        void createSwapchain();
+        
         //TODO: Surround this with platform spec macro
         void createWindowsSurface(); //Surface creation might affect physical device selection
     #ifdef DEBUG_BUILD
@@ -79,7 +92,7 @@ namespace Bolt
         void destroyDebugMessenger();        
     #endif
 
-        VulkanRenderer();
+        VulkanRenderer(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderer();
         
         VulkanRenderer(const VulkanRenderer&) = delete;
@@ -96,9 +109,14 @@ namespace Bolt
         VkSurfaceKHR                m_surface = VK_NULL_HANDLE;
         VkDevice                    m_device = VK_NULL_HANDLE;
 
+        VkSwapchainKHR              m_swapchain = VK_NULL_HANDLE;
+        Quaint::QArray<VkImage>     m_swapchainImages;
+        VkFormat                    m_swapchainFormat;
+        VkExtent2D                  m_swapchainExtent;
+
         VkQueue                     m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue                     m_presentQueue = VK_NULL_HANDLE;
-        
+
     #ifdef DEBUG_BUILD
         VkDebugUtilsMessengerEXT    m_debugMessenger = VK_NULL_HANDLE;
     #endif

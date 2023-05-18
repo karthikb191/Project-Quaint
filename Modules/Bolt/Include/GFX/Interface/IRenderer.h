@@ -8,7 +8,7 @@ namespace Bolt
     class IRenderer
     {
     public:
-       virtual void init(Quaint::IMemoryContext*) = 0;
+       virtual void init() = 0;
        virtual void shutdown() = 0;
        virtual ~IRenderer(){}
     };

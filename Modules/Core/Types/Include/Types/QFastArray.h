@@ -67,6 +67,7 @@ public:
     {
         return N;
     }
+    bool isEmpty() { return m_size == 0; }
 
     const T* getBuffer() const { return m_data; }
     T* getBuffer_NonConst() { return m_data; }

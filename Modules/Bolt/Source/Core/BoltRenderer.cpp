@@ -42,8 +42,8 @@ namespace Bolt
         m_window.showWindow();
         
         //Initialize renderer
-        m_renderer_impl = QUAINT_NEW(context, VulkanRenderer);
-        m_renderer_impl->init(context);
+        m_renderer_impl = QUAINT_NEW(context, VulkanRenderer, context);
+        m_renderer_impl->init();
         
         m_engineRunning = true;
     }

@@ -1,5 +1,4 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
-#include <Types/QArray.h>
 #include <Types/QFastArray.h>
 #include <QuaintLogger.h>
 #include <RenderModule.h>
@@ -18,21 +17,26 @@ namespace Bolt
     auto validationLayers = Quaint::createFastArray<const char*>(
         "VK_LAYER_KHRONOS_validation"
     );
+
+    auto deviceExtensions = Quaint::createFastArray<const char*>(
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    );
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
 
     VulkanRenderer::~VulkanRenderer()
     {
     }
-    VulkanRenderer::VulkanRenderer()
-    : m_defGraphicsAllocator {}
-    , m_instance {}
+    VulkanRenderer::VulkanRenderer(Quaint::IMemoryContext* context)
+    : m_context(context)
+    , m_defGraphicsAllocator {VK_NULL_HANDLE}
+    , m_instance {VK_NULL_HANDLE}
+    , m_swapchainImages(context)
     {
 
     }
-    void VulkanRenderer::init(Quaint::IMemoryContext* context)
+    void VulkanRenderer::init()
     {
-        m_context = context;
         if(m_context != nullptr)
         {
             createAllocationCallbacks();
@@ -45,12 +49,14 @@ namespace Bolt
         createSurface();
         selectPhysicalDevice();
         createLogicalDevice();
+        createSwapchain();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
+        vkDestroySwapchainKHR(m_device, m_swapchain, &m_defGraphicsAllocator);
         vkDestroyDevice(m_device, &m_defGraphicsAllocator);
         vkDestroySurfaceKHR(m_instance, m_surface, &m_defGraphicsAllocator);
 #ifdef DEBUG_BUILD
@@ -154,7 +160,7 @@ namespace Bolt
         appInfo.pEngineName = "Quaint Engine";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+        appInfo.apiVersion = VK_API_VERSION_1_2;
 
         VkInstanceCreateInfo instanceInfo{};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -241,6 +247,7 @@ namespace Bolt
          QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Windows Surface Creation successful");
     }
 
+//Physical and Logical device creation and corresponding queries -------------------------------
     void getQueueFamilies(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface, VulkanRenderer::QueueFamilies& families)
     {
         uint32_t propCount = 0;
@@ -268,6 +275,31 @@ namespace Bolt
         }
     }
 
+    VulkanRenderer::SwapchainSupportInfo querySwapchainSupport(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
+    {
+        VulkanRenderer::SwapchainSupportInfo supportInfo(context);
+
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &supportInfo.surfaceCapabilities);
+
+        uint32_t surfaceFormatsCount = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &surfaceFormatsCount, nullptr);
+        if(surfaceFormatsCount != 0)
+        {
+            supportInfo.surfaceFormat.resize(surfaceFormatsCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &surfaceFormatsCount, supportInfo.surfaceFormat.getBuffer_NonConst());
+        }
+
+        uint32_t presentModesCount = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModesCount, nullptr);
+        if(presentModesCount != 0)
+        {
+            supportInfo.presentMode.resize(presentModesCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModesCount, supportInfo.presentMode.getBuffer_NonConst());
+        }
+
+        return supportInfo;
+    }
+
     size_t getDeviceSuitability(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
     {
         size_t score = 0;
@@ -275,6 +307,37 @@ namespace Bolt
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceFeatures(device, &features);
         vkGetPhysicalDeviceProperties(device, &properties);
+
+        //Check if device extensions are supported on current device
+        uint32_t extensionsCount = 0;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, nullptr);
+        Quaint::QArray<VkExtensionProperties> extensionProperties(context, extensionsCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, extensionProperties.getBuffer_NonConst());
+
+        bool allExtensionsAvailable = true;
+        for(const char* extension : deviceExtensions)
+        {
+            bool found = false;
+            for(const VkExtensionProperties& property : extensionProperties)
+            {
+                if(strcmp(extension, property.extensionName) == 0)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) allExtensionsAvailable = false;
+        }
+
+        //Application can't function if all device extensions are not available on selected device
+        if(!allExtensionsAvailable) return 0;
+
+        //Check if device contains a suitable swapchain
+        //Application can't function without an adequate swapchain
+        bool containsSuitableSwapchain = false;
+        VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(context, device, surface);
+        containsSuitableSwapchain = !supportInfo.surfaceFormat.isEmpty() && !supportInfo.presentMode.isEmpty();
+        if(!containsSuitableSwapchain) return 0;
 
         VulkanRenderer::QueueFamilies families;
         getQueueFamilies(context, device, surface, families);
@@ -343,13 +406,15 @@ namespace Bolt
         //TODO: TO Be filled later
         VkPhysicalDeviceFeatures deviceFeatures{};
 
+
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceInfo.queueCreateInfoCount = queues.getSize();
         deviceInfo.pQueueCreateInfos = queues.getBuffer();
         deviceInfo.pEnabledFeatures = &deviceFeatures;
-        //TODO: To be filled later
-        deviceInfo.enabledExtensionCount = 0;
+        //Enables use of swapchain extension on the device
+        deviceInfo.enabledExtensionCount = deviceExtensions.getSize();
+        deviceInfo.ppEnabledExtensionNames = deviceExtensions.getBuffer();
 
 #ifdef DEBUG_BUILD
         deviceInfo.enabledLayerCount = 1;
@@ -366,7 +431,120 @@ namespace Bolt
         vkGetDeviceQueue(m_device, queueFamilies.graphics.get(), 0, &m_graphicsQueue);
         vkGetDeviceQueue(m_device, queueFamilies.presentation.get(), 0, &m_presentQueue);
     }
+//--------------------------------------------------------------------
 
+//----------------------------Swapchain Creation
+    VkSurfaceFormatKHR chooseSurfaceFormat(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
+    {
+        for (const VkSurfaceFormatKHR& availableFormat : supportInfo.surfaceFormat) {
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB 
+            && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return availableFormat;
+            }
+        }
+
+        return supportInfo.surfaceFormat[0];
+    }
+    VkPresentModeKHR choosePresentationMode(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
+    {
+        //TODO: use VK_PRESENT_MODE_MAILBOX_KHR on windows if available
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+    VkExtent2D chooseSwapExtent(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
+    {
+        if(supportInfo.surfaceCapabilities.currentExtent.width != UINT32_MAX)
+        {
+            return supportInfo.surfaceCapabilities.currentExtent;
+        }
+        else
+        {
+            //TODO: find a better way to retrieve pixel width/height
+            const Bolt::IWindow_Impl_Win* window = Bolt::RenderModule::get().getBoltRenderer()->getWindow().getWindowsWindow();
+            RECT rect;
+            GetWindowRect(window->getWindowHandle(), &rect);
+            uint32_t width = rect.right - rect.left;
+            uint32_t height = rect.bottom - rect.top;
+
+            VkExtent2D actualExtent = { width, height };
+            actualExtent.width = width < supportInfo.surfaceCapabilities.minImageExtent.width 
+            ? supportInfo.surfaceCapabilities.minImageExtent.width : width;
+            actualExtent.width = width > supportInfo.surfaceCapabilities.maxImageExtent.width
+            ? supportInfo.surfaceCapabilities.maxImageExtent.width : width;
+
+            actualExtent.height = height < supportInfo.surfaceCapabilities.minImageExtent.height 
+            ? supportInfo.surfaceCapabilities.minImageExtent.height : height;
+            actualExtent.height = height > supportInfo.surfaceCapabilities.maxImageExtent.height
+            ? supportInfo.surfaceCapabilities.maxImageExtent.height : height;
+            
+            return actualExtent;
+        }
+    }
+
+    void VulkanRenderer::createSwapchain()
+    {
+        VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
+
+        VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(m_context, supportInfo);
+        VkPresentModeKHR presentMode = choosePresentationMode(m_context, supportInfo);
+        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+        
+        uint32_t imageCount = supportInfo.surfaceCapabilities.minImageCount + 1;
+        if (supportInfo.surfaceCapabilities.maxImageCount > 0 && imageCount > supportInfo.surfaceCapabilities.maxImageCount) {
+            imageCount = supportInfo.surfaceCapabilities.maxImageCount;
+        }
+
+        VkSwapchainCreateInfoKHR createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = m_surface;
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = swapExtent;
+        createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
+        //TODO: Change this later if we are using a memory command to transfer images to swapchain
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        //Here, we specify how swapchain should be shared across multiple queue families
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        uint32_t indices[] = { families.graphics.get(), families.presentation.get() };
+
+        if(families.graphics.get() != families.presentation.get())
+        {
+            // If queue indices are different, enalble concurrent access to swapchain.
+            // Images can be used without explicit transfer of ownership from one queue to another
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = indices;
+        }
+        else
+        {
+            // Image is owned by one queue at a time.
+            // Ownership must be exclusively transferred if we plan to use this image in another queue
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            createInfo.queueFamilyIndexCount = 0;
+            createInfo.pQueueFamilyIndices = nullptr;
+        }
+        //Change this if you want the image to have a different transform 
+        createInfo.preTransform = supportInfo.surfaceCapabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //This specifies if alpha channel should be used for blending with other windows
+        createInfo.clipped = VK_TRUE;
+        createInfo.presentMode = presentMode;
+
+        VkResult res = vkCreateSwapchainKHR(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchain);
+        assert(res == VK_SUCCESS && "Swapchain creation failed! Application will terminate");
+
+        //retrieve images from swapchain
+        uint32_t swapchainImageCount = 0;
+        vkGetSwapchainImagesKHR(m_device, m_swapchain, &swapchainImageCount, nullptr);
+        assert(swapchainImageCount != 0 && "No images were retrieved from swapchain.");
+        m_swapchainImages.resize(swapchainImageCount);
+        vkGetSwapchainImagesKHR(m_device, m_swapchain, &swapchainImageCount, m_swapchainImages.getBuffer_NonConst());
+    
+        m_swapchainFormat = surfaceFormat.format;
+        m_swapchainExtent = swapExtent;
+    }
+//--------------------------------------------------
 
 #ifdef DEBUG_BUILD
 //TODO: Currently Instance Creation and Destruction is not handled by our debug messenger. Will address this later
