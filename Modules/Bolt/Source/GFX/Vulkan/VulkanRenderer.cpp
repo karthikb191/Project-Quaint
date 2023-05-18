@@ -15,10 +15,9 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
 
-    Quaint::QFastArray<const char*, 1> validationLayers =
-    {
+    auto validationLayers = Quaint::createFastArray<const char*>(
         "VK_LAYER_KHRONOS_validation"
-    };
+    );
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
 

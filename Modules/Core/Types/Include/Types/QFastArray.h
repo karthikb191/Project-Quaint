@@ -89,10 +89,19 @@ private:
     T                   m_data[N];
 };
 
+//This throws an internal compiler error when initializing global const char* array
 template<typename T, size_t SZ>
-static constexpr QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
+constexpr QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
 {
     return QFastArray<T, SZ>(list);
+}
+
+// Work-around for internal compiler error when creating a global const char* array. 
+// Usage: auto arr = createFastArray<const char*> ("one", "two", "three");
+template<typename T, typename ...ARGS>
+QFastArray<T, sizeof...(ARGS)> createFastArray(ARGS... args)
+{
+     return QFastArray<T, sizeof...(ARGS)>(args...);
 }
 
 }
