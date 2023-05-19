@@ -8,3 +8,6 @@ Saved
 .vs
 Tools/*/bin/*
 Tools/*/obj/*
+
+#Data Folders
+Data/*

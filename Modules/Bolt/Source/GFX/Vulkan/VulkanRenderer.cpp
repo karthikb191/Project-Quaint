@@ -32,9 +32,10 @@ namespace Bolt
     , m_defGraphicsAllocator {VK_NULL_HANDLE}
     , m_instance {VK_NULL_HANDLE}
     , m_swapchainImages(context)
+    , m_swapchainImageViews(context)
     {
-
     }
+
     void VulkanRenderer::init()
     {
         if(m_context != nullptr)
@@ -50,12 +51,17 @@ namespace Bolt
         selectPhysicalDevice();
         createLogicalDevice();
         createSwapchain();
+        createImageViews();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
+        for(const VkImageView& view : m_swapchainImageViews)
+        {
+            vkDestroyImageView(m_device, view, &m_defGraphicsAllocator);
+        }
         vkDestroySwapchainKHR(m_device, m_swapchain, &m_defGraphicsAllocator);
         vkDestroyDevice(m_device, &m_defGraphicsAllocator);
         vkDestroySurfaceKHR(m_instance, m_surface, &m_defGraphicsAllocator);
@@ -117,8 +123,6 @@ namespace Bolt
         m_defGraphicsAllocator.pfnAllocation = VulkanRenderer::allocationFunction;
         m_defGraphicsAllocator.pfnFree = VulkanRenderer::freeFunction;
         m_defGraphicsAllocator.pfnReallocation = VulkanRenderer::reallocFunction;
-        //m_defGraphicsAllocator.pfnInternalAllocation = VulkanRenderer::internalAllocationFunction;
-        //m_defGraphicsAllocator.pfnInternalFree = VulkanRenderer::internalFreeFunction;
     }
     //............................................................................
 
@@ -544,7 +548,42 @@ namespace Bolt
         m_swapchainFormat = surfaceFormat.format;
         m_swapchainExtent = swapExtent;
     }
+
+    void VulkanRenderer::createImageViews()
+    {
+        m_swapchainImageViews.resize(m_swapchainImages.getSize());
+
+        for(size_t i = 0; i < m_swapchainImages.getSize(); i++)
+        {
+            VkImageViewCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image = m_swapchainImages[i];
+            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format = m_swapchainFormat;
+
+            //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
+            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            
+            //subresource range selects mipmap levels and array layers to be accessible to the view
+            createInfo.subresourceRange.baseArrayLayer = 0;
+            createInfo.subresourceRange.layerCount = 1;
+            createInfo.subresourceRange.baseMipLevel = 0;
+            createInfo.subresourceRange.levelCount = 1;
+
+            VkResult res = vkCreateImageView(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchainImages[i]);
+            assert(res == VK_SUCCESS && "Failed to create Image view for a swapchain image");
+        }
+
+    }
 //--------------------------------------------------
+
+    void VulkanRenderer::createRenderPipeline()
+    {
+        
+    }
 
 #ifdef DEBUG_BUILD
 //TODO: Currently Instance Creation and Destruction is not handled by our debug messenger. Will address this later

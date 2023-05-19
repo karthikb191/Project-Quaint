@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile_Shader_x32",
+            "type": "shell",
+            "command": "./../External/Binaries/Bin32/glslc.exe",
+            "args": [
+                "${file}",
+                "-o","${cwd}/../Data/Shaders/${fileDirnameBasename}/${fileBasename}.spv"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "clear": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ]
+}

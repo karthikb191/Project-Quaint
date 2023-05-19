@@ -13,6 +13,10 @@
       {
         "name": "Quaint Core",
         "path": "./Modules/Core"
+      },
+      {
+        "name": "Shaders",
+        "path": "./Shaders"
       }
     ],
     

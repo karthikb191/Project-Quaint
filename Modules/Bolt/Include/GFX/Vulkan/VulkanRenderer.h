@@ -84,6 +84,8 @@ namespace Bolt
         void selectPhysicalDevice();
         void createLogicalDevice();
         void createSwapchain();
+        void createImageViews();
+        void createRenderPipeline();
         
         //TODO: Surround this with platform spec macro
         void createWindowsSurface(); //Surface creation might affect physical device selection
@@ -100,25 +102,26 @@ namespace Bolt
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
         VulkanRenderer& operator=(VulkanRenderer&&) = delete;
 
-        bool                        m_running = false;
-        Quaint::IMemoryContext*     m_context;
-        
-        VkAllocationCallbacks       m_defGraphicsAllocator;
-        VkInstance                  m_instance = VK_NULL_HANDLE;
-        VkPhysicalDevice            m_physicalDevice = VK_NULL_HANDLE;
-        VkSurfaceKHR                m_surface = VK_NULL_HANDLE;
-        VkDevice                    m_device = VK_NULL_HANDLE;
+        bool                                m_running = false;
+        Quaint::IMemoryContext*             m_context;
 
-        VkSwapchainKHR              m_swapchain = VK_NULL_HANDLE;
-        Quaint::QArray<VkImage>     m_swapchainImages;
-        VkFormat                    m_swapchainFormat;
-        VkExtent2D                  m_swapchainExtent;
+        VkAllocationCallbacks               m_defGraphicsAllocator;
+        VkInstance                          m_instance = VK_NULL_HANDLE;
+        VkPhysicalDevice                    m_physicalDevice = VK_NULL_HANDLE;
+        VkSurfaceKHR                        m_surface = VK_NULL_HANDLE;
+        VkDevice                            m_device = VK_NULL_HANDLE;
 
-        VkQueue                     m_graphicsQueue = VK_NULL_HANDLE;
-        VkQueue                     m_presentQueue = VK_NULL_HANDLE;
+        VkSwapchainKHR                      m_swapchain = VK_NULL_HANDLE;
+        VkFormat                            m_swapchainFormat;
+        VkExtent2D                          m_swapchainExtent;
+        Quaint::QArray<VkImage>             m_swapchainImages;
+        Quaint::QArray<VkImageView>         m_swapchainImageViews;
 
-    #ifdef DEBUG_BUILD
-        VkDebugUtilsMessengerEXT    m_debugMessenger = VK_NULL_HANDLE;
+        VkQueue                             m_graphicsQueue = VK_NULL_HANDLE;
+        VkQueue                             m_presentQueue = VK_NULL_HANDLE;
+
+    #ifdef DEBUG_BUILD      
+        VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;
     #endif
     };
 }
