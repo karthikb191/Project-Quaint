@@ -85,6 +85,7 @@ namespace Bolt
         void createLogicalDevice();
         void createSwapchain();
         void createImageViews();
+        void setupFixedFunctions();
         void createRenderPipeline();
         
         //TODO: Surround this with platform spec macro
@@ -116,6 +117,8 @@ namespace Bolt
         VkExtent2D                          m_swapchainExtent;
         Quaint::QArray<VkImage>             m_swapchainImages;
         Quaint::QArray<VkImageView>         m_swapchainImageViews;
+
+        VkPipeline                          m_pipelineLayout = VK_NULL_HANDLE;
 
         VkQueue                             m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue                             m_presentQueue = VK_NULL_HANDLE;

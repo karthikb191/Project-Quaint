@@ -23,7 +23,7 @@ public:
         strcpy_s(m_rawData, SZ, str);
     }
 
-    const char* getRawData() const { return m_rawData; }
+    const char* getBuffer() const { return m_rawData; }
     size_t length() const { return strlen(m_rawData); }
     size_t availableSize() const { return N - length(); }
 
@@ -31,7 +31,11 @@ public:
     bool append(const QStaticString<SZ>& other)
     {
         size_t otherLen = other.length() + 1;
-        if(availableSize() < otherLen)  return false;
+        assert(availableSize() >= otherLen && "Non fatal error! Append will fail. Total characters exceeded size");
+        if(availableSize() < otherLen) 
+        {
+            return false;
+        }
 
         strcat_s(m_rawData, length() + otherLen, other.getRawData());
         return true;
@@ -39,6 +43,7 @@ public:
     bool append(const char* str)
     {
         size_t otherLen = strlen(str) + 1;
+        assert(availableSize() >= otherLen && "Non fatal error! Append will fail. Total characters exceeded allocated size");
         if(availableSize() < otherLen) return false;
 
         strcat_s(m_rawData, length() + otherLen, str);
@@ -70,5 +75,7 @@ private:
     char        m_rawData[N];
 };
 
+typedef QStaticString<64> QName;
+typedef QStaticString<1024> QPath;
 }
 #endif

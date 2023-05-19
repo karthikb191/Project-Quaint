@@ -1,9 +1,11 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <Types/QFastArray.h>
+#include <Types/QStaticString.h>
 #include <QuaintLogger.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
 #include <MemCore/GlobalMemoryOverrides.h>
+#include <fstream>
 
 //TODO: Remove this once there's a custom version available
 #include <set>
@@ -20,6 +22,11 @@ namespace Bolt
 
     auto deviceExtensions = Quaint::createFastArray<const char*>(
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    );
+
+    auto dynamicStates = Quaint::createFastArray<VkDynamicState>(
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
     );
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
@@ -52,12 +59,14 @@ namespace Bolt
         createLogicalDevice();
         createSwapchain();
         createImageViews();
+        createRenderPipeline();
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
+        vkDestroyPipelineLayout(m_device, m_pipelineLayout, &m_defGraphicsAllocator);
         for(const VkImageView& view : m_swapchainImageViews)
         {
             vkDestroyImageView(m_device, view, &m_defGraphicsAllocator);
@@ -560,7 +569,6 @@ namespace Bolt
             createInfo.image = m_swapchainImages[i];
             createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
             createInfo.format = m_swapchainFormat;
-
             //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
             createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
             createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -568,23 +576,191 @@ namespace Bolt
             createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
             
             //subresource range selects mipmap levels and array layers to be accessible to the view
+            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             createInfo.subresourceRange.baseArrayLayer = 0;
             createInfo.subresourceRange.layerCount = 1;
             createInfo.subresourceRange.baseMipLevel = 0;
             createInfo.subresourceRange.levelCount = 1;
 
-            VkResult res = vkCreateImageView(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchainImages[i]);
+            VkResult res = vkCreateImageView(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchainImageViews[i]);
             assert(res == VK_SUCCESS && "Failed to create Image view for a swapchain image");
         }
 
     }
 //--------------------------------------------------
 
+//Graphics Pipeline Creation------------------------
+
+//TODO: Access this through application module
+
+    #define DATA_PATH "D:\\Works\\Project-Quaint\\Data\\"
+    void getShaderCode(Quaint::IMemoryContext* context, const char* relFilePath, Quaint::QArray<char>& outCode)
+    {
+        Quaint::QPath filePath(DATA_PATH);
+        filePath.append(relFilePath);
+        //std::cout << filePath.getBuffer() << "\n";
+        //open file as binary and read from end
+        std::ifstream stream(filePath.getBuffer(), std::ios::ate | std::ios::binary);
+        assert(stream.is_open() && "Given file could not be opened");
+        size_t fileSize = (size_t)stream.tellg();
+        outCode.resize(fileSize);
+        stream.seekg(0);    //Go to beginning of file
+        stream.read(outCode.getBuffer_NonConst(), fileSize);
+        stream.close();
+    }
+    VkShaderModule createShaderModule(const VkDevice& device, const VkAllocationCallbacks& allocationCallbacks, const Quaint::QArray<char>& shaderCode)
+    {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = shaderCode.getSize();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.getBuffer());
+
+        VkShaderModule shaderModule = VK_NULL_HANDLE;
+        VkResult res = vkCreateShaderModule(device, &createInfo, &allocationCallbacks, &shaderModule);
+        assert(res == VK_SUCCESS && "Could not create a shader module");
+        return shaderModule;
+    }
+    void VulkanRenderer::setupFixedFunctions()
+    {
+        //create Dynamic states. Specifying these ignores the configuration of these values and these must be specified at drawing time
+        VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+        dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicStateInfo.dynamicStateCount = dynamicStates.getSize();
+        dynamicStateInfo.pDynamicStates = dynamicStates.getBuffer();
+
+
+        //Pass in vertex input. This structure describes the format of vertex data that will be passed to the vertex shader
+        //TODO: Since we are hardcoding vertices in shader, this will be specify that there's no vertex data to load for now
+        VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
+        vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        //Spacing between data and whether data is per-vertex or per-instance
+        vertexInputStateInfo.vertexBindingDescriptionCount = 0;
+        vertexInputStateInfo.pVertexBindingDescriptions = nullptr;
+        //Types of attributes passed to vertex shader, which binding to load them from and at which offset
+        vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
+        vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
+
+
+        //Input Assembly: We specify what kind of geometry to be drawn an if primitiveRestart should be enabled. Not sure what this is yet
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+        inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+
+        //Setting up Viewport and scissor
+        VkPipelineViewportStateCreateInfo viewportStateInfo{};
+        viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        //Viewport and scissor are marked as dynamic states. It's enough to only mention their count here
+        viewportStateInfo.scissorCount = 1;
+        viewportStateInfo.viewportCount = 1;
+
+
+        //Rasterizer: Takes geometry shaped by the vertices and turns it into fragments
+        //Also performs depth testing, face culling
+        VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
+        rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        //If this is set to true, fragments that are beyond near and far planes are clamped as opposed to discarded.
+        //This is useful in shadow maps;
+        rasterizationInfo.depthClampEnable = VK_FALSE;
+        //If this is true, geometry never passes through rasterization stage and nothing gets drawn to framebuffer
+        rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+        rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizationInfo.lineWidth = 1.0f;
+        rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT; //Cull back faces
+        rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; //Vertices are processed in clock-wise direction
+
+        rasterizationInfo.depthBiasEnable = VK_FALSE;
+        rasterizationInfo.depthBiasConstantFactor = 0;
+        rasterizationInfo.depthBiasClamp = 0;
+        rasterizationInfo.depthBiasSlopeFactor = 0;
+
+
+        //Multi-sampling: helps with alnti aliasing. More on this later
+        VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+        multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisamplingInfo.sampleShadingEnable = VK_FALSE;
+        multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisamplingInfo.minSampleShading = 1.0f; // Optional
+        multisamplingInfo.pSampleMask = nullptr; // Optional
+        multisamplingInfo.alphaToCoverageEnable = VK_FALSE; // Optional
+        multisamplingInfo.alphaToOneEnable = VK_FALSE; // Optional
+
+
+        //TODO: Depth and Stencil testing: We have to set up a structure for depth and stencil testing here late
+
+
+        //Color Blending: 
+        VkPipelineColorBlendAttachmentState blendAttachmentState{};
+        blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        blendAttachmentState.blendEnable = VK_TRUE;
+        blendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        blendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+
+        blendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        blendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        blendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        VkPipelineColorBlendStateCreateInfo blendInfo{};
+        blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        blendInfo.attachmentCount = 1;
+        blendInfo.pAttachments = &blendAttachmentState;
+        blendInfo.logicOpEnable = VK_FALSE;
+        blendInfo.logicOp = VK_LOGIC_OP_COPY;
+        blendInfo.blendConstants[0] = 0.0f;
+        blendInfo.blendConstants[1] = 0.0f;
+        blendInfo.blendConstants[2] = 0.0f;
+        blendInfo.blendConstants[3] = 0.0f;
+
+
+        // Pipeline Layout: Specifies the uniform values that will be passed to shaders.
+        // TODO: We create an empty pipeline for now.
+        VkPipelineLayoutCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineInfo.setLayoutCount = 0;
+        pipelineInfo.pSetLayouts = nullptr;
+        pipelineInfo.pushConstantRangeCount = 0;
+        pipelineInfo.pPushConstantRanges = nullptr;
+
+        VkResult res = vkCreatePipelineLayout(m_device, &pipelineInfo, &m_defGraphicsAllocator, &m_pipelineLayout);
+        assert(res == VK_SUCCESS && "Failed to create a pipeline layout");
+
+    }
     void VulkanRenderer::createRenderPipeline()
     {
-        
+        Quaint::QArray<char> vertexShaderCode(m_context);
+        Quaint::QArray<char> fragmentShaderCode(m_context);
+        getShaderCode(m_context, "Shaders\\TestTriangle\\simpleTri.vert.spv", vertexShaderCode);
+        getShaderCode(m_context, "Shaders\\TestTriangle\\simpleTri.frag.spv", fragmentShaderCode);
+
+        VkShaderModule vertexModule = createShaderModule(m_device, m_defGraphicsAllocator, vertexShaderCode);
+        VkShaderModule fragmentModule = createShaderModule(m_device, m_defGraphicsAllocator, fragmentShaderCode);
+
+        //To actually use the shaders, we need to assign them to a specific pipeline stage
+        VkPipelineShaderStageCreateInfo vertStageInfo{};
+        vertStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStageInfo.module = vertexModule;
+        vertStageInfo.pName = "main";
+        //vertStageInfo.pSpecializationInfo = //This lets us specify values for shader constants. TODO: Read more on this later 
+
+        VkPipelineShaderStageCreateInfo fragStageInfo{};
+        fragStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStageInfo.module = fragmentModule;
+        fragStageInfo.pName = "main";
+
+        VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
+
+        setupFixedFunctions();
+
+
+        vkDestroyShaderModule(m_device, vertexModule, &m_defGraphicsAllocator);
+        vkDestroyShaderModule(m_device, fragmentModule, &m_defGraphicsAllocator);
     }
 
+//----------------------------------------------------
 #ifdef DEBUG_BUILD
 //TODO: Currently Instance Creation and Destruction is not handled by our debug messenger. Will address this later
 
