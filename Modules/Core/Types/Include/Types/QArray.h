@@ -150,7 +150,7 @@ namespace Quaint
         void insertRangeAt(size_t index, const QArray& other, Const_Iterator start, Const_Iterator last)
         {
             assert((index >= 0 && index < m_size) && "Trying to insert at invalid index");
-            assert((start >= other.begin_c() && last < other.end_c() && last >= start) && "Trying to insert invalid range");
+            assert((start >= other.begin() && last < other.end() && last >= start) && "Trying to insert invalid range");
             
             //TODO
             size_t requiredSize = m_size + last - start + 1;

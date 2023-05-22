@@ -54,7 +54,7 @@ namespace Quaint
             return m_technique->allocAligned(allocSize, alignment);
 #else
             //TODO: _aligned_malloc is MSVC specific. Add wordarounds for other platforms 
-            return _aligned_malloc(allocSize, alignment);
+            return malloc(allocSize);
 #endif
         }
 

@@ -53,9 +53,22 @@ namespace Bolt
             Quaint::QArray<VkPresentModeKHR>    presentMode;
         };
 
+        struct FixedStageInfo
+        {
+            VkPipelineDynamicStateCreateInfo        dynamicStateInfo{};
+            VkPipelineVertexInputStateCreateInfo    vertexInputStateInfo{};
+            VkPipelineInputAssemblyStateCreateInfo  pipelineInputAssemblyStateInfo{};
+            VkPipelineViewportStateCreateInfo       viewportStateInfo{};
+            VkPipelineRasterizationStateCreateInfo  rasterizationStateInfo{};
+            VkPipelineMultisampleStateCreateInfo    multisampleSateInfo{};
+            VkPipelineColorBlendAttachmentState     blendAttachmentState{};
+            VkPipelineColorBlendStateCreateInfo     colorBlendInfo{};
+        };
+
     public:
         void init() override;
         void shutdown() override;
+        void render() override;
         
     private:
     //------ Static Allocation Functions
@@ -78,6 +91,8 @@ namespace Bolt
 
     //------------------------------
 
+        void drawFrame();
+
         void createAllocationCallbacks();
         void createInstance();
         void createSurface();
@@ -85,8 +100,16 @@ namespace Bolt
         void createLogicalDevice();
         void createSwapchain();
         void createImageViews();
-        void setupFixedFunctions();
+        void setupFixedFunctions(FixedStageInfo& fixedStageInfo);
+        void createRenderPass();
         void createRenderPipeline();
+
+        void createFrameBuffers();
+        void createCommandPool();
+        void createCommandBuffer();
+        void createSyncObjects();
+
+        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         
         //TODO: Surround this with platform spec macro
         void createWindowsSurface(); //Surface creation might affect physical device selection
@@ -107,6 +130,7 @@ namespace Bolt
         Quaint::IMemoryContext*             m_context;
 
         VkAllocationCallbacks               m_defGraphicsAllocator;
+        VkAllocationCallbacks*              m_allocationPtr;
         VkInstance                          m_instance = VK_NULL_HANDLE;
         VkPhysicalDevice                    m_physicalDevice = VK_NULL_HANDLE;
         VkSurfaceKHR                        m_surface = VK_NULL_HANDLE;
@@ -118,10 +142,20 @@ namespace Bolt
         Quaint::QArray<VkImage>             m_swapchainImages;
         Quaint::QArray<VkImageView>         m_swapchainImageViews;
 
-        VkPipeline                          m_pipelineLayout = VK_NULL_HANDLE;
+        VkRenderPass                        m_renderPass = VK_NULL_HANDLE;
+        VkPipelineLayout                    m_pipelineLayout = VK_NULL_HANDLE;
+        VkPipeline                          m_graphicsPipeline = VK_NULL_HANDLE;
 
         VkQueue                             m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue                             m_presentQueue = VK_NULL_HANDLE;
+
+        Quaint::QArray<VkFramebuffer>       m_frameBuffers;
+        VkCommandPool                       m_commandPool = VK_NULL_HANDLE;
+        VkCommandBuffer                     m_commandBuffer = VK_NULL_HANDLE;
+
+        VkSemaphore                         m_imageAvailableSemaphore;
+        VkSemaphore                         m_renderFinishedSemaphore;
+        VkFence                             m_inFlightFence;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

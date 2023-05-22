@@ -24,7 +24,7 @@ namespace Bolt
             wc.lpszClassName = params.className;
             wc.hInstance = m_instance;
             wc.lpfnWndProc = params.callback;
-            wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
+            //wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
 
             RegisterClass(&wc);
 
@@ -43,7 +43,7 @@ namespace Bolt
             QLOG_I(Window_Win_Logger, "Window created successfully");
             return true;
         }
-        void showWindow()
+        void showWindow() override
         {
             //TODO: Allow multiple variations of cmdShow
             if(m_windowsHandle == NULL)
@@ -53,7 +53,7 @@ namespace Bolt
             }
             ShowWindow(m_windowsHandle, SW_SHOWNORMAL);
         }
-        void hideWindow()
+        void hideWindow() override
         {
             if(m_windowsHandle == NULL)
             {
@@ -61,6 +61,10 @@ namespace Bolt
                 return;
             }
             ShowWindow(m_windowsHandle, SW_HIDE);
+        }
+        void update() override
+        {
+            BOOL res = UpdateWindow(m_windowsHandle);
         }
 
         HWND getWindowHandle() const override { return m_windowsHandle; }

@@ -25,8 +25,8 @@ namespace Bolt
     );
 
     auto dynamicStates = Quaint::createFastArray<VkDynamicState>(
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        VK_DYNAMIC_STATE_VIEWPORT
+        , VK_DYNAMIC_STATE_SCISSOR
     );
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
@@ -37,9 +37,11 @@ namespace Bolt
     VulkanRenderer::VulkanRenderer(Quaint::IMemoryContext* context)
     : m_context(context)
     , m_defGraphicsAllocator {VK_NULL_HANDLE}
+    , m_allocationPtr(nullptr)
     , m_instance {VK_NULL_HANDLE}
     , m_swapchainImages(context)
     , m_swapchainImageViews(context)
+    , m_frameBuffers(context)
     {
     }
 
@@ -59,25 +61,50 @@ namespace Bolt
         createLogicalDevice();
         createSwapchain();
         createImageViews();
+        createRenderPass();
         createRenderPipeline();
+        createFrameBuffers();
+        createCommandPool();
+        createCommandBuffer();
+        createSyncObjects();
+        QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
 
         m_running = true;
     }
 
     void VulkanRenderer::shutdown()
     {
-        vkDestroyPipelineLayout(m_device, m_pipelineLayout, &m_defGraphicsAllocator);
+        vkDeviceWaitIdle(m_device);
+
+        vkDestroySemaphore(m_device, m_imageAvailableSemaphore, m_allocationPtr);
+        vkDestroySemaphore(m_device, m_renderFinishedSemaphore, m_allocationPtr);
+        vkDestroyFence(m_device, m_inFlightFence, m_allocationPtr);
+
+        vkDestroyCommandPool(m_device, m_commandPool, m_allocationPtr);
+        for(const VkFramebuffer& buffer : m_frameBuffers)
+        {
+            vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
+        }
+
+        vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocationPtr);
+        vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
+        vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocationPtr);
         for(const VkImageView& view : m_swapchainImageViews)
         {
-            vkDestroyImageView(m_device, view, &m_defGraphicsAllocator);
+            vkDestroyImageView(m_device, view, m_allocationPtr);
         }
-        vkDestroySwapchainKHR(m_device, m_swapchain, &m_defGraphicsAllocator);
-        vkDestroyDevice(m_device, &m_defGraphicsAllocator);
-        vkDestroySurfaceKHR(m_instance, m_surface, &m_defGraphicsAllocator);
+        vkDestroySwapchainKHR(m_device, m_swapchain, m_allocationPtr);
+        vkDestroyDevice(m_device, m_allocationPtr);
+        vkDestroySurfaceKHR(m_instance, m_surface, m_allocationPtr);
 #ifdef DEBUG_BUILD
         destroyDebugMessenger();
 #endif
-        vkDestroyInstance(m_instance, &m_defGraphicsAllocator);
+        vkDestroyInstance(m_instance, m_allocationPtr);
+    }
+
+    void VulkanRenderer::render()
+    {
+        drawFrame();
     }
     
     //Custom Allocation code uses memory context ....................................
@@ -128,10 +155,12 @@ namespace Bolt
             QLOG_I(VULKAN_RENDERER_LOGGER, "Null context passed. Allocation callback structure creation failed! Using defaults");
             return;
         }
+
         m_defGraphicsAllocator.pUserData = m_context;
         m_defGraphicsAllocator.pfnAllocation = VulkanRenderer::allocationFunction;
         m_defGraphicsAllocator.pfnFree = VulkanRenderer::freeFunction;
         m_defGraphicsAllocator.pfnReallocation = VulkanRenderer::reallocFunction;
+        //m_allocationPtr = &m_defGraphicsAllocator;
     }
     //............................................................................
 
@@ -173,7 +202,7 @@ namespace Bolt
         appInfo.pEngineName = "Quaint Engine";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_2;
+        appInfo.apiVersion = VK_API_VERSION_1_0;
 
         VkInstanceCreateInfo instanceInfo{};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -186,17 +215,17 @@ namespace Bolt
             "VK_KHR_device_group_creation"// REQUIRED! This extension provides instance-level commands to enumerate groups of physical devices, and to create a logical device from a subset of one of those groups
             , "VK_KHR_external_fence_capabilities" //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” fence handles an implementation supports for a given set of use cases
             , "VK_KHR_external_memory_capabilities" //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” memory handles an implementation supports for a given set of use cases
-            //, "VK_KHR_external_semaphore_capabilities", //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” semaphore handles an implementation supports for a given set of use cases
+            , "VK_KHR_external_semaphore_capabilities" //??? This extension provides a set of capability queries and handle definitions that allow an application to determine what types of “external” semaphore handles an implementation supports for a given set of use cases
             , "VK_KHR_get_physical_device_properties2" //REQUIRED! This extension provides new entry points to query device features, device properties, and format properties in a way that can be easily extended by other extensions, without introducing any further entry points
             , "VK_KHR_get_surface_capabilities2" //REQUIRED! Provides an entry point to query device surface capabilities
             , "VK_KHR_surface" //REQUIRED! Abstracts native platform surfaces for use with Vulkan. Provides a way to determine whether queue family in a device supports presenting to a surface   
-            //, "VK_KHR_surface_protected_capabilities", //??? This extension extends VkSurfaceCapabilities2KHR, providing applications a way to query whether swapchains can be created with the VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR flag set
+            //, "VK_KHR_surface_protected_capabilities" //??? This extension extends VkSurfaceCapabilities2KHR, providing applications a way to query whether swapchains can be created with the VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR flag set
             , "VK_KHR_win32_surface"  //REQUIRED! Required for rendering to windows. Provided mechanism to create "VkSurfaceKHR" object 
         #ifdef DEBUG_BUILD
             , "VK_EXT_debug_report" //OPTIONAL! Enabled detailed debug reports
             , VK_EXT_DEBUG_UTILS_EXTENSION_NAME //OPTIONAL! Enables support of passing a callback to handle debug messages and much more
         #endif
-            //, "VK_EXT_swapchain_colorspace", //??? Might be needed. Not much information available
+            , "VK_EXT_swapchain_colorspace", //??? Might be needed. Not much information available
             //, "VK_NV_external_memory_capabilities", //??? Applications may wish to import memory from the Direct 3D API, or export memory to other Vulkan instances. This extension provides a set of capability queries that allow applications determine what types of win32 memory handles an implementation supports for a given set of use cases.
             //, "VK_KHR_portability_enumeration", //OPTIONAL! This extension allows applications to control whether devices that expose the VK_KHR_portability_subset extension are included in the results of physical device enumeration.
         });
@@ -229,7 +258,7 @@ namespace Bolt
         instanceInfo.ppEnabledLayerNames = nullptr;
 #endif
 
-        VkResult result = vkCreateInstance(&instanceInfo, &m_defGraphicsAllocator, &m_instance);
+        VkResult result = vkCreateInstance(&instanceInfo, m_allocationPtr, &m_instance);
         if(result != VK_SUCCESS)
         {
             QLOG_E(VULKAN_RENDERER_LOGGER, "FATAL ERROR! Failed to create a Vulkan Instance");
@@ -255,7 +284,7 @@ namespace Bolt
          winSurfaceInfo.hwnd = window->getWindowHandle();
          winSurfaceInfo.hinstance = window->getHInstance();
 
-         VkResult res = vkCreateWin32SurfaceKHR(m_instance, &winSurfaceInfo, &m_defGraphicsAllocator, &m_surface);
+         VkResult res = vkCreateWin32SurfaceKHR(m_instance, &winSurfaceInfo, m_allocationPtr, &m_surface);
          assert(res == VK_SUCCESS && "Failed to create a windows surface");
          QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Windows Surface Creation successful");
     }
@@ -325,7 +354,7 @@ namespace Bolt
         uint32_t extensionsCount = 0;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, nullptr);
         Quaint::QArray<VkExtensionProperties> extensionProperties(context, extensionsCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, extensionProperties.getBuffer_NonConst());
+        VkResult res = vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, extensionProperties.getBuffer_NonConst());
 
         bool allExtensionsAvailable = true;
         for(const char* extension : deviceExtensions)
@@ -333,13 +362,18 @@ namespace Bolt
             bool found = false;
             for(const VkExtensionProperties& property : extensionProperties)
             {
+                std::cout << property.extensionName << "\n";
                 if(strcmp(extension, property.extensionName) == 0)
                 {
                     found = true;
                     break;
                 }
             }
-            if(!found) allExtensionsAvailable = false;
+            if(!found)
+            {
+                allExtensionsAvailable = false;
+                break;  
+            } 
         }
 
         //Application can't function if all device extensions are not available on selected device
@@ -437,7 +471,7 @@ namespace Bolt
         deviceInfo.ppEnabledLayerNames = nullptr;
 #endif
 
-        VkResult res = vkCreateDevice(m_physicalDevice, &deviceInfo, &m_defGraphicsAllocator, &m_device);
+        VkResult res = vkCreateDevice(m_physicalDevice, &deviceInfo, m_allocationPtr, &m_device);
         assert(res == VK_SUCCESS && "Logical device creation failed!");
         
         //Once Logical device is created, retrieve queues to interface with
@@ -450,7 +484,7 @@ namespace Bolt
     VkSurfaceFormatKHR chooseSurfaceFormat(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
     {
         for (const VkSurfaceFormatKHR& availableFormat : supportInfo.surfaceFormat) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB 
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB
             && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 return availableFormat;
             }
@@ -460,6 +494,11 @@ namespace Bolt
     }
     VkPresentModeKHR choosePresentationMode(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
     {
+        //for (const auto& availablePresentMode : supportInfo.presentMode) {
+        //    if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+        //        return availablePresentMode;
+        //    }
+        //}
         //TODO: use VK_PRESENT_MODE_MAILBOX_KHR on windows if available
         return VK_PRESENT_MODE_FIFO_KHR;
     }
@@ -542,9 +581,10 @@ namespace Bolt
         createInfo.preTransform = supportInfo.surfaceCapabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //This specifies if alpha channel should be used for blending with other windows
         createInfo.clipped = VK_TRUE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
         createInfo.presentMode = presentMode;
 
-        VkResult res = vkCreateSwapchainKHR(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchain);
+        VkResult res = vkCreateSwapchainKHR(m_device, &createInfo, m_allocationPtr, &m_swapchain);
         assert(res == VK_SUCCESS && "Swapchain creation failed! Application will terminate");
 
         //retrieve images from swapchain
@@ -582,7 +622,7 @@ namespace Bolt
             createInfo.subresourceRange.baseMipLevel = 0;
             createInfo.subresourceRange.levelCount = 1;
 
-            VkResult res = vkCreateImageView(m_device, &createInfo, &m_defGraphicsAllocator, &m_swapchainImageViews[i]);
+            VkResult res = vkCreateImageView(m_device, &createInfo, m_allocationPtr, &m_swapchainImageViews[i]);
             assert(res == VK_SUCCESS && "Failed to create Image view for a swapchain image");
         }
 
@@ -608,7 +648,7 @@ namespace Bolt
         stream.read(outCode.getBuffer_NonConst(), fileSize);
         stream.close();
     }
-    VkShaderModule createShaderModule(const VkDevice& device, const VkAllocationCallbacks& allocationCallbacks, const Quaint::QArray<char>& shaderCode)
+    VkShaderModule createShaderModule(const VkDevice& device, const VkAllocationCallbacks* allocationCallbacks, const Quaint::QArray<char>& shaderCode)
     {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -616,17 +656,20 @@ namespace Bolt
         createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.getBuffer());
 
         VkShaderModule shaderModule = VK_NULL_HANDLE;
-        VkResult res = vkCreateShaderModule(device, &createInfo, &allocationCallbacks, &shaderModule);
+        VkResult res = vkCreateShaderModule(device, &createInfo, allocationCallbacks, &shaderModule);
         assert(res == VK_SUCCESS && "Could not create a shader module");
         return shaderModule;
     }
-    void VulkanRenderer::setupFixedFunctions()
+
+    void VulkanRenderer::setupFixedFunctions(FixedStageInfo& fixedStageInfo)
     {
         //create Dynamic states. Specifying these ignores the configuration of these values and these must be specified at drawing time
         VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
         dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamicStateInfo.dynamicStateCount = dynamicStates.getSize();
         dynamicStateInfo.pDynamicStates = dynamicStates.getBuffer();
+
+        fixedStageInfo.dynamicStateInfo = dynamicStateInfo;
 
 
         //Pass in vertex input. This structure describes the format of vertex data that will be passed to the vertex shader
@@ -640,12 +683,16 @@ namespace Bolt
         vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
         vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
 
+        fixedStageInfo.vertexInputStateInfo = vertexInputStateInfo;
+
 
         //Input Assembly: We specify what kind of geometry to be drawn an if primitiveRestart should be enabled. Not sure what this is yet
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
         inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+        fixedStageInfo.pipelineInputAssemblyStateInfo = inputAssemblyInfo;
 
 
         //Setting up Viewport and scissor
@@ -654,6 +701,8 @@ namespace Bolt
         //Viewport and scissor are marked as dynamic states. It's enough to only mention their count here
         viewportStateInfo.scissorCount = 1;
         viewportStateInfo.viewportCount = 1;
+
+        fixedStageInfo.viewportStateInfo = viewportStateInfo;
 
 
         //Rasterizer: Takes geometry shaped by the vertices and turns it into fragments
@@ -667,13 +716,12 @@ namespace Bolt
         rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
         rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizationInfo.lineWidth = 1.0f;
-        rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT; //Cull back faces
+        rasterizationInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT; //Cull back faces
         rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; //Vertices are processed in clock-wise direction
 
         rasterizationInfo.depthBiasEnable = VK_FALSE;
-        rasterizationInfo.depthBiasConstantFactor = 0;
-        rasterizationInfo.depthBiasClamp = 0;
-        rasterizationInfo.depthBiasSlopeFactor = 0;
+
+        fixedStageInfo.rasterizationStateInfo = rasterizationInfo;
 
 
         //Multi-sampling: helps with alnti aliasing. More on this later
@@ -681,10 +729,8 @@ namespace Bolt
         multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisamplingInfo.sampleShadingEnable = VK_FALSE;
         multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        multisamplingInfo.minSampleShading = 1.0f; // Optional
-        multisamplingInfo.pSampleMask = nullptr; // Optional
-        multisamplingInfo.alphaToCoverageEnable = VK_FALSE; // Optional
-        multisamplingInfo.alphaToOneEnable = VK_FALSE; // Optional
+
+        fixedStageInfo.multisampleSateInfo = multisamplingInfo;
 
 
         //TODO: Depth and Stencil testing: We have to set up a structure for depth and stencil testing here late
@@ -693,25 +739,23 @@ namespace Bolt
         //Color Blending: 
         VkPipelineColorBlendAttachmentState blendAttachmentState{};
         blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        blendAttachmentState.blendEnable = VK_TRUE;
-        blendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        blendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        blendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+        blendAttachmentState.blendEnable = VK_FALSE;
 
-        blendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        blendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        blendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+        fixedStageInfo.blendAttachmentState = blendAttachmentState;
+
 
         VkPipelineColorBlendStateCreateInfo blendInfo{};
         blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         blendInfo.attachmentCount = 1;
-        blendInfo.pAttachments = &blendAttachmentState;
+        blendInfo.pAttachments = &fixedStageInfo.blendAttachmentState;
         blendInfo.logicOpEnable = VK_FALSE;
         blendInfo.logicOp = VK_LOGIC_OP_COPY;
         blendInfo.blendConstants[0] = 0.0f;
         blendInfo.blendConstants[1] = 0.0f;
         blendInfo.blendConstants[2] = 0.0f;
         blendInfo.blendConstants[3] = 0.0f;
+
+        fixedStageInfo.colorBlendInfo = blendInfo;
 
 
         // Pipeline Layout: Specifies the uniform values that will be passed to shaders.
@@ -723,9 +767,74 @@ namespace Bolt
         pipelineInfo.pushConstantRangeCount = 0;
         pipelineInfo.pPushConstantRanges = nullptr;
 
-        VkResult res = vkCreatePipelineLayout(m_device, &pipelineInfo, &m_defGraphicsAllocator, &m_pipelineLayout);
+        VkResult res = vkCreatePipelineLayout(m_device, &pipelineInfo, m_allocationPtr, &m_pipelineLayout);
         assert(res == VK_SUCCESS && "Failed to create a pipeline layout");
 
+    }
+    void VulkanRenderer::createRenderPass()
+    {
+        // We need to tell Vulkan about frame buffer attachments that we'll be using for rendering.
+        // We need to specify how many color and depth buffer there will be, how many samples to use for each of them
+        // and how their contents are handled throughout rendering operations
+
+        VkAttachmentDescription colorDesc{};
+        colorDesc.format = m_swapchainFormat;
+        colorDesc.samples = VK_SAMPLE_COUNT_1_BIT; //We are not doing anything with multi-sampling. So, setting this to 1 bit
+        
+        //loadOp and storeOp determines what to do with data before and after rendering.
+        colorDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+        // Textures and framebuffers in Vulkan are represented by VkImage with a certain pixel format. 
+        // Depending on what we are trying to do with the image, their layout in the memory can change
+        // Images need to be transitioned to specific layouts that are suitable for operations that will be performed on them next
+        colorDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+
+        // A single renderpass can consist of multiple subpasses. Subpasses are subsequent render operations that depends on
+        // content of framebuffer from previous passes.
+
+        //Every subpass references one or more attachments we have described before
+        VkAttachmentReference attachmentRef{};
+        // Attchment parameter specifies which attachment decription to reference by index
+        // Layout specifies which layout that attchment should have when running this subpass
+        // attachment is either an integer value identifying an attachment at the corresponding index in VkRenderPassCreateInfo::pAttachments, 
+        // or VK_ATTACHMENT_UNUSED to signify that this attachment is not used
+        attachmentRef.attachment = 0;
+        attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        // Each element of pColorAttachments correspond to output location in the shader
+        // In the simple triangle, this corresponds to "layout(location = 0) out vec3 fragColor"
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &attachmentRef;
+
+        VkRenderPassCreateInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.attachmentCount = 1;
+        renderPassInfo.pAttachments = &colorDesc;
+
+        
+        //READ ALOT MORE ON THIS PART
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
+
+        VkResult res = vkCreateRenderPass(m_device, &renderPassInfo, m_allocationPtr, &m_renderPass);
+        assert(res == VK_SUCCESS && "Render pass creation failed");
     }
     void VulkanRenderer::createRenderPipeline()
     {
@@ -734,8 +843,8 @@ namespace Bolt
         getShaderCode(m_context, "Shaders\\TestTriangle\\simpleTri.vert.spv", vertexShaderCode);
         getShaderCode(m_context, "Shaders\\TestTriangle\\simpleTri.frag.spv", fragmentShaderCode);
 
-        VkShaderModule vertexModule = createShaderModule(m_device, m_defGraphicsAllocator, vertexShaderCode);
-        VkShaderModule fragmentModule = createShaderModule(m_device, m_defGraphicsAllocator, fragmentShaderCode);
+        VkShaderModule vertexModule = createShaderModule(m_device, m_allocationPtr, vertexShaderCode);
+        VkShaderModule fragmentModule = createShaderModule(m_device, m_allocationPtr, fragmentShaderCode);
 
         //To actually use the shaders, we need to assign them to a specific pipeline stage
         VkPipelineShaderStageCreateInfo vertStageInfo{};
@@ -753,11 +862,208 @@ namespace Bolt
 
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
 
-        setupFixedFunctions();
+        FixedStageInfo fixedStageInfo;
+        setupFixedFunctions(fixedStageInfo);
+
+        VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
+        graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        //Shader Modules setup
+        graphicsPipelineInfo.stageCount = 2;
+        graphicsPipelineInfo.pStages = shaderStages;
+        
+        //Fixed stage setup
+        graphicsPipelineInfo.pDynamicState = &fixedStageInfo.dynamicStateInfo;
+        graphicsPipelineInfo.pVertexInputState = &fixedStageInfo.vertexInputStateInfo;
+        graphicsPipelineInfo.pInputAssemblyState = &fixedStageInfo.pipelineInputAssemblyStateInfo;
+        graphicsPipelineInfo.pViewportState = &fixedStageInfo.viewportStateInfo;
+        graphicsPipelineInfo.pRasterizationState = &fixedStageInfo.rasterizationStateInfo;
+        graphicsPipelineInfo.pMultisampleState = &fixedStageInfo.multisampleSateInfo;
+        graphicsPipelineInfo.pColorBlendState = &fixedStageInfo.colorBlendInfo;
+        graphicsPipelineInfo.pDepthStencilState = nullptr;
+
+        graphicsPipelineInfo.layout = m_pipelineLayout;
+
+        graphicsPipelineInfo.renderPass = m_renderPass;
+        graphicsPipelineInfo.subpass = 0;
+
+        //Vulkan lets you create new pipelines by deriving from existing ones. More on this later
+        graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        graphicsPipelineInfo.basePipelineIndex = 0;
+
+        VkResult res = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, m_allocationPtr, &m_graphicsPipeline);
+
+        assert(res==VK_SUCCESS && "Failed to create graphics pipeline");
+
+        vkDestroyShaderModule(m_device, vertexModule, m_allocationPtr);
+        vkDestroyShaderModule(m_device, fragmentModule, m_allocationPtr);
+    }
+
+    void VulkanRenderer::createFrameBuffers()
+    {
+        //m_frameBuffers.resize(m_swapchainImageViews.getSize());
+        m_frameBuffers.resize(m_swapchainImageViews.getSize());
+        for(size_t i = 0; i < m_frameBuffers.getSize(); i++)
+        {
+            VkFramebufferCreateInfo frameBufferInfo{};
+            frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            frameBufferInfo.width = m_swapchainExtent.width;
+            frameBufferInfo.height = m_swapchainExtent.height;
+            frameBufferInfo.renderPass = m_renderPass;
+            frameBufferInfo.attachmentCount = 1;
+            frameBufferInfo.pAttachments = &m_swapchainImageViews[i];
+            frameBufferInfo.layers = 1;
+
+            VkResult res = vkCreateFramebuffer(m_device, &frameBufferInfo, m_allocationPtr, &m_frameBuffers[i]);
+            assert(res==VK_SUCCESS && "Failed to create a frame buffer");
+        }
+    }
+
+    void VulkanRenderer::createCommandPool()
+    {
+        //Command pools manage memory that is used to allocate command buffers from
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        VkCommandPoolCreateInfo commandPoolInfo{};
+        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allows command buffers to be reset individually
+        commandPoolInfo.queueFamilyIndex = families.graphics.get();
+
+        VkResult res = vkCreateCommandPool(m_device, &commandPoolInfo, m_allocationPtr, &m_commandPool);
+        assert(res==VK_SUCCESS && "Could not create command pool");
+    }
+
+    void VulkanRenderer::createCommandBuffer()
+    {
+        //Command buffers will be automatically cleaned when their pool is destroyed
+        VkCommandBufferAllocateInfo bufferAllocateInfo{};
+        bufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        bufferAllocateInfo.commandPool = m_commandPool;
+        //PRIMARY buffers can be submitted to queues, but cannot be called from other command buffers
+        //SECONDARY buffers can be called from primary command buffers, but cannot directly submitted to queue
+        bufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        bufferAllocateInfo.commandBufferCount = 1;
+
+        VkResult res = vkAllocateCommandBuffers(m_device, &bufferAllocateInfo, &m_commandBuffer);
+        assert(res==VK_SUCCESS && "Could not allocate command buffer");
+    }
+
+    void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) 
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+
+        VkResult res = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        assert(res==VK_SUCCESS && "Could not being command buffer");
+
+        //Now we begin a renderpass
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_renderPass;
+        renderPassInfo.framebuffer = m_frameBuffers[imageIndex];
+
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = m_swapchainExtent;
+
+        VkClearValue clearColor = {0.0f, 0.0f, 0.5f, 1.0f};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        //Binder renderpass to a point in the pipeline
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(m_swapchainExtent.width);
+        viewport.height = static_cast<float>(m_swapchainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = m_swapchainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        vkCmdEndRenderPass(commandBuffer);
+
+        res = vkEndCommandBuffer(commandBuffer);
+        assert(res==VK_SUCCESS && "Could not end command buffer");
+    }
+
+    void VulkanRenderer::createSyncObjects()
+    {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreInfo.flags = 0;
+        
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Init fence in signalled state
+
+        vkCreateSemaphore(m_device, &semaphoreInfo, m_allocationPtr, &m_imageAvailableSemaphore);
+        vkCreateSemaphore(m_device, &semaphoreInfo, m_allocationPtr, &m_renderFinishedSemaphore);
+        vkCreateFence(m_device, &fenceInfo, m_allocationPtr, &m_inFlightFence);
+    }
+
+    void VulkanRenderer::drawFrame()
+    {
+        vkWaitForFences(m_device, 1, &m_inFlightFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_device, 1, &m_inFlightFence);
+
+        uint32_t imageIndex;
+        
+        //Semaphore is signalled when presentation engine finishes using the image
+        vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+        vkResetCommandBuffer(m_commandBuffer, 0);
+
+        recordCommandBuffer(m_commandBuffer, imageIndex);
 
 
-        vkDestroyShaderModule(m_device, vertexModule, &m_defGraphicsAllocator);
-        vkDestroyShaderModule(m_device, fragmentModule, &m_defGraphicsAllocator);
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        //Wait for image to become available
+        VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphore};
+        
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &m_commandBuffer;
+
+        VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphore};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        VkResult res = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFence);
+        assert(res == VK_SUCCESS && "Could not submit to queue");
+        //assert(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS && "Could not submit to queue");
+
+        //READ ALOT MORE ON THIS PART
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &m_renderFinishedSemaphore;
+
+
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &m_swapchain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        res = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+
+        assert(res==VK_SUCCESS && "Could not present");
     }
 
 //----------------------------------------------------
@@ -779,7 +1085,7 @@ namespace Bolt
         createInfo.pfnUserCallback = debugCallbackFunction;
         createInfo.pUserData = nullptr;
 
-        if(func(m_instance, &createInfo, &m_defGraphicsAllocator, &m_debugMessenger) != VK_SUCCESS)
+        if(func(m_instance, &createInfo, m_allocationPtr, &m_debugMessenger) != VK_SUCCESS)
         {
             m_debugMessenger = VK_NULL_HANDLE;
         }
@@ -795,7 +1101,7 @@ namespace Bolt
             QLOG_W(VULKAN_RENDERER_LOGGER, "Could not retrieve 'vkCreateDebugUtilsMessengerEXT'. Failed to create debug messenger");
             return;
         }
-        func(m_instance, m_debugMessenger, &m_defGraphicsAllocator);
+        func(m_instance, m_debugMessenger, m_allocationPtr);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VulkanRenderer::debugCallbackFunction(
@@ -818,7 +1124,10 @@ namespace Bolt
         {
             QLOG_I(VULKAN_RENDERER_LOGGER, pCallbackData->pMessage);
         }
-
+        else
+        {
+            QLOG_V(VULKAN_RENDERER_LOGGER, pCallbackData->pMessage);
+        }
         return VK_FALSE;
     }
 #endif

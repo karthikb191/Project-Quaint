@@ -23,6 +23,7 @@ namespace Bolt
         virtual bool createWindow(const WindowCreationParams& params) = 0;
         virtual void showWindow() = 0;
         virtual void hideWindow() = 0;
+        virtual void update() = 0;
     };
 
     //TODO: Surround with plat-spec macro

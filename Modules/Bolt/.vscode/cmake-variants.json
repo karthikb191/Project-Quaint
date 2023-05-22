@@ -12,7 +12,7 @@
             },
             "Release":{
                 "short":"Release Build",
-                "buildType": "Release",
+                "buildType": "RelWithDebInfo",
                 "settings": {
                     "DEBUG_BUILD":0
                 }

@@ -22,6 +22,17 @@
             "cwd": "${fileDirname}",
             "environment": [],
             "console": "externalTerminal"
+        },
+        {
+            "name": "(Windows) Launch Bolt_Renderer(ReleaseWithDebug)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build/RelWithDebInfo/Bolt.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
         }
     ]
 }

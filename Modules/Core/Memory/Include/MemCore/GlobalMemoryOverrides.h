@@ -1,6 +1,9 @@
 #ifndef _H_GLOBAL_MEMORY_OVERRIDES
 #define _H_GLOBAL_MEMORY_OVERRIDES
 #include <new.h>
+
+//#define Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
+
 namespace Quaint
 {
     class IMemoryContext;
@@ -48,12 +51,14 @@ void deleteFromContext(Quaint::IMemoryContext* context, T* mem)
 template<typename T>
 void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
 {
+#ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
     size_t numElems = context->GetBlockSize(mem) / sizeof(T);
     //Loops through and calls destructor
     for(size_t i = 0; i < numElems; i++)
     {
         (mem + i)->~T();
     }
+#endif
     context->Free(mem);
 }
 
