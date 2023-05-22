@@ -6,8 +6,8 @@ if(${DEBUG_BUILD})
     add_compile_definitions(DEBUG_BUILD)
 else()
     message("[+]RELEASE BUILD!")
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
-    set(CMAKE_CXX_FLAGS_RELEASE "-o0 -DNDEBUG")
+    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_CXX_FLAGS_RELEASE "-o3 -DNDEBUG")
 endif()
 
 # Module Name
