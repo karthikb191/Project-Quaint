@@ -38,7 +38,6 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/Include)
 # Make headers available to other libraries
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/Include)
 
-message("[+]Registered headers under:" ${CMAKE_CURRENT_LIST_DIR}/Include)
 set(${PROJECT_NAME}_HEADER_PATH ${CMAKE_CURRENT_LIST_DIR}/Include)
 
 if(NOT ${BUILD_CORE_LIB})

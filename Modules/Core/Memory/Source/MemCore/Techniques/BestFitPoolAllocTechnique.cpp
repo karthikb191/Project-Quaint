@@ -228,6 +228,7 @@ namespace Quaint
             }
 
             v->m_parent = u->m_parent;
+            
         }
 
         RBNode* getMinimumInSubTree(RBNode* node)

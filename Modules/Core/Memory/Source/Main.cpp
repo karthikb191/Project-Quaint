@@ -27,6 +27,7 @@ namespace Quaint
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
 #include <Types/QArray.h>
+#include <Types/QRBTree.h>
 
 class A
 {
@@ -162,6 +163,54 @@ namespace Quaint
 
         printArray(arr1);
     }
+
+    void RBTreeTests(IMemoryContext* context)
+    {
+        QRBTree<int> rbTree(context);
+        rbTree.insert(100);
+        rbTree.remove(100);
+        
+        rbTree.print();
+
+        rbTree.insert(200);
+        rbTree.insert(500);
+        //rbTree.insert(50);
+        //rbTree.insert(25);
+        //rbTree.insert(10);
+        //rbTree.insert(5);
+        rbTree.insert(550);
+        rbTree.insert(600);
+        rbTree.insert(560);
+        rbTree.insert(10);
+        rbTree.insert(190);
+        //rbTree.insert(10);
+        rbTree.insert(1560);
+        rbTree.insert(103);
+        rbTree.insert(103);
+        rbTree.insert(103);
+        rbTree.insert(103);
+        rbTree.insert(103);
+        rbTree.insert(103);
+        rbTree.insert(103);
+
+        rbTree.remove(103);
+        rbTree.remove(103);
+        rbTree.remove(103);
+        rbTree.remove(103);
+        rbTree.remove(103);
+
+        rbTree.remove(560);
+        rbTree.print();
+        
+        rbTree.remove(1560);
+
+        //rbTree.insert(1032);
+        //rbTree.insert(143);
+        //rbTree.insert(1013);
+
+        rbTree.print();
+
+    }
 }
 
 int main()
@@ -169,9 +218,16 @@ int main()
     
     std::cout << "Hello Memory Manager\n";
 
+    
+    int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts();
+    Quaint::MemoryManager* memoryManager = &Quaint::MemoryModule::get().getMemoryManager();
+    Quaint::IMemoryContext* context = memoryManager->getDefaultMemoryContext();
+
     Quaint::QStaticString<64> str("Test Test");
     
-    Quaint::QArrayTests();
+    //Quaint::QArrayTests();
+
+    Quaint::RBTreeTests(context);
 
     Quaint::QStaticString<64> str1 = str;
     str1.append("lloo");
@@ -179,10 +235,6 @@ int main()
 
     Quaint::QStaticString<4> str2("One");
     str1 = str2;
-    
-    int validContexts = Quaint::MemoryModule::get().getMemoryManager().getValidContexts();
-    Quaint::MemoryManager* memoryManager = &Quaint::MemoryModule::get().getMemoryManager();
-    Quaint::IMemoryContext* context = memoryManager->getDefaultMemoryContext();
     using namespace Quaint;
     A a;
     B b;
@@ -241,34 +293,34 @@ int main()
 
 
     
-    Quaint::ThreadParams params;
-    params.m_job = Quaint::ThreadParams::JobType(TestJob);
-    params.m_threadInitState = Quaint::EThreadInitState::Started;
-
-    Quaint::QThread Thread1;
-    Thread1.initializeThread(params);
-    Thread1.run();
-    condition.wait();
-
-    Quaint::QThread Thread2;
-    Thread2.initializeThread(params);
-    Thread2.run();
-    condition.wait();
-
-    Quaint::QThread Thread3;
-    Thread3.initializeThread(params);
-    Thread3.run();
-    condition.wait();
-
-    Quaint::QThread Thread4;
-    Thread4.initializeThread(params);
-    Thread4.run();
-    condition.wait();
-
-    Thread1.join();
-    Thread2.join();
-    Thread3.join();
-    Thread4.join();
+    //Quaint::ThreadParams params;
+    //params.m_job = Quaint::ThreadParams::JobType(TestJob);
+    //params.m_threadInitState = Quaint::EThreadInitState::Started;
+//
+    //Quaint::QThread Thread1;
+    //Thread1.initializeThread(params);
+    //Thread1.run();
+    //condition.wait();
+//
+    //Quaint::QThread Thread2;
+    //Thread2.initializeThread(params);
+    //Thread2.run();
+    //condition.wait();
+//
+    //Quaint::QThread Thread3;
+    //Thread3.initializeThread(params);
+    //Thread3.run();
+    //condition.wait();
+//
+    //Quaint::QThread Thread4;
+    //Thread4.initializeThread(params);
+    //Thread4.run();
+    //condition.wait();
+//
+    //Thread1.join();
+    //Thread2.join();
+    //Thread3.join();
+    //Thread4.join();
 
 #pragma region Test
     //Quaint::RBTree::insert(new Quaint::RBTree::RBNode(10));
@@ -331,11 +383,11 @@ int main()
     delete temp;
 
     auto before = std::chrono::high_resolution_clock::now();
-    int* testInt[10000];
-    int* testInt2[10000];
+    int* testInt[100000];
+    int* testInt2[100000];
 
     Test* testStruct = nullptr;
-    for(int i = 0; i < 10000; i++)
+    for(int i = 0; i < 100000; i++)
     {
         if( i == 300)
         {
@@ -344,17 +396,9 @@ int main()
         testInt[i] = new int(i);
     }
 
-    for(int i = 0; i < 10000; i++)
-    {
-        if( i%50 == 0 )
-        {
-            delete testInt[i];
-        }
-    }
+    //Quaint::RBTree::print();
 
-    Quaint::RBTree::print();
-
-    std::cout <<"\n\n\n\n";
+    //std::cout <<"\n\n\n\n";
 
     //for(int i = 0; i < 10000; i++)
     //{
@@ -364,12 +408,12 @@ int main()
     //    }
     //}
 
-    for(int i = 0; i < 100; i++)
+    for(int i = 0; i < 100000; i++)
     {
         testInt2[i] = new int(i);
     }
 
-    Quaint::RBTree::print();
+    //Quaint::RBTree::print();
 
     auto after = std::chrono::high_resolution_clock::now();
     

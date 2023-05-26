@@ -9,17 +9,6 @@ namespace Quaint
     class IMemoryContext;
 }
 
-//TODO: Later move this to a precompiled header
-
-void* operator new(size_t size, const char* contextName);
-void operator delete(void* mem, const char* contextName);
-
-void* operator new(size_t size, int contextId);
-void operator delete(void* mem, int contextId);
-
-void* operator new(size_t size, Quaint::IMemoryContext* context);
-void* operator new[](size_t size, Quaint::IMemoryContext* context);
-
 
 template<typename T, typename ...ARGS>
 T* allocFromContext(Quaint::IMemoryContext* context, ARGS... args)

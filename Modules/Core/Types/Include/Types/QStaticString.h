@@ -66,7 +66,7 @@ public:
         static_assert(N >= SZ, "Passed string is larger than the type can hold");
 
         memset(m_rawData, '\0', N);
-        memcpy(m_rawData, other.getRawData(), SZ);
+        memcpy(m_rawData, other.getBuffer(), SZ);
         return *this;
     }
     

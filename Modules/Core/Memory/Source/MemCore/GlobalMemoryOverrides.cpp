@@ -23,33 +23,3 @@ void operator delete[](void* mem)
 {
     Quaint::MemoryModule::get().getMemoryManager().defaultFree(mem);
 }
-
-void* operator new(size_t size, Quaint::IMemoryContext* context)
-{
-    return context->Alloc(size);
-}
-void* operator new[](size_t size, Quaint::IMemoryContext* context)
-{
-    return context->Alloc(size);
-}
-
-void* operator new(size_t size, int contextId)
-{
-    //TODO: Fill this up
-    return nullptr;
-}
-void operator delete(void* mem, int contextId)
-{
-    //TODO: Fill this up
-}
-
-//Potentially slow operations
-void* operator new(size_t size, const char* contextName)
-{
-    //TODO: Fill this up
-    return nullptr;
-}
-void operator delete(void* mem, const char* contextName)
-{
-    //TODO: Fill this up
-}

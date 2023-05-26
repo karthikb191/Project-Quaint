@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 # Module Name
 
-if(NOT ${BUILD_CORE_LIB})
+if(NOT DEFINED ${BUILD_CORE_LIB})
 if(${DEBUG_BUILD})
     message("[+]DEBUG BUILD!")
     set(CMAKE_BUILD_TYPE Debug)
