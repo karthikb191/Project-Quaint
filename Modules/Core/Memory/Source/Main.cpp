@@ -28,6 +28,8 @@ namespace Quaint
 #include <Types/QStaticString.h>
 #include <Types/QArray.h>
 #include <Types/QRBTree.h>
+#include <Types/QMap.h>
+#include <Types/QSet.h>
 
 class A
 {
@@ -211,6 +213,67 @@ namespace Quaint
         rbTree.print();
 
     }
+
+
+    void SetTests(IMemoryContext* context)
+    {
+        QSet<int> set(context);
+        
+        set.insert(100);
+        set.remove(100);
+
+        set.insert(200);
+        set.insert(500);
+        
+        set.insert(550);
+        set.insert(600);
+        set.insert(560);
+        set.insert(10);
+        set.insert(190);
+
+        //set.print();
+        
+        set.insert(1560);
+        set.insert(103);
+        set.insert(103);
+        set.insert(103);
+        set.insert(103);
+        set.insert(103);
+        set.insert(103);
+        set.insert(103);
+
+        //set.print();
+
+        set.remove(103);
+        set.remove(103);
+        set.remove(103);
+        set.remove(103);
+        set.remove(103);
+
+        set.remove(560);
+        
+        set.remove(1560);
+
+        //set.print();
+
+        std::cout << "Set Size: " << set.getSize() << "\n";
+        //auto itr = set.begin();
+        for(auto elem : set)
+        {
+            std::cout << elem << " ";
+        }
+        std::cout << "\n";
+
+        for(auto itr = set.rbegin(); itr != set.rend(); ++itr)
+        {
+            std::cout << *itr << " ";
+        }
+        std::cout << "\n";
+    }
+    void MapTests(IMemoryContext* context)
+    {
+
+    }
 }
 
 int main()
@@ -227,7 +290,9 @@ int main()
     
     //Quaint::QArrayTests();
 
-    Quaint::RBTreeTests(context);
+    //Quaint::RBTreeTests(context);
+    
+    Quaint::SetTests(context);
 
     Quaint::QStaticString<64> str1 = str;
     str1.append("lloo");

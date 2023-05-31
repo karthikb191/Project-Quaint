@@ -1,6 +1,7 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
+#include <Types/QSet.h>
 #include <QuaintLogger.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
@@ -362,7 +363,6 @@ namespace Bolt
             bool found = false;
             for(const VkExtensionProperties& property : extensionProperties)
             {
-                std::cout << property.extensionName << "\n";
                 if(strcmp(extension, property.extensionName) == 0)
                 {
                     found = true;
@@ -433,7 +433,9 @@ namespace Bolt
         getQueueFamilies(m_context, m_physicalDevice, m_surface, queueFamilies);
 
         //TODO: Replace with a custom set
-        std::set<uint32_t> queueIndices { queueFamilies.graphics.get(), queueFamilies.presentation.get() };
+        Quaint::QSet<uint32_t> queueIndices(m_context);
+        
+        queueIndices = { queueFamilies.graphics.get(), queueFamilies.presentation.get() };
 
         float priority = 1.0f;
         Quaint::QArray<VkDeviceQueueCreateInfo> queues(m_context);
