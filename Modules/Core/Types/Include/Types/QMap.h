@@ -1,5 +1,6 @@
 #ifndef _H_Q_MAP
 #define _H_Q_MAP
+#include <ostream>
 #include <Types/QRBTree.h>
 #include <Interface/IMemoryContext.h>
 
@@ -44,7 +45,7 @@ namespace Quaint
             return this->operator > (other.first);
         }
 
-        friend ostream& operator<<(ostream& os, const QPair& pair)
+        friend std::ostream& operator<<(std::ostream& os, const QPair& pair)
         {
             os << pair.first << " : "<< pair.second;
             return os; 

@@ -1,5 +1,6 @@
 #ifndef _H_Q_STATIC_STRING
 #define _H_Q_STATIC_STRING
+#include <ostream>
 
 namespace Quaint
 {
@@ -70,7 +71,7 @@ public:
         return *this;
     }
 
-    friend ostream& operator<<(ostream& os, const QStaticString<N>& str)
+    friend std::ostream& operator<<(std::ostream& os, const QStaticString<N>& str)
     {
         os << str.m_rawData;
         return os;
