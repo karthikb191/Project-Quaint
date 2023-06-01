@@ -69,8 +69,12 @@ public:
         memcpy(m_rawData, other.getBuffer(), SZ);
         return *this;
     }
-    
 
+    friend ostream& operator<<(ostream& os, const QStaticString<N>& str)
+    {
+        os << str.m_rawData;
+        return os;
+    }
 private:
     char        m_rawData[N];
 };

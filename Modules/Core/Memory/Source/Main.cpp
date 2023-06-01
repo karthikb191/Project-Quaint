@@ -220,7 +220,7 @@ namespace Quaint
         QSet<int> set(context);
         
         set.insert(100);
-        set.remove(100);
+        set.erase(100);
 
         set.insert(200);
         set.insert(500);
@@ -244,15 +244,15 @@ namespace Quaint
 
         //set.print();
 
-        set.remove(103);
-        set.remove(103);
-        set.remove(103);
-        set.remove(103);
-        set.remove(103);
+        set.erase(103);
+        set.erase(103);
+        set.erase(103);
+        set.erase(103);
+        set.erase(103);
 
-        set.remove(560);
+        set.erase(560);
         
-        set.remove(1560);
+        set.erase(1560);
 
         //set.print();
 
@@ -269,10 +269,51 @@ namespace Quaint
             std::cout << *itr << " ";
         }
         std::cout << "\n";
+
+        auto lastItr = set.rbegin();        
+        
+        for(int i = 0; i < 2; i++)
+        {
+            ++lastItr;
+        }
+        set.print();
+
+        set.erase(set.rbegin(), lastItr);
+
+        set.print();
+
+        set.clear();
+
+        std::cout << "\n";
     }
     void MapTests(IMemoryContext* context)
     {
+        QMap<int, QPath> pathMap(context);
+        
+        QPair<int, QPath> p = {0, "test"};
+        
+        pathMap = 
+        {
+            {0, "Test01"},
+            {2, "Test02"},
+            {2, "Test02"},
+            {2, "Test02"},
+            {3, "Test03"},
+            {4, "Test04"},
+            {5, "Test05"},
+            {6, "Test06"},
+            {7, "Test07"},
+            {8, "Test08"},
+        };
+        pathMap.print();
 
+        std::cout << pathMap[2] << "\n";
+        std::cout << pathMap[4] << "\n";
+        std::cout << pathMap[6 ]<< "\n";
+
+        pathMap.clear();
+
+        pathMap.print();
     }
 }
 
@@ -292,7 +333,9 @@ int main()
 
     //Quaint::RBTreeTests(context);
     
-    Quaint::SetTests(context);
+    //Quaint::SetTests(context);
+
+    Quaint::MapTests(context);
 
     Quaint::QStaticString<64> str1 = str;
     str1.append("lloo");

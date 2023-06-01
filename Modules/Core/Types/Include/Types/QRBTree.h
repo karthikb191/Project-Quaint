@@ -15,7 +15,7 @@
 // Sentinel occupies 0th index
 namespace Quaint
 {
-template<typename T, typename V = void>
+template<typename T, bool AllowDuplicates = false>
 class QRBTree
 {
     struct QRBNode
@@ -25,12 +25,6 @@ class QRBTree
         QRBNode*  right = nullptr;
         QRBNode*  left = nullptr;
         bool      isRed = false;
-    };
-
-    template<typename = std::enable_if<!std::is_void<V>::value, bool>::type>
-    struct QRBDataNode : public QRBNode
-    {
-        V         data;
     };
 
 public:
@@ -44,6 +38,22 @@ public:
         , m_forward(forward)
         {
             assert(tree != nullptr && "Passed an invalid tree");
+        }
+
+        void erase()
+        {
+            if(m_node == &m_tree->m_sentinel) return;
+            
+            QRBNode* nodeToDelete = m_node;
+            if(m_forward)
+            {
+                getNext();
+            }
+            else
+            {
+                getPrev();
+            }
+            m_tree->remove(nodeToDelete);
         }
 
         Iterator& operator++()
@@ -137,9 +147,9 @@ public:
             
         }
 
-        const QRBTree<T>*   m_tree      = nullptr;
-        QRBNode*            m_node      = nullptr;
-        bool                m_forward   = true;
+        QRBTree<T, AllowDuplicates>*            m_tree      = nullptr;
+        QRBNode*                                m_node      = nullptr;
+        bool                                    m_forward   = true;
     };
     friend class Iterator;
 
@@ -168,24 +178,18 @@ public:
     }
 
     /*Creates a new node on heap and inserts into tree*/
-    template<typename V = std::enable_if<std::is_void<V>::value, void>::type>
     void insert(T key)
     {
         QRBNode* node = createNewNode();
         assert(node != nullptr);
         node->key = key;
         node->isRed = true;
-        insert_Impl(node);
-        ++m_size;
-    }
-    template<typename V = std::enable_if<!(std::is_void<V>::value), void>::type>
-    void insert(T key, V data)
-    {
-        QRBDataNode* node = createNewNode();
-        assert(node != nullptr);
-        node->key = key;
-        node->isRed = true;
-        insert_Impl(node);
+        bool res = insert_Impl(node);
+        if(!res)
+        {
+            deleteNode(node);
+            return;
+        }
         ++m_size;
     }
 
@@ -208,7 +212,8 @@ public:
         return true;
     }
 
-    QRBNode* find(const T& key)
+    template<typename KeyType>
+    QRBNode* find(const KeyType& key)
     {
         QRBNode* current = m_root;
         while(current != &m_sentinel)
@@ -217,7 +222,7 @@ public:
             {
                 return current;
             }
-            else if(key < current->key)
+            else if(current->key > key)
             {
                 current = current->left;
             }
@@ -227,6 +232,14 @@ public:
             }
         }
         return nullptr;
+    }
+
+    template<typename KeyType>
+    T& getData(const KeyType& key)
+    {
+        QRBNode* node = find(key);
+        assert(node != nullptr && "Tree doesnt contain data with key specified");
+        return node->key;
     }
 
     bool isEmpty() { return m_root == &m_sentinel; }
@@ -247,13 +260,13 @@ public:
     }
 private:
 
-    void insert_Impl(QRBNode* node)
+    bool insert_Impl(QRBNode* node)
     {
         if(m_root == &m_sentinel)
         {
             m_root = node;
             m_root->isRed = false;
-            return;
+            return true;
         }
 
         QRBNode* current = m_root;
@@ -267,6 +280,10 @@ private:
             }
             else
             {
+                if(node->key == current->key && !AllowDuplicates)
+                {
+                    return false;
+                }
                 current = current->right;
             }
         }
@@ -282,6 +299,7 @@ private:
         node->parent = target;
 
         insertFixup(node);
+        return true;
     }
 
     void remove_impl(QRBNode* node)
@@ -575,7 +593,6 @@ private:
         node->isRed = false;
     }
 
-    template<typename V = std::enable_if<std::is_void<V>::value, void>::type> 
     QRBNode* createNewNode()
     {
         if(m_context == nullptr)
@@ -585,21 +602,6 @@ private:
 
         QRBNode* node = (QRBNode*)m_context->Alloc(sizeof(QRBNode));
         ::new((void*)node) QRBNode();
-        node->parent = &m_sentinel;
-        node->left = &m_sentinel;
-        node->right = &m_sentinel;
-        return node;
-    }
-    template<typename V = std::enable_if<!(std::is_void<V>::value), void>::type>
-    QRBDataNode* createNewNode()
-    {
-        if(m_context == nullptr)
-        {
-            return new QRBDataNode();
-        }
-
-        QRBDataNode* node = (QRBDataNode*)m_context->Alloc(sizeof(QRBDataNode));
-        ::new((void*)node) QRBDataNode();
         node->parent = &m_sentinel;
         node->left = &m_sentinel;
         node->right = &m_sentinel;

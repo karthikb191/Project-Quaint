@@ -33,9 +33,8 @@ namespace Quaint
             return *this;
         }
 
-        void insert(Key key)
+        void insert(const Key& key)
         {
-            if(contains(key)) return;
             m_tree.insert(std::move(key));
         }
 
@@ -50,11 +49,23 @@ namespace Quaint
             return m_tree.find(key) != nullptr;
         }
 
-        void remove(const Key& key)
+        void clear()
+        {
+            erase(begin(), end());
+        }
+
+        void erase(const Key& key)
         {
             m_tree.remove(m_tree.find(key));
         }
 
+        void erase(Iterator& first, Iterator& last)
+        {
+            for(auto itr = first; itr != last; )
+            {
+                itr.erase();
+            }
+        }
 
         size_t getSize()
         {
@@ -65,12 +76,12 @@ namespace Quaint
             return m_tree.isEmpty();
         }
 
-#ifdef DEBUG_BUILD
+//#ifdef DEBUG_BUILD
         void print()
         {
             m_tree.print();
         }
-#endif
+//#endif
 
     //Iterator Functions---------------------------------------
         Iterator begin()
