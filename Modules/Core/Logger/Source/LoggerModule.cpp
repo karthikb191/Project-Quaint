@@ -1,8 +1,13 @@
-#include<LoggerModule.h>
+#include <LoggerModule.h>
+#include <assert.h>
 
 namespace Quaint
 {
-    std::set<std::string> LoggerModule::mRegisteredLogs;
+
+    void LoggerModule::initModule_impl()
+    {
+        //TODO: Get the list of enabled loggers from an XML file
+    }
 
     bool LoggerModule::shouldPrintLogsInCategory(const char* loggerName)
     {

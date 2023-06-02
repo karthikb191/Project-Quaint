@@ -12,27 +12,28 @@
     class Logger_##name : public Quaint::LoggerBase {\
         public:\
         Logger_##name() : Quaint::LoggerBase(#name) {}\
+        static Logger_##name& get();\
     }
 
     /*Effective C++ Item-4. Converted this to local-static. object is created on first usage*/
-    #define DEFINE_LOG_CATEGORY(name) Logger_##name& getLogger##name()\
+    #define DEFINE_LOG_CATEGORY(name) Logger_##name& Logger_##name::get()\
     { \
         static Logger_##name logger;\
         return logger;\
     }
     
     #define QLOG(name, category, message)\
-        getLogger##name().log(category, message);
+        Logger_##name::get().log(category, message);
     #define QLOG_V(name, message)\
-        getLogger##name().logVerbose(message);
+        Logger_##name::get().logVerbose(message);
     #define QLOG_I(name, message)\
-        getLogger##name().logInfo(message);
+        Logger_##name::get().logInfo(message);
     #define QLOG_W(name, message)\
-        getLogger##name().logWarning(message);
+        Logger_##name::get().logWarning(message);
     #define QLOG_E(name, message)\
-        getLogger##name().logError(message);
+        Logger_##name::get().logError(message);
 
-    #define QLOGGER_NAME(name) logger_##name.getLoggerName();
+    //#define QLOGGER_NAME(name) logger_##name.getLoggerName();
 
 //}
 #endif //_H_QUAINT_LOGGER

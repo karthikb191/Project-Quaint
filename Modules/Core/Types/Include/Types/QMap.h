@@ -66,10 +66,15 @@ namespace Quaint
         typedef typename QRBTree<QPair<Key, Data>>::Iterator                    Reverse_Iterator;
         typedef typename const QRBTree<QPair<Key, Data>>::Iterator              Const_Reverse_Iterator;
 
-        QMap::QMap(IMemoryContext* context)
+        QMap(IMemoryContext* context)
         : m_context(context)
         , m_tree(context)
         {}
+
+        ~QMap()
+        {
+            clear();
+        }
 
         QMap& operator=(const std::initializer_list<QPair<Key, Data>>& list)
         {

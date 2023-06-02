@@ -1,6 +1,7 @@
 #ifndef _H_Q_STATIC_STRING
 #define _H_Q_STATIC_STRING
 #include <ostream>
+#include <assert.h>
 
 namespace Quaint
 {

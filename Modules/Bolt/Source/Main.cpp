@@ -12,10 +12,9 @@ namespace Quaint
 {
     CREATE_MODULE(LoggerModule);
     INIT_MODULE(LoggerModule);
-
+    
     CREATE_MODULE(MemoryModule);
     INIT_MODULE(MemoryModule);
-
 }
 
 namespace Bolt

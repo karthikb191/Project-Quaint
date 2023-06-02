@@ -25,23 +25,21 @@ namespace Quaint
         static void initModule()
         {
             get().initModule_impl();
+            get().m_initialized = true;
         }
         static void shutdown()
         {
             get().shutdown_impl();
+            get().m_initialized = false;
         }   
 
     protected:
         virtual void initModule_impl()
         {
-            T& module = get();
-            module.m_initialized = true;
         }
 
         virtual void shutdown_impl()
         {
-            T& module = get();
-            module.m_initialized = false;
         }
 
         virtual ~Module() = default;

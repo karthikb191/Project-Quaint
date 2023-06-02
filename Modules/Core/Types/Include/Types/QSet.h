@@ -24,6 +24,10 @@ namespace Quaint
         : m_context(context)
         , m_tree(context)
         {}
+        ~QSet()
+        {
+            clear();
+        }
         QSet& operator=(const std::initializer_list<Key>& list)
         {
             for(size_t i = 0; i < list.size(); i++)
