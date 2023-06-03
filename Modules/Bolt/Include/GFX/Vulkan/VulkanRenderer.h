@@ -13,6 +13,9 @@
 namespace Bolt
 {
     class BoltRenderer;
+    
+    #define MAX_FRAMES_IN_FLIGHT 2
+
     class VulkanRenderer : public IRenderer
     {
         friend class BoltRenderer;
@@ -109,7 +112,11 @@ namespace Bolt
         void createCommandBuffer();
         void createSyncObjects();
 
-        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+        void cleanupOutofDateSwapchain();
+        void recreateSwapchain();
+
+
+        void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
         
         //TODO: Surround this with platform spec macro
         void createWindowsSurface(); //Surface creation might affect physical device selection
@@ -137,6 +144,7 @@ namespace Bolt
         VkDevice                            m_device = VK_NULL_HANDLE;
 
         VkSwapchainKHR                      m_swapchain = VK_NULL_HANDLE;
+        VkSwapchainKHR                      m_outOfDateSwapchain = VK_NULL_HANDLE;
         VkFormat                            m_swapchainFormat;
         VkExtent2D                          m_swapchainExtent;
         Quaint::QArray<VkImage>             m_swapchainImages;
@@ -151,11 +159,14 @@ namespace Bolt
 
         Quaint::QArray<VkFramebuffer>       m_frameBuffers;
         VkCommandPool                       m_commandPool = VK_NULL_HANDLE;
-        VkCommandBuffer                     m_commandBuffer = VK_NULL_HANDLE;
+        
+        Quaint::QArray<VkCommandBuffer>    m_commandBuffers;
 
-        VkSemaphore                         m_imageAvailableSemaphore;
-        VkSemaphore                         m_renderFinishedSemaphore;
-        VkFence                             m_inFlightFence;
+        Quaint::QArray<VkSemaphore>        m_imageAvailableSemaphores;
+        Quaint::QArray<VkSemaphore>        m_renderFinishedSemaphores;
+        Quaint::QArray<VkFence>            m_inFlightFences;
+
+        uint8_t                             m_currentFrame = 0;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;
