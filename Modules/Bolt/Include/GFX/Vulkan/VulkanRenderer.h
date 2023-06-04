@@ -6,6 +6,7 @@
 #include <QuaintLogger.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <Types/QArray.h>
+#include <Types/QFastArray.h>
 //TODO: Surround with plat-spec macro
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
@@ -15,6 +16,52 @@ namespace Bolt
     class BoltRenderer;
     
     #define MAX_FRAMES_IN_FLIGHT 2
+
+    //TODO: Move these
+    struct QVector2
+    {
+        float x = 0.f;
+        float y = 0.f;
+    };
+    struct QVector3
+    {
+        float x = 0.f;
+        float y = 0.f;
+        float z = 0.f; 
+    };
+
+    struct QVertex
+    {
+        QVector2    position;
+        QVector3    color;
+
+        static VkVertexInputBindingDescription getBindingDescription()
+        {
+            VkVertexInputBindingDescription desc{};
+            desc.binding = 0; //only 1 binding for now
+            desc.stride = sizeof(QVertex);
+            desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; //Must be read per vertex
+            return desc;
+        }
+        static void getAttributeDescription(Quaint::QFastArray<VkVertexInputAttributeDescription, 2>& res)
+        {
+            VkVertexInputAttributeDescription desc{};
+            //From which VertexInputBindingDescription we are trying to access the attribute from
+            //Accessing position attribute
+            desc.binding = 0;
+            desc.location = 0;
+            desc.offset = offsetof(QVertex, position);
+            desc.format = VK_FORMAT_R32G32_SFLOAT;
+            res[0] = desc;
+
+            //Accessing the color attribute
+            desc.binding = 0;
+            desc.location = 1;
+            desc.offset = offsetof(QVertex, color);
+            desc.format = VK_FORMAT_R32G32B32_SFLOAT;
+            res[1] = desc;
+        }
+    };
 
     class VulkanRenderer : public IRenderer
     {
@@ -109,6 +156,7 @@ namespace Bolt
 
         void createFrameBuffers();
         void createCommandPool();
+        void createVertexBuffer();
         void createCommandBuffer();
         void createSyncObjects();
 
@@ -124,6 +172,8 @@ namespace Bolt
         void setupDebugMessenger();
         void destroyDebugMessenger();        
     #endif
+
+        void updateTriangleColor();
 
         VulkanRenderer(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderer();
@@ -160,11 +210,13 @@ namespace Bolt
         Quaint::QArray<VkFramebuffer>       m_frameBuffers;
         VkCommandPool                       m_commandPool = VK_NULL_HANDLE;
         
-        Quaint::QArray<VkCommandBuffer>    m_commandBuffers;
+        VkBuffer                            m_vertexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory                      m_deviceMemory = VK_NULL_HANDLE; //Memory in GPU
+        Quaint::QArray<VkCommandBuffer>     m_commandBuffers;
 
-        Quaint::QArray<VkSemaphore>        m_imageAvailableSemaphores;
-        Quaint::QArray<VkSemaphore>        m_renderFinishedSemaphores;
-        Quaint::QArray<VkFence>            m_inFlightFences;
+        Quaint::QArray<VkSemaphore>         m_imageAvailableSemaphores;
+        Quaint::QArray<VkSemaphore>         m_renderFinishedSemaphores;
+        Quaint::QArray<VkFence>             m_inFlightFences;
 
         uint8_t                             m_currentFrame = 0;
 

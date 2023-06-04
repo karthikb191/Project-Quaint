@@ -29,6 +29,14 @@ namespace Bolt
         VK_DYNAMIC_STATE_VIEWPORT
         , VK_DYNAMIC_STATE_SCISSOR
     );
+
+    auto vertices = Quaint::createFastArray<QVertex>(
+    {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    }
+    );
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
 
@@ -70,6 +78,7 @@ namespace Bolt
         createRenderPipeline();
         createFrameBuffers();
         createCommandPool();
+        createVertexBuffer();
         createCommandBuffer();
         createSyncObjects();
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
@@ -93,6 +102,10 @@ namespace Bolt
         {
             vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
         }
+
+        vkDestroyBuffer(m_device, m_vertexBuffer, &m_defGraphicsAllocator);
+        //Memory in device can be freed once the bound buffer is no longer used
+        vkFreeMemory(m_device, m_deviceMemory, &m_defGraphicsAllocator);
 
         vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocationPtr);
         vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
@@ -688,6 +701,7 @@ namespace Bolt
         //Spacing between data and whether data is per-vertex or per-instance
         vertexInputStateInfo.vertexBindingDescriptionCount = 0;
         vertexInputStateInfo.pVertexBindingDescriptions = nullptr;
+
         //Types of attributes passed to vertex shader, which binding to load them from and at which offset
         vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
         vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
@@ -817,8 +831,10 @@ namespace Bolt
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
         // Each element of pColorAttachments correspond to output location in the shader
-        // In the simple triangle, this corresponds to "layout(location = 0) out vec3 fragColor"
+        // In the simple triangle, this attachmentReference is accessed by fragment shader through "layout(location = 0) out vec3 fragColor"
+
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &attachmentRef;
 
@@ -830,7 +846,7 @@ namespace Bolt
         renderPassInfo.pAttachments = &colorDesc;
 
         
-        //READ ALOT MORE ON THIS PART
+        //TODO: READ ALOT MORE ON THIS PART
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
@@ -882,7 +898,22 @@ namespace Bolt
         
         //Fixed stage setup
         graphicsPipelineInfo.pDynamicState = &fixedStageInfo.dynamicStateInfo;
+
+
+//-------------Vertex Shader input binding----------------------
+        auto inputBindingDesc = QVertex::getBindingDescription();
+        Quaint::QFastArray<VkVertexInputAttributeDescription, 2> attributeDesc;
+        QVertex::getAttributeDescription(attributeDesc);
+        fixedStageInfo.vertexInputStateInfo.vertexBindingDescriptionCount = 1;
+        fixedStageInfo.vertexInputStateInfo.pVertexBindingDescriptions = &inputBindingDesc;
+
+        fixedStageInfo.vertexInputStateInfo.vertexAttributeDescriptionCount = attributeDesc.getSize();
+        fixedStageInfo.vertexInputStateInfo.pVertexAttributeDescriptions = attributeDesc.getBuffer();
+
         graphicsPipelineInfo.pVertexInputState = &fixedStageInfo.vertexInputStateInfo;
+//---------------------------------------------------------------
+
+
         graphicsPipelineInfo.pInputAssemblyState = &fixedStageInfo.pipelineInputAssemblyStateInfo;
         graphicsPipelineInfo.pViewportState = &fixedStageInfo.viewportStateInfo;
         graphicsPipelineInfo.pRasterizationState = &fixedStageInfo.rasterizationStateInfo;
@@ -941,6 +972,63 @@ namespace Bolt
         assert(res==VK_SUCCESS && "Could not create command pool");
     }
 
+    void VulkanRenderer::createVertexBuffer()
+    {
+        VkBufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        info.size = sizeof(QVertex) * vertices.getSize();
+        info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; //It is possible to specify multiple usages using bitwise OR
+        //Just like swapchain images, buffers can also be shared across queues or have unique ownership
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VkResult res = vkCreateBuffer(m_device, &info, &m_defGraphicsAllocator, &m_vertexBuffer);
+        assert(res == VK_SUCCESS && "Could not create a vertex buffer");
+
+        //Now we allocate this buffer on GPU
+        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+        VkMemoryRequirements requirements{};
+        vkGetBufferMemoryRequirements(m_device, m_vertexBuffer, &requirements);
+        
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+
+        uint32_t memoryTypeIndex;
+        bool found = false;
+        for(size_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        {
+            // memoryTypeBits is bit field of memory types that are suitable for buffer
+            // Also, we are not just interested in memory type that's suitable to the buffer. We should also be able to write to it
+            // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT properties indicate that we can write to it from CPU
+            
+            if((requirements.memoryTypeBits & (1 << i)) && 
+            (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags)
+            {
+                memoryTypeIndex = i;
+                found = true;
+                break;
+            }
+        }
+        assert(found && "Could not find suitable a memory type for device memory allocation");
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.memoryTypeIndex = memoryTypeIndex;
+        allocInfo.allocationSize = requirements.size;
+
+        res = vkAllocateMemory(m_device, &allocInfo, &m_defGraphicsAllocator, &m_deviceMemory);
+        assert(res == VK_SUCCESS && "Failed to allocate vertex buffer on device");
+
+        //Offset should be a multiple of alignment if it's not 0. 0 works since we are specifically binding data for a vertex
+        vkBindBufferMemory(m_device, m_vertexBuffer, m_deviceMemory, 0);
+
+        updateTriangleColor();
+        //void* data;
+        //vkMapMemory(m_device, m_deviceMemory, 0, info.size, 0, &data);
+        //memcpy(data, vertices.getBuffer(), (size_t)info.size);
+        //vkUnmapMemory(m_device, m_deviceMemory);
+    }
+
     void VulkanRenderer::createCommandBuffer()
     {
         //Command buffers will be automatically cleaned when their pool is destroyed
@@ -955,6 +1043,25 @@ namespace Bolt
         m_commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
         VkResult res = vkAllocateCommandBuffers(m_device, &bufferAllocateInfo, m_commandBuffers.getBuffer_NonConst());
         assert(res==VK_SUCCESS && "Could not allocate command buffer");
+    }
+    
+    float someRandomNum = 0;
+    void VulkanRenderer::updateTriangleColor()
+    {
+        auto actualVerts = vertices;
+        for(size_t i = 0; i < actualVerts.getSize(); i++)
+        {
+            actualVerts[i].color.x = abs(sinf(vertices[i].color.x + someRandomNum));
+            actualVerts[i].color.y = abs(sinf(vertices[i].color.y + someRandomNum));
+            actualVerts[i].color.z = abs(sinf(vertices[i].color.z + someRandomNum));
+            //std::cout << vertices[i].color.x << " " << vertices[i].color.y << " " << vertices[i].color.z << "\n";
+        }
+        someRandomNum += rand() * 0.0000001f;
+        size_t size = sizeof(QVertex) * actualVerts.getSize();
+        void* data;
+        vkMapMemory(m_device, m_deviceMemory, 0, size, 0, &data);
+        memcpy(data, actualVerts.getBuffer(), size);
+        vkUnmapMemory(m_device, m_deviceMemory);
     }
 
     void VulkanRenderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex) 
@@ -998,6 +1105,10 @@ namespace Bolt
         scissor.offset = {0, 0};
         scissor.extent = m_swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        updateTriangleColor();
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_vertexBuffer, offsets);
         
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
