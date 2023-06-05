@@ -87,8 +87,9 @@ namespace Bolt
         {
             QueueFamily     graphics{};
             QueueFamily     presentation{};
+            QueueFamily     transfer{};
 
-            bool allSet() { return graphics.isSet() && presentation.isSet(); }
+            bool allSet() { return graphics.isSet() && presentation.isSet() &&transfer.isSet(); }
         };
 
         struct SwapchainSupportInfo
@@ -155,7 +156,16 @@ namespace Bolt
         void createRenderPipeline();
 
         void createFrameBuffers();
+        
         void createCommandPool();
+        void createGraphicsCommandPool();
+        void createTransferCommandPool();
+
+        void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags, 
+        const Quaint::QArray<uint32_t>& queueFamilies, 
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer);
         void createVertexBuffer();
         void createCommandBuffer();
         void createSyncObjects();
@@ -206,12 +216,18 @@ namespace Bolt
 
         VkQueue                             m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue                             m_presentQueue = VK_NULL_HANDLE;
+        VkQueue                             m_transferQueue = VK_NULL_HANDLE;
 
         Quaint::QArray<VkFramebuffer>       m_frameBuffers;
-        VkCommandPool                       m_commandPool = VK_NULL_HANDLE;
+        VkCommandPool                       m_graphicsCommandPool = VK_NULL_HANDLE;
+        VkCommandPool                       m_transferCommandPool = VK_NULL_HANDLE;
         
         VkBuffer                            m_vertexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory                      m_deviceMemory = VK_NULL_HANDLE; //Memory in GPU
+        VkDeviceMemory                      m_vertexBufferGpuMemory = VK_NULL_HANDLE; //Memory in GPU
+        
+        VkBuffer                            m_stagingBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory                      m_stagingBufferGpuMemory = VK_NULL_HANDLE;
+
         Quaint::QArray<VkCommandBuffer>     m_commandBuffers;
 
         Quaint::QArray<VkSemaphore>         m_imageAvailableSemaphores;

@@ -97,15 +97,19 @@ namespace Bolt
             vkDestroyFence(m_device, m_inFlightFences[i], m_allocationPtr);
         }
 
-        vkDestroyCommandPool(m_device, m_commandPool, m_allocationPtr);
+        vkDestroyCommandPool(m_device, m_graphicsCommandPool, m_allocationPtr);
+        vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
         for(const VkFramebuffer& buffer : m_frameBuffers)
         {
             vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
         }
 
+        vkDestroyBuffer(m_device, m_stagingBuffer, &m_defGraphicsAllocator);
+        vkFreeMemory(m_device, m_stagingBufferGpuMemory, &m_defGraphicsAllocator);
+
         vkDestroyBuffer(m_device, m_vertexBuffer, &m_defGraphicsAllocator);
         //Memory in device can be freed once the bound buffer is no longer used
-        vkFreeMemory(m_device, m_deviceMemory, &m_defGraphicsAllocator);
+        vkFreeMemory(m_device, m_vertexBufferGpuMemory, &m_defGraphicsAllocator);
 
         vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocationPtr);
         vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
@@ -325,6 +329,10 @@ namespace Bolt
             {
                 families.graphics.set(i);
             }
+            else if(properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+            {
+                families.transfer.set(i);
+            }
 
             //Check if a
             VkBool32 supported = false;
@@ -455,7 +463,7 @@ namespace Bolt
         //TODO: Replace with a custom set
         Quaint::QSet<uint32_t> queueIndices(m_context);
         
-        queueIndices = { queueFamilies.graphics.get(), queueFamilies.presentation.get() };
+        queueIndices = { queueFamilies.graphics.get(), queueFamilies.presentation.get(), queueFamilies.transfer.get() };
 
         float priority = 1.0f;
         Quaint::QArray<VkDeviceQueueCreateInfo> queues(m_context);
@@ -499,6 +507,7 @@ namespace Bolt
         //Once Logical device is created, retrieve queues to interface with
         vkGetDeviceQueue(m_device, queueFamilies.graphics.get(), 0, &m_graphicsQueue);
         vkGetDeviceQueue(m_device, queueFamilies.presentation.get(), 0, &m_presentQueue);
+        vkGetDeviceQueue(m_device, queueFamilies.transfer.get(), 0, &m_transferQueue);
     }
 //--------------------------------------------------------------------
 
@@ -583,13 +592,21 @@ namespace Bolt
         getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
         uint32_t indices[] = { families.graphics.get(), families.presentation.get() };
 
-        if(families.graphics.get() != families.presentation.get())
+        Quaint::QSet<uint32_t> uniqueIndices(m_context);
+        uniqueIndices = { families.graphics.get(), families.presentation.get() };
+        
+        if(uniqueIndices.getSize() > 1)
         {
+            Quaint::QArray<uint32_t> indexArray(m_context);
+            for(auto index : uniqueIndices)
+            {
+                indexArray.pushBack(index);
+            }
             // If queue indices are different, enalble concurrent access to swapchain.
             // Images can be used without explicit transfer of ownership from one queue to another
             createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = indices;
+            createInfo.queueFamilyIndexCount = indexArray.getSize();
+            createInfo.pQueueFamilyIndices = indexArray.getBuffer();
         }
         else
         {
@@ -958,7 +975,24 @@ namespace Bolt
         }
     }
 
+//---------------Command Pool Creation--------------------------------------
     void VulkanRenderer::createCommandPool()
+    {
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        
+        createGraphicsCommandPool();
+        //Create a new command pool if we have different graphics and transfer queues set.
+        if(families.graphics.get() != families.transfer.get())
+        {
+            createTransferCommandPool();
+        }
+        else
+        {
+            m_transferCommandPool = m_graphicsCommandPool;
+        }
+    }
+    void VulkanRenderer::createGraphicsCommandPool()
     {
         //Command pools manage memory that is used to allocate command buffers from
         QueueFamilies families;
@@ -968,27 +1002,48 @@ namespace Bolt
         commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allows command buffers to be reset individually
         commandPoolInfo.queueFamilyIndex = families.graphics.get();
 
-        VkResult res = vkCreateCommandPool(m_device, &commandPoolInfo, m_allocationPtr, &m_commandPool);
+        VkResult res = vkCreateCommandPool(m_device, &commandPoolInfo, m_allocationPtr, &m_graphicsCommandPool);
         assert(res==VK_SUCCESS && "Could not create command pool");
     }
+    void VulkanRenderer::createTransferCommandPool()
+    {
+        //Command pools manage memory that is used to allocate command buffers from
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        VkCommandPoolCreateInfo commandPoolInfo{};
+        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allows command buffers to be reset individually
+        commandPoolInfo.queueFamilyIndex = families.transfer.get();
 
-    void VulkanRenderer::createVertexBuffer()
+        VkResult res = vkCreateCommandPool(m_device, &commandPoolInfo, m_allocationPtr, &m_transferCommandPool);
+        assert(res==VK_SUCCESS && "Could not create command pool");
+    }
+//---------------------------------------------------------------------------------------
+
+    void VulkanRenderer::createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags, 
+    const Quaint::QArray<uint32_t>& queueFamilies, 
+    VkMemoryPropertyFlags propertyFlags,
+    VkDeviceMemory& deviceMemory,
+    VkBuffer& buffer)
     {
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        info.size = sizeof(QVertex) * vertices.getSize();
-        info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; //It is possible to specify multiple usages using bitwise OR
+        info.size = bufferSize;
+        info.usage = usageFlags; //It is possible to specify multiple usages using bitwise OR
         //Just like swapchain images, buffers can also be shared across queues or have unique ownership
         info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if(queueFamilies.getSize() > 1)
+        {
+            info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            info.queueFamilyIndexCount = queueFamilies.getSize();
+            info.pQueueFamilyIndices = queueFamilies.getBuffer();
+        }
 
-        VkResult res = vkCreateBuffer(m_device, &info, &m_defGraphicsAllocator, &m_vertexBuffer);
+        VkResult res = vkCreateBuffer(m_device, &info, &m_defGraphicsAllocator, &buffer);
         assert(res == VK_SUCCESS && "Could not create a vertex buffer");
 
-        //Now we allocate this buffer on GPU
-        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
         VkMemoryRequirements requirements{};
-        vkGetBufferMemoryRequirements(m_device, m_vertexBuffer, &requirements);
+        vkGetBufferMemoryRequirements(m_device, buffer, &requirements);
         
         VkPhysicalDeviceMemoryProperties memoryProperties;
         vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
@@ -1002,7 +1057,7 @@ namespace Bolt
             // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT properties indicate that we can write to it from CPU
             
             if((requirements.memoryTypeBits & (1 << i)) && 
-            (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags)
+            (memoryProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags)
             {
                 memoryTypeIndex = i;
                 found = true;
@@ -1015,18 +1070,85 @@ namespace Bolt
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         allocInfo.allocationSize = requirements.size;
-
-        res = vkAllocateMemory(m_device, &allocInfo, &m_defGraphicsAllocator, &m_deviceMemory);
+        
+        res = vkAllocateMemory(m_device, &allocInfo, &m_defGraphicsAllocator, &deviceMemory);
         assert(res == VK_SUCCESS && "Failed to allocate vertex buffer on device");
 
         //Offset should be a multiple of alignment if it's not 0. 0 works since we are specifically binding data for a vertex
-        vkBindBufferMemory(m_device, m_vertexBuffer, m_deviceMemory, 0);
+        vkBindBufferMemory(m_device, buffer, deviceMemory, 0);
+    }
 
-        updateTriangleColor();
-        //void* data;
-        //vkMapMemory(m_device, m_deviceMemory, 0, info.size, 0, &data);
-        //memcpy(data, vertices.getBuffer(), (size_t)info.size);
-        //vkUnmapMemory(m_device, m_deviceMemory);
+    void copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool)
+    {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+        allocInfo.commandPool = srcCommandPool;
+
+
+        VkCommandBuffer copyBuffer;
+        VkResult res = vkAllocateCommandBuffers(device, &allocInfo, &copyBuffer);
+        assert(res == VK_SUCCESS && "Could not create copy buffer");
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        
+        res = vkBeginCommandBuffer(copyBuffer, &beginInfo);
+        assert(res == VK_SUCCESS && "Could not begin copy command buffer");
+
+        VkBufferCopy copyRegion{};
+        copyRegion.srcOffset = 0; // Optional
+        copyRegion.dstOffset = 0; // Optional
+        copyRegion.size = size;
+        vkCmdCopyBuffer(copyBuffer, src, dst, 1, &copyRegion);
+
+        vkEndCommandBuffer(copyBuffer);
+
+        //Submit to GPU immediately
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &copyBuffer;
+
+        res = vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        assert(res == VK_SUCCESS && "Failed to submit copy command to transfer queue");
+        vkQueueWaitIdle(transferQueue);
+
+        vkFreeCommandBuffers(device, srcCommandPool, 1, &copyBuffer);
+    }
+
+    void VulkanRenderer::createVertexBuffer()
+    {
+        size_t bufferSize = sizeof(QVertex) * vertices.getSize();
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+
+        Quaint::QArray<uint32_t> queueFamilies(m_context);
+        queueFamilies.pushBack(families.graphics.get());
+        if(families.graphics.get() != families.transfer.get())
+        {
+            queueFamilies.pushBack(families.transfer.get());
+        }
+        
+        //Staging buffer creation
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueFamilies, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_stagingBufferGpuMemory, m_stagingBuffer);
+
+        //Move vertex data to staging buffer
+        void* data;
+        vkMapMemory(m_device, m_stagingBufferGpuMemory, 0, bufferSize, 0, &data);
+        memcpy(data, vertices.getBuffer(), bufferSize);
+        vkUnmapMemory(m_device, m_stagingBufferGpuMemory);
+
+        //Vertex Buffer creation
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, queueFamilies,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_vertexBufferGpuMemory, m_vertexBuffer);
+        
+        //Immediately copy from staging buffer to vertex buffer
+        copyBuffer(m_device, m_transferQueue, m_stagingBuffer, m_vertexBuffer, bufferSize, m_transferCommandPool);
+
     }
 
     void VulkanRenderer::createCommandBuffer()
@@ -1034,7 +1156,7 @@ namespace Bolt
         //Command buffers will be automatically cleaned when their pool is destroyed
         VkCommandBufferAllocateInfo bufferAllocateInfo{};
         bufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        bufferAllocateInfo.commandPool = m_commandPool;
+        bufferAllocateInfo.commandPool = m_graphicsCommandPool;
         //PRIMARY buffers can be submitted to queues, but cannot be called from other command buffers
         //SECONDARY buffers can be called from primary command buffers, but cannot directly submitted to queue
         bufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1051,17 +1173,16 @@ namespace Bolt
         auto actualVerts = vertices;
         for(size_t i = 0; i < actualVerts.getSize(); i++)
         {
-            actualVerts[i].color.x = abs(sinf(vertices[i].color.x + someRandomNum));
-            actualVerts[i].color.y = abs(sinf(vertices[i].color.y + someRandomNum));
-            actualVerts[i].color.z = abs(sinf(vertices[i].color.z + someRandomNum));
-            //std::cout << vertices[i].color.x << " " << vertices[i].color.y << " " << vertices[i].color.z << "\n";
+            actualVerts[i].color.x = (sinf(vertices[i].color.x + someRandomNum));
+            actualVerts[i].color.y = (cosf(vertices[i].color.y + someRandomNum));
+            actualVerts[i].color.z = (sinf(vertices[i].color.z + someRandomNum));
         }
         someRandomNum += rand() * 0.0000001f;
         size_t size = sizeof(QVertex) * actualVerts.getSize();
         void* data;
-        vkMapMemory(m_device, m_deviceMemory, 0, size, 0, &data);
+        vkMapMemory(m_device, m_stagingBufferGpuMemory, 0, size, 0, &data);
         memcpy(data, actualVerts.getBuffer(), size);
-        vkUnmapMemory(m_device, m_deviceMemory);
+        vkUnmapMemory(m_device, m_stagingBufferGpuMemory);
     }
 
     void VulkanRenderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex) 
