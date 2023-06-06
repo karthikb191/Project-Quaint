@@ -32,11 +32,17 @@ namespace Bolt
 
     auto vertices = Quaint::createFastArray<QVertex>(
     {
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},    //vertex 0
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},     //vertex 1
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},    //vertex 2
+        {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}}    //vertex 3
     }
     );
+
+    auto indices = Quaint::createFastArray<uint16_t>(
+        {0, 1, 2, 0, 3, 1}
+    );
+
     
     #define VALIDATION_LAYER_TYPE decltype(validationLayers)
 
@@ -79,6 +85,7 @@ namespace Bolt
         createFrameBuffers();
         createCommandPool();
         createVertexBuffer();
+        createIndexBuffer();
         createCommandBuffer();
         createSyncObjects();
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
@@ -104,9 +111,8 @@ namespace Bolt
             vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
         }
 
-        vkDestroyBuffer(m_device, m_stagingBuffer, &m_defGraphicsAllocator);
-        vkFreeMemory(m_device, m_stagingBufferGpuMemory, &m_defGraphicsAllocator);
-
+        vkDestroyBuffer(m_device, m_indexBuffer, &m_defGraphicsAllocator);
+        vkFreeMemory(m_device, m_indexBufferGpuMemory, &m_defGraphicsAllocator);
         vkDestroyBuffer(m_device, m_vertexBuffer, &m_defGraphicsAllocator);
         //Memory in device can be freed once the bound buffer is no longer used
         vkFreeMemory(m_device, m_vertexBufferGpuMemory, &m_defGraphicsAllocator);
@@ -1133,21 +1139,61 @@ namespace Bolt
         }
         
         //Staging buffer creation
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferGpuMemory;
         createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueFamilies, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_stagingBufferGpuMemory, m_stagingBuffer);
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBufferGpuMemory, stagingBuffer);
 
         //Move vertex data to staging buffer
         void* data;
-        vkMapMemory(m_device, m_stagingBufferGpuMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &data);
         memcpy(data, vertices.getBuffer(), bufferSize);
-        vkUnmapMemory(m_device, m_stagingBufferGpuMemory);
+        vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
         //Vertex Buffer creation
         createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, queueFamilies,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_vertexBufferGpuMemory, m_vertexBuffer);
         
         //Immediately copy from staging buffer to vertex buffer
-        copyBuffer(m_device, m_transferQueue, m_stagingBuffer, m_vertexBuffer, bufferSize, m_transferCommandPool);
+        copyBuffer(m_device, m_transferQueue, stagingBuffer, m_vertexBuffer, bufferSize, m_transferCommandPool);
+
+        vkDestroyBuffer(m_device, stagingBuffer, &m_defGraphicsAllocator);
+        vkFreeMemory(m_device, stagingBufferGpuMemory, &m_defGraphicsAllocator);
+    }
+
+    void VulkanRenderer::createIndexBuffer()
+    {
+        size_t bufferSize = sizeof(decltype(indices)::value_type) * indices.getSize();
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+
+        Quaint::QArray<uint32_t> queueFamilies(m_context);
+        queueFamilies.pushBack(families.graphics.get());
+        if(families.graphics.get() != families.transfer.get())
+        {
+            queueFamilies.pushBack(families.transfer.get());
+        }
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferGpuMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueFamilies,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBufferGpuMemory, stagingBuffer);
+
+        //Move index data to staging buffer
+        void* data;
+        vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.getBuffer(), bufferSize);
+        vkUnmapMemory(m_device, stagingBufferGpuMemory);
+
+        //Index Buffer creation
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, queueFamilies,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_indexBufferGpuMemory, m_indexBuffer);
+        
+        //Immediately copy from staging buffer to vertex buffer
+        copyBuffer(m_device, m_transferQueue, stagingBuffer, m_indexBuffer, bufferSize, m_transferCommandPool);
+
+        vkDestroyBuffer(m_device, stagingBuffer, &m_defGraphicsAllocator);
+        vkFreeMemory(m_device, stagingBufferGpuMemory, &m_defGraphicsAllocator);
 
     }
 
@@ -1165,24 +1211,6 @@ namespace Bolt
         m_commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
         VkResult res = vkAllocateCommandBuffers(m_device, &bufferAllocateInfo, m_commandBuffers.getBuffer_NonConst());
         assert(res==VK_SUCCESS && "Could not allocate command buffer");
-    }
-    
-    float someRandomNum = 0;
-    void VulkanRenderer::updateTriangleColor()
-    {
-        auto actualVerts = vertices;
-        for(size_t i = 0; i < actualVerts.getSize(); i++)
-        {
-            actualVerts[i].color.x = (sinf(vertices[i].color.x + someRandomNum));
-            actualVerts[i].color.y = (cosf(vertices[i].color.y + someRandomNum));
-            actualVerts[i].color.z = (sinf(vertices[i].color.z + someRandomNum));
-        }
-        someRandomNum += rand() * 0.0000001f;
-        size_t size = sizeof(QVertex) * actualVerts.getSize();
-        void* data;
-        vkMapMemory(m_device, m_stagingBufferGpuMemory, 0, size, 0, &data);
-        memcpy(data, actualVerts.getBuffer(), size);
-        vkUnmapMemory(m_device, m_stagingBufferGpuMemory);
     }
 
     void VulkanRenderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex) 
@@ -1227,11 +1255,13 @@ namespace Bolt
         scissor.extent = m_swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        updateTriangleColor();
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_vertexBuffer, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        //vkCmdDraw(commandBuffer, vertices.getSize(), 1, 0, 0);
+
+        vkCmdDrawIndexed(commandBuffer, indices.getSize(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 

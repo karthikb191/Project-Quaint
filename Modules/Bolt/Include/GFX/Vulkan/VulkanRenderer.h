@@ -167,6 +167,8 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
         void createVertexBuffer();
+        void createIndexBuffer();
+
         void createCommandBuffer();
         void createSyncObjects();
 
@@ -183,7 +185,7 @@ namespace Bolt
         void destroyDebugMessenger();        
     #endif
 
-        void updateTriangleColor();
+        //void updateTriangleColor();
 
         VulkanRenderer(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderer();
@@ -224,9 +226,9 @@ namespace Bolt
         
         VkBuffer                            m_vertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory                      m_vertexBufferGpuMemory = VK_NULL_HANDLE; //Memory in GPU
-        
-        VkBuffer                            m_stagingBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory                      m_stagingBufferGpuMemory = VK_NULL_HANDLE;
+
+        VkBuffer                            m_indexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory                      m_indexBufferGpuMemory = VK_NULL_HANDLE;
 
         Quaint::QArray<VkCommandBuffer>     m_commandBuffers;
 
