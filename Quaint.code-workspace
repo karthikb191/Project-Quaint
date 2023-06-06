@@ -20,11 +20,15 @@
       }
     ],
     
-    //WORKSPACE_ROOT should GO! Should be removed once build tool is ready
+    //TODO: Populate these using a build script
     "settings": {
       "cmake.configureSettings": { 
         "WORKSPACE_ROOT": "D:\\Works\\Project-Quaint" 
       },
+      "cmake.additionalKits": ["D:\\Works\\Project-Quaint\\cmake-kits.json"],
+      "cmake.ignoreKitEnv": false,
+      "cmake.showSystemKits": true,
+
       "cmake.autoSelectActiveFolder": false,
       "cmake.sourceDirectory" :"${workspaceFolder}",
       "cmake.buildDirectory": "${workspaceFolder}/Build",

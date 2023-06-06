@@ -49,7 +49,6 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/Include)
 target_include_directories(${PROJECT_NAME} ${LIB_TYPE} ${CMAKE_CURRENT_LIST_DIR}/Include)
 
 #set(${PROJECT_NAME}_HEADER_PATH ${CMAKE_CURRENT_LIST_DIR}/Include)
-
 if(NOT ${BUILD_CORE_LIB})
 add_dependencies(${PROJECT_NAME} QuaintLogger QuaintTypes QuaintMemory)
     if(BUILD_LOGGER_LIB)

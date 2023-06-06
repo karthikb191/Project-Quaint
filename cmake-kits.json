@@ -1,0 +1,53 @@
+[
+    {
+        "name": "windows_x86",
+        "visualStudio": "Visual Studio Build Tools 2019",
+        "visualStudioArchitecture": "windows_x86",
+        "compilers": {
+            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe",
+            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe"
+        },
+        "preferredGenerator": {
+            "name": "Visual Studio 16 2019",
+            "platform": "Win32",
+            "toolset": "v142"
+        },
+        "cmakeSettings": {
+            "BUILD_PLATFORM" : "WIN32"
+        }
+    },
+    {
+        "name": "windows_x64",
+        "visualStudio": "Visual Studio Build Tools 2019",
+        "visualStudioArchitecture": "windows_x64",
+        "compilers": {
+            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe",
+            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
+        },
+        "preferredGenerator": {
+            "name": "Visual Studio 16 2019",
+            "platform": "x64",
+            "toolset": "v142"
+        },
+        "cmakeSettings": {
+            "BUILD_PLATFORM" : "WIN64"
+        }
+    },
+    {
+        "name": "arm",
+        "visualStudio": "Visual Studio Build Tools 2019",
+        "visualStudioArchitecture": "ARM",
+        "compilers": {
+            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe",
+            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe"
+        },
+        "preferredGenerator": {
+            "name": "Visual Studio 16 2019",
+            "platform": "ARM",
+            "toolset": "v142"
+        },
+        "cmakeSettings": {
+            "BUILD_PLATFORM" : "ARM"
+        }
+    }
+]

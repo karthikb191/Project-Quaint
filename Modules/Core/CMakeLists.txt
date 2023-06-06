@@ -24,6 +24,8 @@ set(BUILD_MATH_LIB ON)
 if(${BUILD_CORE_LIB})
     message("[+]Building Core Library")
 else()
+    add_compile_definitions(QUAINT_PLATFORM_${BUILD_PLATFORM})
+    
     set(EXECUTABLE_NAME "Output")
     set(BUILD_CORE_LIB OFF)
     set(BUILD_MATH_LIB OFF)

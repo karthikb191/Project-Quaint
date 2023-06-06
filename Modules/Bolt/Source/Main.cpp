@@ -30,7 +30,6 @@ int main()
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();
 
-
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
     
     //TODO: Loop through application module 

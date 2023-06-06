@@ -14,22 +14,11 @@ namespace Quaint
 #include <IPCModule.h>
 
 #include <iostream>
-#include <vector>
-#include <chrono>
-#include <type_traits>
-#include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
-#include <Types/Concurrency/QThread.h>
-#include <Types/Concurrency/QCondition.h>
-#include <Types/QFastDelegates.h>
-#include <Types/QFastArray.h>
-#include <Types/QStaticString.h>
-#include <Types/QArray.h>
-#include <Types/QRBTree.h>
-#include <Types/QMap.h>
-#include <Types/QSet.h>
 
 int main()
 {
+    constexpr size_t sz = sizeof(size_t);
+
     std::cout << "Hello Math module\n";
     return 0;
 }

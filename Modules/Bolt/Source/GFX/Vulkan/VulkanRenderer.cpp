@@ -197,7 +197,7 @@ namespace Bolt
 
     bool areAllValidationLayersAvailable(Quaint::IMemoryContext* context, const VALIDATION_LAYER_TYPE& validationLayers)
     {
-        size_t availableLayers = 0;
+        uint32_t availableLayers = 0;
         vkEnumerateInstanceLayerProperties(&availableLayers, nullptr);
         Quaint::QArray<VkLayerProperties> layerProperties(context, availableLayers);
         vkEnumerateInstanceLayerProperties(&availableLayers, layerProperties.getBuffer_NonConst());
@@ -310,14 +310,14 @@ namespace Bolt
         const IWindow_Impl_Win* window = RenderModule::get().getBoltRenderer()->getWindow().getWindowsWindow();
         assert(window != nullptr && "Invalid window retrieved");
 
-         VkWin32SurfaceCreateInfoKHR winSurfaceInfo{};
-         winSurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-         winSurfaceInfo.hwnd = window->getWindowHandle();
-         winSurfaceInfo.hinstance = window->getHInstance();
-
-         VkResult res = vkCreateWin32SurfaceKHR(m_instance, &winSurfaceInfo, m_allocationPtr, &m_surface);
-         assert(res == VK_SUCCESS && "Failed to create a windows surface");
-         QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Windows Surface Creation successful");
+        VkWin32SurfaceCreateInfoKHR winSurfaceInfo{};
+        winSurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        winSurfaceInfo.hwnd = window->getWindowHandle();
+        winSurfaceInfo.hinstance = window->getHInstance();
+    
+        VkResult res = vkCreateWin32SurfaceKHR(m_instance, &winSurfaceInfo, m_allocationPtr, &m_surface);
+        assert(res == VK_SUCCESS && "Failed to create a windows surface");
+        QLOG_I(VULKAN_RENDERER_LOGGER, "[+] Windows Surface Creation successful");
     }
 
 //Physical and Logical device creation and corresponding queries -------------------------------

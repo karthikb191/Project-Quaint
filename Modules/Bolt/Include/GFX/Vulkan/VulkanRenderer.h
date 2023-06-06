@@ -8,6 +8,7 @@
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
 //TODO: Surround with plat-spec macro
+
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
@@ -95,7 +96,7 @@ namespace Bolt
         struct SwapchainSupportInfo
         {
             SwapchainSupportInfo(Quaint::IMemoryContext* context)
-            : surfaceCapabilities{VK_NULL_HANDLE}
+            : surfaceCapabilities{0}
             , surfaceFormat(context)
             , presentMode(context)
             {}
