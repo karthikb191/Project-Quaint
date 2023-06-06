@@ -19,13 +19,14 @@ set(BUILD_LOGGER_LIB ON)
 set(BUILD_MEMORY_LIB ON)
 set(BUILD_IPC_LIB ON)
 set(BUILD_TYPES_LIB ON)
+set(BUILD_MATH_LIB ON)
 
 if(${BUILD_CORE_LIB})
     message("[+]Building Core Library")
 else()
     set(EXECUTABLE_NAME "Output")
     set(BUILD_CORE_LIB OFF)
-    set(BUILD_MEMORY_LIB OFF)
+    set(BUILD_MATH_LIB OFF)
     message("[+]Building Core Executables")
 endif()
 
@@ -44,6 +45,7 @@ message("[+]Core Binary Dir: " ${CMAKE_BINARY_DIR} " Build Type: "  ${CMAKE_BUIL
 
 include("${CMAKE_CURRENT_LIST_DIR}/Logger/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Memory/CMakeLists.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/Math/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/IPC/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Types/CMakeLists.txt")
 

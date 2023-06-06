@@ -19,7 +19,7 @@ namespace Quaint
         LoggerModule() = default;
         virtual ~LoggerModule() = default;
 
-        void initModule_impl() override;
+        virtual void initModule_impl() override;
 
         QFastArray<QName, 100>                mRegisteredLogs;
         //TODO: Construct Delegates in utils library and add it here for Loggers to subscribe

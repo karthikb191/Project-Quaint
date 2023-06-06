@@ -30,6 +30,7 @@ namespace Quaint
 #include <Types/QRBTree.h>
 #include <Types/QMap.h>
 #include <Types/QSet.h>
+#include <Math/QVec.hpp>
 
 class A
 {
@@ -319,7 +320,6 @@ namespace Quaint
 
 int main()
 {
-    
     std::cout << "Hello Memory Manager\n";
 
     
