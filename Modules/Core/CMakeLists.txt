@@ -1,16 +1,30 @@
 cmake_minimum_required(VERSION 3.10)
 
+project(Core VERSION 1.0)
 # Module Name
 
 if(NOT DEFINED ${BUILD_CORE_LIB})
 if(${DEBUG_BUILD})
     message("[+]DEBUG BUILD!")
     set(CMAKE_BUILD_TYPE Debug)
+    add_compile_definitions(DEBUG_BUILD)
 else()
     message("[+]RELEASE BUILD!")
     set(CMAKE_BUILD_TYPE Release)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 endif()
+endif()
+
+if(MSVC)
+    add_compile_definitions(INTRINSICS_SUPPORTED)
+    message("[+]Platform Intrics support macro added. Remove this flag if intrinsics are not supported/required.")
+    if("${BUILD_PLATFORM}" STREQUAL "WIN32")
+        message("[+]Added SSE2 intrinsics")
+        add_compile_options(/arch:SSE2)
+    else()
+        message("[+]Added AVX2 intrinsics")
+        add_compile_options(/arch:AVX2)
+    endif()
 endif()
 
 # If BUILD_<Lib>_LIB is OFF, then it's respective executable will be generated. This is to provide ease of testing until 
@@ -50,6 +64,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/Memory/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Math/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/IPC/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/Types/CMakeLists.txt")
+
 
 if(NOT ${BUILD_CORE_LIB})
     project(Core VERSION 1.0)

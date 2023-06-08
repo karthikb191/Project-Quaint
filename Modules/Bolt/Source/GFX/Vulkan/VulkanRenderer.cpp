@@ -1082,6 +1082,7 @@ namespace Bolt
 
         //Offset should be a multiple of alignment if it's not 0. 0 works since we are specifically binding data for a vertex
         vkBindBufferMemory(m_device, buffer, deviceMemory, 0);
+        
     }
 
     void copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool)

@@ -17,6 +17,8 @@ if(NOT ${BUILD_CORE_LIB})
     message("[+]Project Defined: " ${PROJECT_NAME})
 endif()
 
+
+
 if(NOT ${BUILD_TYPES_LIB})
      message("[+]Building Quaint-Types Executable")
      add_executable(${PROJECT_NAME})
@@ -28,6 +30,7 @@ else()
     list(FILTER SOURCES EXCLUDE REGEX ".*/Source/Main\\.cpp$")
     message("[+]Adding Quaint-Types to core Library")
 endif()
+
 
 target_sources(${PROJECT_NAME} PUBLIC ${SOURCES})
 
