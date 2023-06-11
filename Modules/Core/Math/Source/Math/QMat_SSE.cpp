@@ -108,7 +108,30 @@ namespace Quaint
         out.transpose();
         return out;
     }
+    
+
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b)
+    {
+        QMat4x4 transposed(b);
+        transposed.transpose();
+        return QMat4x4(
+            QVec4( dot_vf(a.row0, transposed.row0), dot_vf(a.row0, transposed.row1), 
+            dot_vf(a.row0, transposed.row2),dot_vf(a.row0, transposed.row3)),
+
+            QVec4( dot_vf(a.row1, transposed.row0), dot_vf(a.row1, transposed.row1), 
+            dot_vf(a.row1, transposed.row2),dot_vf(a.row1, transposed.row3)),
+
+            QVec4( dot_vf(a.row2, transposed.row0), dot_vf(a.row2, transposed.row1), 
+            dot_vf(a.row2, transposed.row2),dot_vf(a.row2, transposed.row3)),
+
+            QVec4( dot_vf(a.row3, transposed.row0), dot_vf(a.row3, transposed.row1), 
+            dot_vf(a.row3, transposed.row2),dot_vf(a.row3, transposed.row3))
+        );
+    }
+
+
+    /*This is quite slow. Room for improvement?*/
+    QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b)
     {
         QMat4x4 out;
         QMat4x4 transposed(b);
@@ -153,7 +176,6 @@ namespace Quaint
         out.transpose();
         return out;
     }
-
 }
 
 #endif //INTRINSICS_SUPPORTED

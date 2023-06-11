@@ -25,6 +25,7 @@ namespace Quaint
 
     QMat3x3 mul_mf(const QMat3x3& a, const QMat3x3& b);
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b);
+    //QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b);
 
     struct alignas(16) QMat2x2
     {

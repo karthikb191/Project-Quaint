@@ -116,7 +116,17 @@ int main()
     mat.transpose();
     std::cout << mat;
 
-    mat *= mat;
+    start = std::chrono::high_resolution_clock::now();
+    mat = mat * mat;
+    end = std::chrono::high_resolution_clock::now();
+    std::cout << "MATRIX MULT NORMAL: " << (end - start).count() << "\n";
+
+
+    //start = std::chrono::high_resolution_clock::now();    
+    //mat = Quaint::mul_mf_alt(mat, mat);
+    //end = std::chrono::high_resolution_clock::now();
+    //std::cout << "MATRIX MULT WITH DOT: " << (end - start).count() << "\n";
+
 
     std::cout << mat;
 
