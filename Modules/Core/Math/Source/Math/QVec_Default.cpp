@@ -3,6 +3,7 @@
 namespace Quaint
 {
 
+/*Addition*/
 QVec2 add_vf(QVec2& a, const QVec2& b)
 {
     a.x += b.x;
@@ -22,6 +23,7 @@ QVec4 add_vf(QVec4& a, const QVec2& b)
     return a;
 }
 
+/*Subtraction*/
 QVec3 sub_vf(QVec3& a, const QVec2& b)
 {
     a.x -= b.x;
@@ -39,6 +41,12 @@ QVec2 sub_vf(QVec2& a, const QVec2& b)
     a.x -= b.x;
     a.y -=b.y;
     return a;
+}
+
+/*Utils*/
+inline float sqrMagnitude_vf(const QVec2& a)
+{
+    return a.x*a.x + a.y*a.y;
 }
 
 #ifndef INTRINSICS_SUPPORTED

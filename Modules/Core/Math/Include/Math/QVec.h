@@ -22,6 +22,10 @@ namespace Quaint
     QVec2 sub_vf(QVec2& a, const QVec2& b);
     QVec3 sub_vf(QVec3& a, const QVec3& b);
     QVec4 sub_vf(QVec4& a, const QVec4& b);
+    
+    QVec3 sub_vf(QVec3& a, const QVec2& b);
+    QVec4 sub_vf(QVec4& a, const QVec2& b);
+    QVec4 sub_vf(QVec4& a, const QVec3& b);
 
     /*Dot product*/
     float dot_vf(const QVec2& a, const QVec2& b);
@@ -31,10 +35,25 @@ namespace Quaint
     float dot_vf(const QVec3& a, const QVec2& b);
     float dot_vf(const QVec4& a, const QVec2& b);
     float dot_vf(const QVec4& a, const QVec3& b);
+
+    /*Cross Product*/
+    void cross_vf(const QVec3& a, const QVec3& b, QVec3& out);
+    void cross_vf(const QVec4& a, const QVec4& b, QVec3& out);
+
+    /*Utils*/
+    float sqrMagnitude_vf(const QVec2& a);
+    float sqrMagnitude_vf(const QVec3& a);
+    float sqrMagnitude_vf(const QVec4& a);
+
+    inline float sqrMagnitude_vf(const QVec3& a)
+    {
+        return dot_vf(a, a);
+    }
+    inline float sqrMagnitude_vf(const QVec4& a)
+    {
+        return dot_vf(a, a);
+    }
     
-    QVec3 sub_vf(QVec3& a, const QVec2& b);
-    QVec4 sub_vf(QVec4& a, const QVec2& b);
-    QVec4 sub_vf(QVec4& a, const QVec3& b);
 
     void copy(QVec3& to, const QVec3& from);
     void copy(QVec4& to, const QVec3& from);
@@ -63,9 +82,24 @@ namespace Quaint
 
         friend std::ostream& operator<<(std::ostream& os, const QVec2& vec)
         {
-            os << "[" << vec.x << ", " << vec.y << "]\n";
+            os << "[" << vec.x << ", " << vec.y << "]";
             return os;
         }
+
+        float dot(const QVec2& other)
+        {
+            return dot_vf(*this, other);
+        }
+        float sqrMagnitude()
+        {
+            return sqrMagnitude_vf(*this);
+        }
+        float magnitude()
+        {
+            return sqrtf(sqrMagnitude());
+        }
+
+
 
         QVec2 operator+(const QVec2& other)
         {
@@ -84,6 +118,12 @@ namespace Quaint
         QVec2& operator-=(const QVec2& other)
         {
             sub_vf(*this, other);
+            return *this;
+        }
+
+        QVec2& operator*(float scalar)
+        {
+            x *= scalar; y *= scalar;
             return *this;
         }
 
@@ -106,6 +146,11 @@ namespace Quaint
         , y(val)
         , z(val)
         {}
+        QVec3(float (&valArray)[3])
+        : x(valArray[0])
+        , y(valArray[1])
+        , z(valArray[2])
+        {}
         union
         {
             struct
@@ -122,13 +167,22 @@ namespace Quaint
 
         friend std::ostream& operator<<(std::ostream& os, const QVec3& vec)
         {
-            os << "[" << vec.x << ", " << vec.y << ", " << vec.z << "]\n";
+            os << "[" << vec.x << ", " << vec.y << ", " << vec.z << "]";
             return os;
         }
         
         float dot(const QVec3& other)
         {
             return dot_vf(*this, other);
+        }
+
+        float sqrMagnitude()
+        {
+            return sqrMagnitude_vf(*this);
+        }
+        float magnitude()
+        {
+            return sqrtf(sqrMagnitude());
         }
 
         QVec3 operator+(const QVec3& other)
@@ -151,6 +205,12 @@ namespace Quaint
             return *this;
         }
 
+        QVec3& operator*(float scalar)
+        {
+            x *= scalar; y *= scalar; z *= scalar;
+            return *this;
+        }
+
         QVec3& operator=(const QVec3& other)
         {
             copy(*this, other);
@@ -160,16 +220,16 @@ namespace Quaint
     {
         QVec4() : x(0), y(0), z(0), w(0){}
         QVec4(float x, float y, float z, float w)
-        : x(x)
-        , y(y)
-        , z(z)
-        , w(w)
+        : x(x), y(y), z(z), w(w)
+        {}
+        QVec4(const QVec3& other)
+        : x(other.x), y(other.y), z(other.z), w(0)
+        {}
+        QVec4(float (&valArray)[4])
+        : x(valArray[0]), y(valArray[1]), z(valArray[2]), w(valArray[3])
         {}
         QVec4(float val)
-        : x(val)
-        , y(val)
-        , z(val)
-        , w(val)
+        : x(val), y(val), z(val), w(val)
         {}
         union
         {
@@ -201,8 +261,28 @@ namespace Quaint
             return dot_vf(*this, other);
         }
 
+        float sqrMagnitude()
+        {
+            return sqrMagnitude_vf(*this);
+        }
+        float magnitude()
+        {
+            return sqrtf(sqrMagnitude());
+        }
+
+        //Remove These
+        float dot_scalar(const QVec4& other)
+        {
+            return x * other.x + y * other.y + z * other.z + w * other.w;
+        }
+        QVec4 cross_scalar(const QVec4& other)
+        {
+            QVec4 res(0);
+
+        }
+
         QVec4 operator+(const QVec4& other)
-        { 
+        {
             return add_vf(QVec4(*this), other);
         }
         QVec4& operator+=(const QVec4& other)
@@ -218,6 +298,12 @@ namespace Quaint
         QVec4& operator-=(const QVec4& other)
         {
             sub_vf(*this, other);
+            return *this;
+        }
+
+        QVec4& operator*(float scalar)
+        {
+            x *= scalar; y *= scalar; z *= scalar; w *= scalar;
             return *this;
         }
 

@@ -16,6 +16,8 @@ namespace Quaint
 #include <iostream>
 
 #include <Math/QVec.h>
+#include <Math/QMat.h>
+#include <chrono>
 
 struct Test
 {
@@ -58,7 +60,40 @@ int main()
     Quaint::QVec4 vector1(100, 10, 90, 0);
     Quaint::QVec4 vector2(10, 10, 90, 1);
 
+
+
     std::cout << vector1.dot(vec3) << "\n";
+
+
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    for(int i = 0; i < 10000 ; i++)
+    {
+        vector1.dot_scalar(Quaint::QVec4((float)rand()/RAND_MAX * 100, 
+        (float)rand()/RAND_MAX * 100, 
+        (float)rand()/RAND_MAX * 100,
+        (float)rand()/RAND_MAX * 100));
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "Scalar DOT: " << (end - start).count() << "\n";
+
+
+    start = std::chrono::high_resolution_clock::now();
+    for(int i = 0; i < 10000 ; i++)
+    {
+        vector1.dot(Quaint::QVec4((float)rand()/RAND_MAX * 100, 
+        (float)rand()/RAND_MAX * 100, 
+        (float)rand()/RAND_MAX * 100,
+        (float)rand()/RAND_MAX * 100));
+    }
+    end = std::chrono::high_resolution_clock::now();
+
+    std::cout << "SSE DOT: " << (end - start).count() << "\n";
+
+    Quaint::QMat3x3 mat( Quaint::QVec3(0, 0, 0), Quaint::QVec3(1, 1, 1), Quaint::QVec3(2, 2, 2));
+    std::cout << mat;
+    std::cout << Quaint::transpose_mf(mat);
 
     std::cout << "Hello Math module\n";
     return 0;

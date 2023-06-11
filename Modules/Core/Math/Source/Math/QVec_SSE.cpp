@@ -41,7 +41,7 @@ namespace Quaint
     /*Dot Product*/
     float dot_vf(const QVec3& a, const QVec3& b)
     {
-        __m128 tmp = _mm_mul_ps(a.pack, b.pack); // (x1*x2, y1*y2, z1*z2, ?*?) 
+        __m128 tmp = _mm_mul_ps(a.pack, b.pack); //(x1*x2, y1*y2, z1*z2, ?*?)
         __m128 shuff = _mm_shuffle_ps(tmp, tmp, _MM_SHUFFLE(0, 2, 0, 1)); //(y1*y2, x1*x2, z1*z2, ?*?)
 
         tmp = _mm_add_ps(tmp, shuff); //(x1*x2 + y1*y2, x1*x2+x1*x2, z1*z2+z1*z2, ?);
@@ -50,22 +50,48 @@ namespace Quaint
     }
     float dot_vf(const QVec4& a, const QVec4& b)
     {
-        __m128 tmp = _mm_mul_ps(a.pack, b.pack); // (x1*x2, y1*y2, z1*z2, w1*w2) 
+        __m128 tmp = _mm_mul_ps(a.pack, b.pack); //(x1*x2, y1*y2, z1*z2, w1*w2)
         __m128 shuff = _mm_shuffle_ps(tmp, tmp, _MM_SHUFFLE(2, 3, 0, 1)); //(y1*y2, x1*x2, w1*w2, z1*z2)
-
+        
         tmp = _mm_add_ps(tmp, shuff); //(x1*x2 + y1*y2, y1*y2+x1*x2, z1*z2+w1*w2, w1*w2+z1*z2);
         shuff = _mm_movehl_ps(tmp, tmp); //(z1*z2+w1*w2, w1*w2+z1*z2, z1*z2 + w1*w2, z1*z2+w1*w2)
         return _mm_cvtss_f32(_mm_add_ps(shuff, tmp)); //(x1*x2 + y1*y2 + z1*z2 + w1*w2, ?, ? ,?)
     }
     float dot_vf(const QVec4& a, const QVec3& b)
     {
-        __m128 tmp = _mm_mul_ps(a.pack, b.pack); // (x1*x2, y1*y2, z1*z2, ?*?) 
+        __m128 tmp = _mm_mul_ps(a.pack, b.pack); //(x1*x2, y1*y2, z1*z2, ?*?)
         __m128 shuff = _mm_shuffle_ps(tmp, tmp, _MM_SHUFFLE(0, 2, 0, 1)); //(y1*y2, x1*x2, z1*z2, ?*?)
 
         tmp = _mm_add_ps(tmp, shuff); //(x1*x2 + y1*y2, x1*x2+x1*x2, z1*z2+z1*z2, ?);
         shuff = _mm_movehl_ps(shuff, shuff); //(z1*z2, ?*?, x1*x2, y1*y2)
         return _mm_cvtss_f32(_mm_add_ps(shuff, tmp)); //(x1*x2 + y1*y2 + z1*z2, ?, ? ,?)
     }
+
+    /*Cross Product*/
+    //Buffer should be 16 bytes aligned
+    void do_cross(__m128 a, __m128 b, float* buffer)
+    {
+        __m128 T0 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1)); //(y1, z1, x1, w1)
+        __m128 T1 = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 1, 0, 2)); //(z2, x2, y2, w2)
+
+        __m128 mul = _mm_mul_ps(T0, T1); //(y1*z2, z1*x2, x1*y2, ?)
+
+        T0 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 1, 0, 2)); //(z1, x1, y1, w1)
+        T1 = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1)); //(y2, z2, x2, w2)
+        //mul will be (y2*z1, z2*x1, x2*y1, ?)
+        _mm_store_ps(buffer, _mm_sub_ps(mul, _mm_mul_ps(T0, T1))); // (y1*z2-y2*z1, z1*x2-z2*x1, x1*y2*x2*y1)
+    }
+    void cross_vf(const QVec3& a, const QVec3& b, QVec3& out)
+    {
+        do_cross(a.pack, b.pack, out.buffer);
+    }
+    void cross_vf(const QVec4& a, const QVec4& b, QVec3& out)
+    {
+        do_cross(a.pack, b.pack, out.buffer);
+    }
+
+    /*Utils*/
+
 
     void copy(QVec3& to, const QVec3& from)
     {
