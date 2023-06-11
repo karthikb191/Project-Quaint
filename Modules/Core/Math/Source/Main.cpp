@@ -61,9 +61,7 @@ int main()
     Quaint::QVec4 vector2(10, 10, 90, 1);
 
 
-
     std::cout << vector1.dot(vec3) << "\n";
-
 
     auto start = std::chrono::high_resolution_clock::now();
     
