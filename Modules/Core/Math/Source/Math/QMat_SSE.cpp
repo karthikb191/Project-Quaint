@@ -47,32 +47,111 @@ namespace Quaint
     }
 
     /*Multiplication*/
-    QMat2x2 transpose_mf(const QMat2x2& a)
+    void transpose_mf(QMat2x2& a)
     {
-        return QMat2x2(_mm_shuffle_ps(a.pack, a.pack, _MM_SHUFFLE(0, 2, 1, 3)));
+        a.pack = _mm_shuffle_ps(a.pack, a.pack, _MM_SHUFFLE(0, 2, 1, 3));
     }
     /*Contents of w params are undefined*/
-    QMat3x3 transpose_mf(const QMat3x3& a)
+    void transpose_mf(QMat3x3& a)
     {
         __m128 T0 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(2, 0, 2, 0)); //(a1, c1, a2, c2)
         __m128 T1 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(3, 1, 3, 1)); //(b1, d1, b2, d2)
         
-        QMat3x3 res(
-        _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 0, 2, 0)),
-        _mm_shuffle_ps(T1, a.pack[2], _MM_SHUFFLE(3, 1, 2, 0)),
-        _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 2, 3, 1))
-        );
-        res.row0.w = a.row0.w; res.row1.w = a.row1.w;
-        res.row2.w = a.row2.w;
-        return res;
+        a.pack[0] = _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 0, 2, 0));
+        a.pack[1] = _mm_shuffle_ps(T1, a.pack[2], _MM_SHUFFLE(3, 1, 2, 0));
+        a.pack[2] = _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 2, 3, 1));
+        //res.row0.w = a.row0.w; res.row1.w = a.row1.w;
+        //res.row2.w = a.row2.w;
+        //return res;
     }
-    QMat4x4 transpose_mf(const QMat4x4& a)
+    void transpose_mf(QMat4x4& a)
     {
-        __m128 R1; 
-        __m128 R2; 
-        __m128 R3;
-        __m128 R4;
-        return QMat4x4(R1, R2, R3, R4);
+        __m128 T0 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(2, 0, 2, 0)); //(a1, c1, a2, c2)
+        __m128 T1 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(3, 1, 3, 1)); //(b1, d1, b2, d2)
+        __m128 T2 = _mm_shuffle_ps(a.pack[2], a.pack[3], _MM_SHUFFLE(2, 0, 2, 0)); //(a3, c3, a4, c4)
+        __m128 T3 = _mm_shuffle_ps(a.pack[2], a.pack[3], _MM_SHUFFLE(3, 1, 3, 1)); //(b3, d3, b4, d4)
+
+        a.pack[0] = _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(2, 0, 2, 0)); //(a1, a2, a3, a4)
+        a.pack[1] = _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(2, 0, 2, 0)); //(b1, b2, b3, b4)
+        a.pack[2] = _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(3, 1, 3, 1)); //(c1, c2, c3, c4)
+        a.pack[3] = _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(3, 1, 3, 1));  //(d1, d2, d3, d4)
+    }
+
+    //TODO: Measure performance
+    QMat3x3 mul_mf(const QMat3x3& a, const QMat3x3& b)
+    {
+        QMat3x3 out;
+        QMat3x3 transposed(b);
+        transposed.transpose();
+        
+        //Col 0
+        __m128 T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.x));
+        __m128 T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.x));
+        out.pack[0] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.x));
+        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+
+        //Col 1
+        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.y));
+        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.y));
+        out.pack[1] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.y));
+        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+
+        //Col 2
+        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.z));
+        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.z));
+        out.pack[2] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.z));
+        out.pack[2] = _mm_add_ps(out.pack[2], T0);
+
+        out.transpose();
+        return out;
+    }
+    QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b)
+    {
+        QMat4x4 out;
+        QMat4x4 transposed(b);
+        transposed.transpose();
+        
+        //Col 0
+        __m128 T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.x));
+        __m128 T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.x));
+        out.pack[0] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.x));
+        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.x));
+        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+
+        //Col 1
+        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.y));
+        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.y));
+        out.pack[1] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.y));
+        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.y));
+        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+
+        //Col 2
+        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.z));
+        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.z));
+        out.pack[2] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.z));
+        out.pack[2] = _mm_add_ps(out.pack[2], T0);
+        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.z));
+        out.pack[2] = _mm_add_ps(out.pack[2], T0);
+
+        //Col 3
+        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.w));
+        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.w));
+        out.pack[3] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.w));
+        out.pack[3] = _mm_add_ps(out.pack[3], T0);
+        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.w));
+        out.pack[3] = _mm_add_ps(out.pack[3], T0);
+
+        out.transpose();
+        return out;
     }
 
 }

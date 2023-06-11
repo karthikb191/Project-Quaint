@@ -231,6 +231,11 @@ namespace Quaint
         QVec4(float val)
         : x(val), y(val), z(val), w(val)
         {}
+
+        QVec4(const QVec4&) = default;
+        QVec4(QVec4&&) = default;
+        QVec4& operator=(const QVec4&) = default;
+        QVec4& operator=(QVec4&&) = default;
         union
         {
             struct
@@ -307,10 +312,10 @@ namespace Quaint
             return *this;
         }
 
-        QVec4& operator=(const QVec4& other)
-        {
-            copy(*this, other);
-        }
+        //QVec4& operator=(const QVec4& other)
+        //{
+        //    copy(*this, other);
+        //}
     };
 
 }

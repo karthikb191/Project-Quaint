@@ -91,9 +91,35 @@ int main()
 
     std::cout << "SSE DOT: " << (end - start).count() << "\n";
 
-    Quaint::QMat3x3 mat( Quaint::QVec3(0, 0, 0), Quaint::QVec3(1, 1, 1), Quaint::QVec3(2, 2, 2));
+    Quaint::QMat3x3 mat3x3(
+        {
+            1, 1, 1,
+            2, 2, 2,
+            3, 3, 3
+        }
+    );
+    std::cout << mat3x3;
+    mat3x3 *= mat3x3;
+    std::cout << mat3x3;
+
+
+    Quaint::QMat4x4 mat(
+        {
+            0.f, 0.f, 1.f, 0.f,
+            1.f, 2.f, 9.f, 2.f,
+            2.f, 4.f, 8.f, 4.f,
+            3.f, 6.f, 9.f, 3.f
+        }
+    );
+
     std::cout << mat;
-    std::cout << Quaint::transpose_mf(mat);
+    mat.transpose();
+    std::cout << mat;
+
+    mat *= mat;
+
+    std::cout << mat;
+
 
     std::cout << "Hello Math module\n";
     return 0;
