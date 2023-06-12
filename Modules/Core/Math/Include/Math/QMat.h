@@ -25,7 +25,13 @@ namespace Quaint
 
     QMat3x3 mul_mf(const QMat3x3& a, const QMat3x3& b);
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b);
-    //QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b);
+    QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b);
+
+    float determinant_mf(const QMat2x2& a);
+    float determinant_mf(const QMat3x3& a);
+    float determinant_mf(const QMat4x4& a);
+
+    QMat3x3 inverse_mf(const QMat3x3& a, const QMat3x3& b);
 
     struct alignas(16) QMat2x2
     {
@@ -67,6 +73,10 @@ namespace Quaint
         void transpose()
         {
             transpose_mf(*this);
+        }
+        float determinant()
+        {
+            return determinant_mf(*this);
         }
 
         friend std::ostream& operator<<(std::ostream& os, const QMat2x2& mat)
@@ -139,6 +149,10 @@ namespace Quaint
         void transpose()
         {
             transpose_mf(*this);
+        }
+        float determinant()
+        {
+            return determinant_mf(*this);
         }
 
         friend std::ostream& operator<<(std::ostream& os, const QMat3x3& mat)
@@ -218,6 +232,10 @@ namespace Quaint
         void transpose()
         {
             transpose_mf(*this);
+        }
+        float determinant()
+        {
+            return determinant_mf(*this);
         }
         
         friend std::ostream& operator<<(std::ostream& os, const QMat4x4& mat)

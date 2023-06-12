@@ -37,8 +37,8 @@ namespace Quaint
     float dot_vf(const QVec4& a, const QVec3& b);
 
     /*Cross Product*/
-    void cross_vf(const QVec3& a, const QVec3& b, QVec3& out);
-    void cross_vf(const QVec4& a, const QVec4& b, QVec3& out);
+    QVec3 cross_vf(const QVec3& a, const QVec3& b);
+    QVec4 cross_vf(const QVec4& a, const QVec4& b);
 
     /*Utils*/
     float sqrMagnitude_vf(const QVec2& a);
@@ -151,6 +151,7 @@ namespace Quaint
         , y(valArray[1])
         , z(valArray[2])
         {}
+        QVec3(_f4x32 pPack) : pack(pPack){}
         union
         {
             struct
@@ -231,6 +232,7 @@ namespace Quaint
         QVec4(float val)
         : x(val), y(val), z(val), w(val)
         {}
+        QVec4(_f4x32 pPack) : pack(pPack){}
 
         QVec4(const QVec4&) = default;
         QVec4(QVec4&&) = default;
@@ -278,12 +280,11 @@ namespace Quaint
         //Remove These
         float dot_scalar(const QVec4& other)
         {
-            return x * other.x + y * other.y + z * other.z + w * other.w;
+            return (x * other.x + y * other.y + z * other.z + w * other.w);
         }
         QVec4 cross_scalar(const QVec4& other)
         {
             QVec4 res(0);
-
         }
 
         QVec4 operator+(const QVec4& other)
@@ -317,6 +318,12 @@ namespace Quaint
         //    copy(*this, other);
         //}
     };
+
+    //TODO: Remove this
+    inline float dot_scalar(const QVec4& a, const QVec4& b)
+    {
+        return (a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
+    }
 
 }
 

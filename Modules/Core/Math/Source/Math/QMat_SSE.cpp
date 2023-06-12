@@ -108,9 +108,53 @@ namespace Quaint
         out.transpose();
         return out;
     }
-    
 
+    /*Room for improvement? Release runs quite well*/
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b)
+    {
+        QMat4x4 out;
+        //Matrix mult using row point of view. Slower than using DP
+        //Row 0
+        __m128 T0 = _mm_mul_ps(b.pack[0], _mm_set_ps1(a.row0.x));
+        __m128 T1 = _mm_mul_ps(b.pack[1], _mm_set_ps1(a.row0.y));
+        out.pack[0] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(b.pack[2], _mm_set_ps1(a.row0.z));
+        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+        T0 = _mm_mul_ps(b.pack[3], _mm_set_ps1(a.row0.w));
+        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+
+        //Row 1
+        T0 = _mm_mul_ps(b.pack[0], _mm_set_ps1(a.row1.x));
+        T1 = _mm_mul_ps(b.pack[1], _mm_set_ps1(a.row1.y));
+        out.pack[1] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(b.pack[2], _mm_set_ps1(a.row1.z));
+        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+        T0 = _mm_mul_ps(b.pack[3], _mm_set_ps1(a.row1.w));
+        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+
+        //Row 2
+        T0 = _mm_mul_ps(b.pack[0], _mm_set_ps1(a.row2.x));
+        T1 = _mm_mul_ps(b.pack[1], _mm_set_ps1(a.row2.y));
+        out.pack[2] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(b.pack[2], _mm_set_ps1(a.row2.z));
+        out.pack[2] = _mm_add_ps(out.pack[2], T0);
+        T0 = _mm_mul_ps(b.pack[3], _mm_set_ps1(a.row2.w));
+        out.pack[2] = _mm_add_ps(out.pack[2], T0);
+
+        //Row 3
+        T0 = _mm_mul_ps(b.pack[0], _mm_set_ps1(a.row3.x));
+        T1 = _mm_mul_ps(b.pack[1], _mm_set_ps1(a.row3.y));
+        out.pack[3] = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(b.pack[2], _mm_set_ps1(a.row3.z));
+        out.pack[3] = _mm_add_ps(out.pack[3], T0);
+        T0 = _mm_mul_ps(b.pack[3], _mm_set_ps1(a.row3.w));
+        out.pack[3] = _mm_add_ps(out.pack[3], T0);
+
+        return out;
+    }
+    
+    /*TODO: Implement some perf measure. Slower than method above*/
+    QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b)
     {
         QMat4x4 transposed(b);
         transposed.transpose();
@@ -129,52 +173,47 @@ namespace Quaint
         );
     }
 
-
-    /*This is quite slow. Room for improvement?*/
-    QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b)
+    float determinant_mf(const QMat3x3& a)
     {
-        QMat4x4 out;
-        QMat4x4 transposed(b);
-        transposed.transpose();
-        
-        //Col 0
-        __m128 T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.x));
-        __m128 T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.x));
-        out.pack[0] = _mm_add_ps(T0, T1);
-        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.x));
-        out.pack[0] = _mm_add_ps(out.pack[0], T0);
-        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.x));
-        out.pack[0] = _mm_add_ps(out.pack[0], T0);
+        __m128 buf = _mm_mul_ps(cross_vf(a.row1, a.row2).pack, a.row0.pack);
 
-        //Col 1
-        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.y));
-        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.y));
-        out.pack[1] = _mm_add_ps(T0, T1);
-        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.y));
-        out.pack[1] = _mm_add_ps(out.pack[1], T0);
-        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.y));
-        out.pack[1] = _mm_add_ps(out.pack[1], T0);
+        __m128 T0 = _mm_shuffle_ps(buf, buf, _MM_SHUFFLE(0, 0, 0, 1)); 
+        __m128 T1 = _mm_shuffle_ps(buf, buf, _MM_SHUFFLE(0, 0, 0, 2));
+        return _mm_cvtss_f32(_mm_add_ps(buf, _mm_add_ps(T0, T1)));
+    }
+    float determinant_mf(const QMat4x4& a)
+    {
+        QMat3x3 TMat0 = 
+        {
+            Quaint::QVec3(a.row1.y, a.row1.z, a.row1.w),
+            Quaint::QVec3(a.row2.y, a.row2.z, a.row2.w),
+            Quaint::QVec3(a.row3.y, a.row3.z, a.row3.w)
+        };
+        QMat3x3 TMat1 = 
+        {
+            Quaint::QVec3(a.row1.x, a.row1.w, a.row1.z),
+            Quaint::QVec3(a.row2.x, a.row2.w, a.row2.z),
+            Quaint::QVec3(a.row3.x, a.row3.w, a.row3.z)
+        };
+        QMat3x3 TMat2 = 
+        {
+            Quaint::QVec3(a.row1.x, a.row1.y, a.row1.w),
+            Quaint::QVec3(a.row2.x, a.row2.y, a.row2.w),
+            Quaint::QVec3(a.row3.x, a.row3.y, a.row3.w)
+        };
+        QMat3x3 TMat3 = 
+        {
+            Quaint::QVec3(a.row1.x, a.row1.z, a.row1.y),
+            Quaint::QVec3(a.row2.x, a.row2.z, a.row2.y),
+            Quaint::QVec3(a.row3.x, a.row3.z, a.row3.y)
+        };
 
-        //Col 2
-        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.z));
-        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.z));
-        out.pack[2] = _mm_add_ps(T0, T1);
-        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.z));
-        out.pack[2] = _mm_add_ps(out.pack[2], T0);
-        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.z));
-        out.pack[2] = _mm_add_ps(out.pack[2], T0);
-
-        //Col 3
-        T0 = _mm_mul_ps(transposed.pack[0], _mm_set_ps1(a.row0.w));
-        T1 = _mm_mul_ps(transposed.pack[1], _mm_set_ps1(a.row1.w));
-        out.pack[3] = _mm_add_ps(T0, T1);
-        T0 = _mm_mul_ps(transposed.pack[2], _mm_set_ps1(a.row2.w));
-        out.pack[3] = _mm_add_ps(out.pack[3], T0);
-        T0 = _mm_mul_ps(transposed.pack[3], _mm_set_ps1(a.row3.w));
-        out.pack[3] = _mm_add_ps(out.pack[3], T0);
-
-        out.transpose();
-        return out;
+        __m128 buf = {determinant_mf(TMat0), determinant_mf(TMat1), 
+                    determinant_mf(TMat2), determinant_mf(TMat3)};
+        buf = _mm_mul_ps(a.row0.pack, buf);
+        __m128 T0 = _mm_shuffle_ps(buf, buf, _MM_SHUFFLE(2, 3, 0, 1));
+        T0 = _mm_add_ps(buf, T0);
+        return _mm_cvtss_f32(_mm_add_ps(T0, _mm_shuffle_ps(T0, T0, _MM_SHUFFLE(0, 0, 0, 2))));
     }
 }
 

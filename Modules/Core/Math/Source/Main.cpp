@@ -18,6 +18,7 @@ namespace Quaint
 #include <Math/QVec.h>
 #include <Math/QMat.h>
 #include <chrono>
+#include <time.h>
 
 struct Test
 {
@@ -63,39 +64,35 @@ int main()
 
     std::cout << vector1.dot(vec3) << "\n";
 
+    uint32_t test = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    
-    for(int i = 0; i < 10000 ; i++)
+    for(int i = 0; i < 10000 ; ++i)
     {
-        vector1.dot_scalar(Quaint::QVec4((float)rand()/RAND_MAX * 100, 
-        (float)rand()/RAND_MAX * 100, 
-        (float)rand()/RAND_MAX * 100,
-        (float)rand()/RAND_MAX * 100));
+        vector1.dot_scalar(Quaint::QVec4(100, 100, 100, 100));
     }
-
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Scalar DOT: " << (end - start).count() << "\n";
+    std::cout << " Scalar DOT: " << (end - start).count() << "\n";
 
 
     start = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < 10000 ; i++)
     {
-        vector1.dot(Quaint::QVec4((float)rand()/RAND_MAX * 100, 
-        (float)rand()/RAND_MAX * 100, 
-        (float)rand()/RAND_MAX * 100,
-        (float)rand()/RAND_MAX * 100));
+        vector1.dot(Quaint::QVec4(100, 100, 100, 100));
     }
-    end = std::chrono::high_resolution_clock::now();
 
+    end = std::chrono::high_resolution_clock::now();
     std::cout << "SSE DOT: " << (end - start).count() << "\n";
 
     Quaint::QMat3x3 mat3x3(
         {
-            1, 1, 1,
-            2, 2, 2,
-            3, 3, 3
+            1, 2, 3,
+            3, 2, 1,
+            2, 1, 3
         }
     );
+    
+    std::cout << "Determinant is: " << Quaint::determinant_mf(mat3x3) << "\n";
+
     std::cout << mat3x3;
     mat3x3 *= mat3x3;
     std::cout << mat3x3;
@@ -103,27 +100,44 @@ int main()
 
     Quaint::QMat4x4 mat(
         {
-            0.f, 0.f, 1.f, 0.f,
-            1.f, 2.f, 9.f, 2.f,
+            1.f, 1.f, 1.f, 0.f,
+            2.f, 2.f, 9.f, 2.f,
             2.f, 4.f, 8.f, 4.f,
             3.f, 6.f, 9.f, 3.f
         }
     );
 
+    start = std::chrono::high_resolution_clock::now();
+    float det = Quaint::determinant_mf(mat);
+    end = std::chrono::high_resolution_clock::now();
+    std::cout << "Determinant is: " << det << " Time Taken: " << (end - start).count() << "\n";
+
     std::cout << mat;
     mat.transpose();
     std::cout << mat;
+    Quaint::QMat4x4 matorig = mat;
+    
+    
+    
+    start = std::chrono::high_resolution_clock::now();
+    Quaint::QMat4x4 tt;
+    for(int i = 0; i < 100; i++)
+    {
+        tt = mat * mat;
+        end = std::chrono::high_resolution_clock::now();
+    }
+    std::cout << "MATRIX MULT WITH ROW VIEW: " << (end - start).count() << "\n";
+
+
+    std::cout << mat;
 
     start = std::chrono::high_resolution_clock::now();
-    mat = mat * mat;
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << "MATRIX MULT NORMAL: " << (end - start).count() << "\n";
-
-
-    //start = std::chrono::high_resolution_clock::now();    
-    //mat = Quaint::mul_mf_alt(mat, mat);
-    //end = std::chrono::high_resolution_clock::now();
-    //std::cout << "MATRIX MULT WITH DOT: " << (end - start).count() << "\n";
+    for(int i = 0; i < 100; i++)
+    {
+        mat = Quaint::mul_mf_alt(matorig, matorig);
+        end = std::chrono::high_resolution_clock::now();
+    }
+    std::cout << "MATRIX MULT WITH DOT: " << (end - start).count() << "\n";
 
 
     std::cout << mat;
