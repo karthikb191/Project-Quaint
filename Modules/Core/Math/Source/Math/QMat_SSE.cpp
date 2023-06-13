@@ -136,7 +136,7 @@ namespace Quaint
         */
         //Col 0
         __m128 T0 = _mm_mul_ps(a.pack[0], _mm_set_ps1(b.col0.x));
-        __m128 T1 = _mm_mul_ps(a.pack[1], _mm_set_ps1(a.col0.y));
+        __m128 T1 = _mm_mul_ps(a.pack[1], _mm_set_ps1(b.col0.y));
         out.pack[0] = _mm_add_ps(T0, T1);
         T0 = _mm_mul_ps(a.pack[2], _mm_set_ps1(b.col0.z));
         out.pack[0] = _mm_add_ps(out.pack[0], T0);
@@ -171,6 +171,48 @@ namespace Quaint
         out.pack[3] = _mm_add_ps(out.pack[3], T0);
 
         return out;
+    }
+
+    QMat2x2 mul_mf(const QMat2x2& a, float b)
+    {
+        return QMat2x2((float(&)[4])_mm_mul_ps(a.pack, _mm_set_ps1(b)));
+    }
+    QMat3x3 mul_mf(const QMat3x3& a, float b)
+    {
+        return QMat3x3(
+            _mm_mul_ps(a.col0.pack, _mm_set1_ps(b)),
+            _mm_mul_ps(a.col1.pack, _mm_set1_ps(b)),
+            _mm_mul_ps(a.col2.pack, _mm_set1_ps(b))
+        );
+    }
+    QMat4x4 mul_mf(const QMat4x4& a, float b)
+    {
+        return QMat4x4(
+            _mm_mul_ps(a.col0.pack, _mm_set1_ps(b)),
+            _mm_mul_ps(a.col1.pack, _mm_set1_ps(b)),
+            _mm_mul_ps(a.col2.pack, _mm_set1_ps(b)),
+            _mm_mul_ps(a.col3.pack, _mm_set1_ps(b))
+        );
+    }
+    QVec3 mul_mf(const QMat3x3& a, const QVec3& b)
+    {
+        __m128 res = _mm_set_ps1(0);
+        __m128 T0 = _mm_mul_ps(a.pack[0], _mm_set_ps1(b.x));
+        __m128 T1 = _mm_mul_ps(a.pack[1], _mm_set_ps1(b.y));
+        res = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(a.pack[2], _mm_set_ps1(b.z));
+        return QVec3(_mm_add_ps(res, T0));
+    }
+    QVec4 mul_mf(const QMat4x4& a, const QVec4& b)
+    {
+        __m128 res = _mm_set_ps1(0);
+        __m128 T0 = _mm_mul_ps(a.pack[0], _mm_set_ps1(b.x));
+        __m128 T1 = _mm_mul_ps(a.pack[1], _mm_set_ps1(b.y));
+        res = _mm_add_ps(T0, T1);
+        T0 = _mm_mul_ps(a.pack[2], _mm_set_ps1(b.z));
+        res = _mm_add_ps(res, T0);
+        T0 = _mm_mul_ps(a.pack[3], _mm_set_ps1(b.w));
+        return QVec4(_mm_add_ps(res, T0));
     }
     
     /*TODO: Implement some perf measure. Slower than method above*/
