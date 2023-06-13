@@ -9,5 +9,13 @@ Saved
 Tools/*/bin/*
 Tools/*/obj/*
 
+#Local Environments
+.venv
+
+#Built scripts
+**/python*/Lib
+**/python*/Scripts
+*.debug
+
 #Data Folders
 Data/*
