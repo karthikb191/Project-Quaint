@@ -83,6 +83,15 @@ int main()
     end = std::chrono::high_resolution_clock::now();
     std::cout << "SSE DOT: " << (end - start).count() << "\n";
 
+    Quaint::QMat2x2 mat2x2(
+        {
+            1, 2,
+            2, 1
+        }
+    );
+    mat2x2 *= mat2x2;
+    std::cout << mat2x2;
+
     Quaint::QMat3x3 mat3x3(
         {
             1, 2, 3,
@@ -98,13 +107,19 @@ int main()
     std::cout << mat3x3;
 
 
+    //Quaint::QMat4x4 mat(
+    //    {
+    //        1.f, 1.f, 1.f, 0.f,
+    //        2.f, 2.f, 9.f, 2.f,
+    //        2.f, 4.f, 8.f, 4.f,
+    //        3.f, 6.f, 9.f, 3.f
+    //    }
+    //);
     Quaint::QMat4x4 mat(
-        {
-            1.f, 1.f, 1.f, 0.f,
-            2.f, 2.f, 9.f, 2.f,
-            2.f, 4.f, 8.f, 4.f,
-            3.f, 6.f, 9.f, 3.f
-        }
+        Quaint::QVec4(1, 2, 2, 3),
+        Quaint::QVec4(1, 2, 4, 6),
+        Quaint::QVec4(1, 9, 8, 9),
+        Quaint::QVec4(0, 2, 4, 3)
     );
 
     start = std::chrono::high_resolution_clock::now();
@@ -112,8 +127,8 @@ int main()
     end = std::chrono::high_resolution_clock::now();
     std::cout << "Determinant is: " << det << " Time Taken: " << (end - start).count() << "\n";
 
-    std::cout << mat;
-    mat.transpose();
+    //std::cout << mat;
+    //mat.transpose();
     std::cout << mat;
     Quaint::QMat4x4 matorig = mat;
     
@@ -121,9 +136,9 @@ int main()
     
     start = std::chrono::high_resolution_clock::now();
     Quaint::QMat4x4 tt;
-    for(int i = 0; i < 100; i++)
+    //for(int i = 0; i < 100; i++)
     {
-        tt = mat * mat;
+        mat = mat * mat;
         end = std::chrono::high_resolution_clock::now();
     }
     std::cout << "MATRIX MULT WITH ROW VIEW: " << (end - start).count() << "\n";
@@ -131,16 +146,16 @@ int main()
 
     std::cout << mat;
 
-    start = std::chrono::high_resolution_clock::now();
-    for(int i = 0; i < 100; i++)
-    {
-        mat = Quaint::mul_mf_alt(matorig, matorig);
-        end = std::chrono::high_resolution_clock::now();
-    }
-    std::cout << "MATRIX MULT WITH DOT: " << (end - start).count() << "\n";
+    //start = std::chrono::high_resolution_clock::now();
+    //for(int i = 0; i < 100; i++)
+    //{
+    //    mat = Quaint::mul_mf_alt(matorig, matorig);
+    //    end = std::chrono::high_resolution_clock::now();
+    //}
+    //std::cout << "MATRIX MULT WITH DOT: " << (end - start).count() << "\n";
 
 
-    std::cout << mat;
+    //std::cout << mat;
 
 
     std::cout << "Hello Math module\n";

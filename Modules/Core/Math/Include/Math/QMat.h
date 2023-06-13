@@ -23,8 +23,14 @@ namespace Quaint
     void transpose_mf(QMat3x3& a);
     void transpose_mf(QMat4x4& a);
 
+
+    QMat2x2 mul_mf(const QMat2x2& a, const QMat2x2& b);
     QMat3x3 mul_mf(const QMat3x3& a, const QMat3x3& b);
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b);
+    QMat2x2 mul_mf(const QMat2x2& a, float b);
+    QMat3x3 mul_mf(const QMat3x3& a, float b);
+    QMat4x4 mul_mf(const QMat4x4& a, float b);
+
     QMat4x4 mul_mf_alt(const QMat4x4& a, const QMat4x4& b);
 
     float determinant_mf(const QMat2x2& a);
@@ -36,20 +42,19 @@ namespace Quaint
     struct alignas(16) QMat2x2
     {
         QMat2x2() : buffer{0} {}
-        QMat2x2(const QVec2& row0, const QVec2& row1)
-        : row0(row0), row1(row1)
+        QMat2x2(const QVec2& col0, const QVec2& col1)
+        : col0(col0), col1(col1)
         {}
         QMat2x2(float r00, float r01, float r10, float r11)
-        : buffer{r00, r01, r10, r11}
+        : buffer{r00, r10, r01, r11}
         {}
-        QMat2x2(float (&valArray)[4])
-        : buffer{valArray[0], valArray[1], valArray[2], valArray[3]}
-        {}
+        QMat2x2(float (&rowArray)[4])
         #ifdef INTRINSICS_SUPPORTED
-        QMat2x2(_f4x32  pack)
-        : pack(pack)
-        {}
+        : pack{rowArray[0], rowArray[2], rowArray[1], rowArray[3]}
+        #else
+        : buffer{rowArray[0], rowArray[2], rowArray[1], rowArray[3]}
         #endif
+        {}
 
         QMat2x2(const QMat2x2&) = default;
         QMat2x2(QMat2x2&&) = default;
@@ -58,11 +63,11 @@ namespace Quaint
 
         union
         {
-            QVec2 rows[2];
+            QVec2 cols[2];
             struct
             {
-                QVec2 row0;
-                QVec2 row1;
+                QVec2 col0;
+                QVec2 col1;
             };
             float buffer[4];
         #ifdef INTRINSICS_SUPPORTED
@@ -81,8 +86,8 @@ namespace Quaint
 
         friend std::ostream& operator<<(std::ostream& os, const QMat2x2& mat)
         {
-            os << "\n[" << mat.row0.x << ", " << mat.row0.y << "]\n";
-            os << "[" << mat.row1.x << ", " << mat.row1.y << "]\n";
+            os << "\n[" << mat.col0.x << ", " << mat.col1.x << "]\n";
+            os << "[" << mat.col0.y << ", " << mat.col1.y << "]\n";
             return os;
         }
         
@@ -104,26 +109,35 @@ namespace Quaint
             sub_mf(*this, other);
             return *this;
         }
+        QMat2x2 operator*(const QMat2x2& other)
+        {
+            return mul_mf(*this, other);
+        }
+        QMat2x2& operator*=(const QMat2x2& other)
+        {
+            *this = mul_mf(*this, other);
+            return *this;
+        }
 
     };
 
     struct alignas(16) QMat3x3
     {
         QMat3x3() : buffer{0} {}
-        QMat3x3(const QVec3& pRow0, const QVec3& pRow1, const QVec3& pRow2)
-        : row0(pRow0), row1(pRow1), row2(pRow2)
+        QMat3x3(const QVec3& pCol0, const QVec3& pCol1, const QVec3& pCol2)
+        : col0(pCol0), col1(pCol1), col2(pCol2)
         {}
-        QMat3x3(const QVec4& pRow0, const QVec4& pRow1, const QVec4& pRow2)
-        : row0(pRow0), row1(pRow1), row2(pRow2)
+        QMat3x3(const QVec4& pCol0, const QVec4& pCol1, const QVec4& pCol2)
+        : col0(pCol0), col1(pCol1), col2(pCol2)
         {}
-        QMat3x3(const float (&valArray)[9])
-        : row0{valArray[0], valArray[1], valArray[2], 0}
-        , row1{valArray[3], valArray[4], valArray[5], 0}
-        , row2{valArray[6], valArray[7], valArray[8], 0}
+        QMat3x3(const float (&rowArray)[9])
+        : col0{rowArray[0], rowArray[2], rowArray[6], 0}
+        , col1{rowArray[1], rowArray[4], rowArray[7], 0}
+        , col2{rowArray[2], rowArray[5], rowArray[8], 0}
         {}
         #ifdef INTRINSICS_SUPPORTED
-        QMat3x3(_f4x32 pRow0, _f4x32 pRow1, _f4x32 pRow2)
-        : pack{pRow0, pRow1, pRow2} 
+        QMat3x3(_f4x32 pCol0, _f4x32 pCol1, _f4x32 pCol2)
+        : pack{pCol0, pCol1, pCol2} 
         {}
         #endif
 
@@ -136,13 +150,13 @@ namespace Quaint
         {
             struct
             {
-                QVec4 row0;
-                QVec4 row1;
-                QVec4 row2;
+                QVec4 col0;
+                QVec4 col1;
+                QVec4 col2;
             };
             float   buffer[12] = {0};
         #ifdef INTRINSICS_SUPPORTED
-            _f4x32  pack[3]; //4 dim vector per row. Total(12 elems)
+            _f4x32  pack[3]; //4 dim vector per col. Total(12 elems)
         #endif
         };
 
@@ -157,9 +171,9 @@ namespace Quaint
 
         friend std::ostream& operator<<(std::ostream& os, const QMat3x3& mat)
         {
-            os << "\n[" << mat.row0.x << ", " << mat.row0.y << ", " << mat.row0.z << "]";
-            os << "\n[" << mat.row1.x << ", " << mat.row1.y << ", " << mat.row1.z << "]";
-            os << "\n[" << mat.row2.x << ", " << mat.row2.y << ", " << mat.row2.z << "]\n";
+            os << "\n[" << mat.col0.x << ", " << mat.col1.x << ", " << mat.col2.x << "]";
+            os << "\n[" << mat.col0.y << ", " << mat.col1.y << ", " << mat.col2.y << "]";
+            os << "\n[" << mat.col0.z << ", " << mat.col1.z << ", " << mat.col2.z << "]\n";
             return os;
         }
 
@@ -195,17 +209,18 @@ namespace Quaint
     struct alignas(16) QMat4x4
     {
         QMat4x4() : buffer{0} {}
-        QMat4x4(const QVec4& row0, const QVec4& row1, const QVec4& row2, const QVec4& row3)
-        : row0(row0), row1(row1), row2(row2), row3(row3)
+        QMat4x4(const QVec4& pCol0, const QVec4& pCol1, const QVec4& pCol2, const QVec4& pCol3)
+        : col0(pCol0), col1(pCol1), col2(pCol2), col3(pCol3)
         {}
-        QMat4x4(const float (&valArray)[16])
-        : buffer{0}
-        {
-            memcpy(buffer, valArray, 16 * sizeof(float));
-        }
+        QMat4x4(const float (&rowArray)[16])
+        : col0{rowArray[0], rowArray[4], rowArray[8], rowArray[12]}
+        , col1{rowArray[1], rowArray[5], rowArray[9], rowArray[13]}
+        , col2{rowArray[2], rowArray[6], rowArray[10], rowArray[14]}
+        , col3{rowArray[3], rowArray[7], rowArray[11], rowArray[15]}
+        {}
         #ifdef INTRINSICS_SUPPORTED
-        explicit QMat4x4(_f4x32 row0, _f4x32 row1, _f4x32 row2, _f4x32 row3)
-        : pack{row0, row1, row2, row3} 
+        explicit QMat4x4(_f4x32 col0, _f4x32 col1, _f4x32 col2, _f4x32 col3)
+        : pack{col0, col1, col2, col3} 
         {}
         #endif
 
@@ -218,14 +233,14 @@ namespace Quaint
         {
             struct
             {
-                QVec4 row0;
-                QVec4 row1;
-                QVec4 row2;
-                QVec4 row3;
+                QVec4 col0;
+                QVec4 col1;
+                QVec4 col2;
+                QVec4 col3;
             };
             float buffer[16];
         #ifdef INTRINSICS_SUPPORTED
-            _f4x32  pack[4]; //4 dim vector per row. Total(16 elems)
+            _f4x32  pack[4]; //4 dim vector per col. Total(16 elems)
         #endif
         };
 
@@ -240,10 +255,10 @@ namespace Quaint
         
         friend std::ostream& operator<<(std::ostream& os, const QMat4x4& mat)
         {
-            os << "\n[" << mat.row0.x << ", " << mat.row0.y << ", " << mat.row0.z << ", " << mat.row0.w << "]";
-            os << "\n[" << mat.row1.x << ", " << mat.row1.y << ", " << mat.row1.z << ", " << mat.row1.w << "]";
-            os << "\n[" << mat.row2.x << ", " << mat.row2.y << ", " << mat.row2.z << ", " << mat.row2.w << "]";
-            os << "\n[" << mat.row3.x << ", " << mat.row3.y << ", " << mat.row3.z << ", " << mat.row3.w << "]\n";
+            os << "\n[" << mat.col0.x << ", " << mat.col1.x << ", " << mat.col2.x << ", " << mat.col3.x << "]";
+            os << "\n[" << mat.col0.y << ", " << mat.col1.y << ", " << mat.col2.y << ", " << mat.col3.y << "]";
+            os << "\n[" << mat.col0.z << ", " << mat.col1.z << ", " << mat.col2.z << ", " << mat.col3.z << "]";
+            os << "\n[" << mat.col0.w << ", " << mat.col1.w << ", " << mat.col2.w << ", " << mat.col3.w << "]\n";
             return os;
         }
 

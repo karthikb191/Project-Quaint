@@ -127,11 +127,11 @@ namespace Quaint
             return *this;
         }
 
-        QVec2& operator=(const QVec2& other)
-        {
-            std::memcpy(buffer, other.buffer, sizeof(float) * 2);
-            return *this;
-        }
+        //QVec2& operator=(const QVec2& other)
+        //{
+        //    std::memcpy(buffer, other.buffer, sizeof(float) * 2);
+        //    return *this;
+        //}
     };
     struct alignas(16) QVec3
     {
@@ -212,10 +212,10 @@ namespace Quaint
             return *this;
         }
 
-        QVec3& operator=(const QVec3& other)
-        {
-            copy(*this, other);
-        }
+        //QVec3& operator=(const QVec3& other)
+        //{
+        //    copy(*this, other);
+        //}
     };
     struct alignas(16) QVec4
     {

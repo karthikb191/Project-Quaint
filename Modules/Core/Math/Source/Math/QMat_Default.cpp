@@ -6,7 +6,7 @@ namespace Quaint
 
 float determinant_mf(const QMat2x2& a)
 {
-    return (a.row0.x * a.row1.y) - (a.row0.y * a.row1.x); 
+    return (a.col0.x * a.col1.y) - (a.col0.y * a.col1.x); 
 }
 
 #ifndef INTRINSICS_SUPPORTED
