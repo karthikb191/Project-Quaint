@@ -40,6 +40,8 @@ namespace Quaint
     QVec3 cross_vf(const QVec3& a, const QVec3& b);
     QVec4 cross_vf(const QVec4& a, const QVec4& b);
 
+    //TODO: Add multiplication with scalar
+
     /*Utils*/
     float sqrMagnitude_vf(const QVec2& a);
     float sqrMagnitude_vf(const QVec3& a);
@@ -56,6 +58,7 @@ namespace Quaint
     
 
     void copy(QVec3& to, const QVec3& from);
+    void copy(QVec3& to, const QVec4& from);
     void copy(QVec4& to, const QVec3& from);
     void copy(QVec4& to, const QVec4& from);
 
@@ -186,6 +189,11 @@ namespace Quaint
             return sqrtf(sqrMagnitude());
         }
 
+        QVec3 operator=(const QVec4& other)
+        {
+            copy(*this, other);
+            return *this;
+        }
         QVec3 operator+(const QVec3& other)
         { 
             return add_vf(QVec3(*this), other);
@@ -287,7 +295,7 @@ namespace Quaint
             QVec4 res(0);
         }
 
-        QVec4 operator+(const QVec4& other)
+        QVec4 operator+(const QVec4& other) const
         {
             return add_vf(QVec4(*this), other);
         }
@@ -297,7 +305,7 @@ namespace Quaint
             return *this;
         }
 
-        QVec4 operator-(const QVec4& other)
+        QVec4 operator-(const QVec4& other) const
         {
             return sub_vf(QVec4(*this), other);
         }
@@ -311,6 +319,11 @@ namespace Quaint
         {
             x *= scalar; y *= scalar; z *= scalar; w *= scalar;
             return *this;
+        }
+
+        operator QVec3()
+        {
+            return QVec3(x, y, z);
         }
 
         //QVec4& operator=(const QVec4& other)

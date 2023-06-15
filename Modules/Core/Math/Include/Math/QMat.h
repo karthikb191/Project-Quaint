@@ -19,9 +19,9 @@ namespace Quaint
     QMat4x4 sub_mf(QMat4x4& a, const QMat4x4& b);
 
     /*Multiplication*/
-    void transpose_mf(QMat2x2& a);
-    void transpose_mf(QMat3x3& a);
-    void transpose_mf(QMat4x4& a);
+    QMat2x2 transpose_mf(const QMat2x2& a);
+    QMat3x3 transpose_mf(const QMat3x3& a);
+    QMat4x4 transpose_mf(const QMat4x4& a);
 
 
     QMat2x2 mul_mf(const QMat2x2& a, const QMat2x2& b);
@@ -82,15 +82,15 @@ namespace Quaint
 
         inline void transpose()
         {
-            transpose_mf(*this);
+            *this = transpose_mf(*this);
         }
-        inline float determinant()
+        inline float determinant() const
         {
             return determinant_mf(*this);
         }
 
-        inline QVec2 getRow0(){ return QVec2(col0.x, col1.x); }
-        inline QVec2 getRow1(){ return QVec2(col0.y, col1.y); }
+        inline QVec2 getRow0() const{ return QVec2(col0.x, col1.x); }
+        inline QVec2 getRow1() const{ return QVec2(col0.y, col1.y); }
 
         friend std::ostream& operator<<(std::ostream& os, const QMat2x2& mat)
         {
@@ -99,7 +99,7 @@ namespace Quaint
             return os;
         }
         
-        QMat2x2 operator+(const QMat2x2& other)
+        QMat2x2 operator+(const QMat2x2& other) const
         {
             return add_mf(QMat2x2(*this), other);
         }
@@ -108,7 +108,7 @@ namespace Quaint
             add_mf(*this, other);
             return *this;
         }
-        QMat2x2 operator-(const QMat2x2& other)
+        QMat2x2 operator-(const QMat2x2& other) const
         {
             return sub_mf(QMat2x2(*this), other);
         }
@@ -119,7 +119,7 @@ namespace Quaint
         }
 
         /*Myriad of multiplication operators*/
-        QMat2x2 operator*(const QMat2x2& other)
+        QMat2x2 operator*(const QMat2x2& other) const
         {
             return mul_mf(*this, other);
         }
@@ -128,7 +128,7 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QMat2x2 operator*(const float other)
+        QMat2x2 operator*(const float other) const
         {
             return mul_mf(*this, other);
         }
@@ -137,7 +137,7 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QVec2 operator*(const QVec2& other)
+        QVec2 operator*(const QVec2& other) const
         {
             return mul_mf(*this, other);
         }
@@ -193,9 +193,9 @@ namespace Quaint
 
         inline void transpose()
         {
-            transpose_mf(*this);
+            *this = transpose_mf(*this);
         }
-        inline float determinant()
+        inline float determinant() const
         {
             return determinant_mf(*this);
         }
@@ -211,7 +211,7 @@ namespace Quaint
             return os;
         }
 
-        inline QMat3x3 operator+(const QMat3x3& other)
+        inline QMat3x3 operator+(const QMat3x3& other) const
         {
             return add_mf(QMat3x3(*this), other);
         }
@@ -220,7 +220,7 @@ namespace Quaint
             add_mf(*this, other);
             return *this;
         }
-        inline QMat3x3 operator-(const QMat3x3& other)
+        inline QMat3x3 operator-(const QMat3x3& other) const
         {
             return sub_mf(QMat3x3(*this), other);
         }
@@ -230,7 +230,7 @@ namespace Quaint
             return *this;
         }
 
-        QMat3x3 operator*(const QMat3x3& other)
+        QMat3x3 operator*(const QMat3x3& other) const
         {
             return mul_mf(*this, other);
         }
@@ -239,7 +239,7 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QMat3x3 operator*(const float other)
+        QMat3x3 operator*(const float other) const
         {
             return mul_mf(*this, other);
         }
@@ -248,7 +248,7 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QVec3 operator*(const QVec3& other)
+        QVec3 operator*(const QVec3& other) const
         {
             return mul_mf(*this, other);
         }
@@ -269,6 +269,9 @@ namespace Quaint
         QMat4x4() : buffer{0} {}
         QMat4x4(const QVec4& pCol0, const QVec4& pCol1, const QVec4& pCol2, const QVec4& pCol3)
         : col0(pCol0), col1(pCol1), col2(pCol2), col3(pCol3)
+        {}
+        QMat4x4(const QMat3x3& pMat, const QVec4& pTranslation)
+        : col0(pMat.col0), col1(pMat.col1), col2(pMat.col2), col3(pTranslation)
         {}
         QMat4x4(const float (&rowArray)[16])
         : col0{rowArray[0], rowArray[4], rowArray[8], rowArray[12]}
@@ -304,7 +307,7 @@ namespace Quaint
 
         inline void transpose()
         {
-            transpose_mf(*this);
+            *this = transpose_mf(*this);
         }
         inline float determinant()
         {
@@ -324,7 +327,7 @@ namespace Quaint
             return os;
         }
 
-        inline QMat4x4 operator+(const QMat4x4& other)
+        inline QMat4x4 operator+(const QMat4x4& other) const
         {
             return add_mf(QMat4x4(*this), other);
         }
@@ -333,7 +336,7 @@ namespace Quaint
             add_mf(*this, other);
             return *this;
         }
-        inline QMat4x4 operator-(const QMat4x4& other)
+        inline QMat4x4 operator-(const QMat4x4& other) const
         {
             return sub_mf(QMat4x4(*this), other);
         }
@@ -343,7 +346,7 @@ namespace Quaint
             return *this;
         }
 
-        QMat4x4 operator*(const QMat4x4& other)
+        QMat4x4 operator*(const QMat4x4& other) const
         {
             return mul_mf(*this, other);
         }
@@ -352,7 +355,7 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QMat4x4 operator*(const float other)
+        QMat4x4 operator*(const float other) const
         {
             return mul_mf(*this, other);
         }
@@ -361,11 +364,17 @@ namespace Quaint
             *this = mul_mf(*this, other);
             return *this;
         }
-        QVec4 operator*(const QVec4& other)
+        QVec4 operator*(const QVec4& other) const
         {
             return mul_mf(*this, other);
         }
         
+        //Conversions
+        operator QMat3x3() const
+        {
+            return QMat3x3(col0, col1, col2);
+        }
+
         static inline QMat4x4 Identity()
         {
             return QMat4x4
@@ -376,7 +385,9 @@ namespace Quaint
                 0, 0, 0, 1
             });
         }
+        
     };
+
 }
 
 #endif //_Q_H_MAT

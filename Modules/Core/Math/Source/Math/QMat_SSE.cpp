@@ -47,34 +47,35 @@ namespace Quaint
     }
 
     /*Multiplication*/
-    void transpose_mf(QMat2x2& a)
+    QMat2x2 transpose_mf(const QMat2x2& a)
     {
-        a.pack = _mm_shuffle_ps(a.pack, a.pack, _MM_SHUFFLE(0, 2, 1, 3));
+        return QMat2x2((float(&)[4])_mm_shuffle_ps(a.pack, a.pack, _MM_SHUFFLE(0, 2, 1, 3)));
     }
     /*Contents of w params are undefined*/
-    void transpose_mf(QMat3x3& a)
+    QMat3x3 transpose_mf(const QMat3x3& a)
     {
         __m128 T0 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(2, 0, 2, 0)); //(a1, c1, a2, c2)
         __m128 T1 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(3, 1, 3, 1)); //(b1, d1, b2, d2)
         
-        a.pack[0] = _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 0, 2, 0));
-        a.pack[1] = _mm_shuffle_ps(T1, a.pack[2], _MM_SHUFFLE(3, 1, 2, 0));
-        a.pack[2] = _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 2, 3, 1));
-        //res.row0.w = a.row0.w; res.row1.w = a.row1.w;
-        //res.row2.w = a.row2.w;
-        //return res;
+        return QMat3x3(
+        _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 0, 2, 0)),
+        _mm_shuffle_ps(T1, a.pack[2], _MM_SHUFFLE(3, 1, 2, 0)),
+        _mm_shuffle_ps(T0, a.pack[2], _MM_SHUFFLE(3, 2, 3, 1))
+        );
     }
-    void transpose_mf(QMat4x4& a)
+    QMat4x4 transpose_mf(const QMat4x4& a)
     {
         __m128 T0 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(2, 0, 2, 0)); //(a1, c1, a2, c2)
         __m128 T1 = _mm_shuffle_ps(a.pack[0], a.pack[1], _MM_SHUFFLE(3, 1, 3, 1)); //(b1, d1, b2, d2)
         __m128 T2 = _mm_shuffle_ps(a.pack[2], a.pack[3], _MM_SHUFFLE(2, 0, 2, 0)); //(a3, c3, a4, c4)
         __m128 T3 = _mm_shuffle_ps(a.pack[2], a.pack[3], _MM_SHUFFLE(3, 1, 3, 1)); //(b3, d3, b4, d4)
 
-        a.pack[0] = _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(2, 0, 2, 0)); //(a1, a2, a3, a4)
-        a.pack[1] = _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(2, 0, 2, 0)); //(b1, b2, b3, b4)
-        a.pack[2] = _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(3, 1, 3, 1)); //(c1, c2, c3, c4)
-        a.pack[3] = _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(3, 1, 3, 1));  //(d1, d2, d3, d4)
+        return QMat4x4(
+        _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(2, 0, 2, 0)), //(a1, a2, a3, a4)
+        _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(2, 0, 2, 0)), //(b1, b2, b3, b4)
+        _mm_shuffle_ps(T0, T2, _MM_SHUFFLE(3, 1, 3, 1)), //(c1, c2, c3, c4)
+        _mm_shuffle_ps(T1, T3, _MM_SHUFFLE(3, 1, 3, 1))  //(d1, d2, d3, d4)
+        );
     }
 
     //TODO: Measure performance

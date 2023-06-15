@@ -8,6 +8,8 @@
 #include <MemoryModule.h>
 #include <LoggerModule.h>
 #include <RenderModule.h>
+#include <Core/Camera.h>
+
 namespace Quaint
 {
     CREATE_MODULE(LoggerModule);

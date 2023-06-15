@@ -100,6 +100,10 @@ namespace Quaint
     {
         to.pack = _mm_load_ps(from.buffer);
     }
+    void copy(QVec3& to, const QVec4& from)
+    {
+        to.pack = _mm_load_ps(from.buffer);
+    }
     void copy(QVec4& to, const QVec3& from)
     {
         to.pack = _mm_load_ps(from.buffer);

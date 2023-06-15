@@ -3,7 +3,7 @@
 
 #include "QMat.h"
 
-#define PI 3.14159265
+#define PI 3.14159265f
 #define TO_RADIANS(x) x * (PI/180.0f) 
 
 namespace Quaint
@@ -41,7 +41,7 @@ namespace Quaint
         QVec3 right = cross_vf(normalizedUp, forward);
         QVec3 up = cross_vf(forward, right);
 
-        QMat3x3 res = QMat3x3::Identity;
+        QMat3x3 res = QMat3x3::Identity();
         res.col0 = right;
         res.col1 = up;
         res.col2 = forward;
@@ -97,11 +97,14 @@ namespace Quaint
 
         return rot;
     }
-    inline QMat4x4 transform(const QVec4& translation, const QMat4x4& rotation, const QMat4x4& scale)
+
+    inline QMat4x4 makeTransform(const QVec4& translation, const QVec3& rotation, const QVec3& scale)
     {
-        return(buildTranslationMatrix(translation), rotation, scale);
+        return(buildTranslationMatrix(translation),
+        buildRotationMatrixYZX(rotation), 
+        buildScaleMatrix(scale));
     }
-    inline QMat4x4 transform(const QMat4x4& translation, const QMat4x4& rotation, const QMat4x4& scale)
+    inline QMat4x4 makeTransform(const QMat4x4& translation, const QMat4x4& rotation, const QMat4x4& scale)
     {
         return translation * rotation * scale;
     }
