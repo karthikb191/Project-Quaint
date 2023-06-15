@@ -2,5 +2,6 @@
 #define _H_Q_MATH
 
 #include "Math/QVec.h"
+#include "Math/QMat.h"
 
 #endif

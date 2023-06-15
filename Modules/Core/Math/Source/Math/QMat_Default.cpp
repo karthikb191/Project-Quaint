@@ -3,7 +3,6 @@
 
 namespace Quaint
 {
-
     QVec2 mul_mf(const QMat2x2& a, const QVec2& b)
     {
         return QVec2(

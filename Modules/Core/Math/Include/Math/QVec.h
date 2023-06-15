@@ -219,7 +219,7 @@ namespace Quaint
     };
     struct alignas(16) QVec4
     {
-        QVec4() : x(0), y(0), z(0), w(0){}
+        QVec4() : x(0), y(0), z(0), w(1){}
         QVec4(float x, float y, float z, float w)
         : x(x), y(y), z(z), w(w)
         {}

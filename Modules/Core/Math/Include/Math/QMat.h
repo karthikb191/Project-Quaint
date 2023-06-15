@@ -40,7 +40,9 @@ namespace Quaint
     float determinant_mf(const QMat3x3& a);
     float determinant_mf(const QMat4x4& a);
 
+    QMat2x2 inverse_mf(const QMat2x2& a, const QMat2x2& b);
     QMat3x3 inverse_mf(const QMat3x3& a, const QMat3x3& b);
+    QMat3x3 inverse_mf(const QMat4x4& a, const QMat4x4& b);
 
     struct alignas(16) QMat2x2
     {
@@ -138,6 +140,15 @@ namespace Quaint
         QVec2 operator*(const QVec2& other)
         {
             return mul_mf(*this, other);
+        }
+
+        static inline QMat2x2 Identity()
+        {
+            return QMat2x2
+            ({
+                1, 0,
+                0, 1
+            });
         }
     };
 
@@ -240,6 +251,16 @@ namespace Quaint
         QVec3 operator*(const QVec3& other)
         {
             return mul_mf(*this, other);
+        }
+
+        static inline QMat3x3 Identity()
+        {
+            return QMat3x3
+            ({
+                1, 0, 0,
+                0, 1, 0,
+                0, 0, 1
+            });
         }
     };
 
@@ -344,7 +365,17 @@ namespace Quaint
         {
             return mul_mf(*this, other);
         }
-
+        
+        static inline QMat4x4 Identity()
+        {
+            return QMat4x4
+            ({
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            });
+        }
     };
 }
 
