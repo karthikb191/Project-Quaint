@@ -120,7 +120,7 @@ namespace Quaint
     QMat4x4 mul_mf(const QMat4x4& a, const QMat4x4& b)
     {
         QMat4x4 out;
-        //Matrix mult using col point of view.
+        //Matrix mult using col point of view
         /*  [a1, b1, c1, d1]    [a1, b1, c1, d1] 
         *   [a2, b2, c2, d2]    [a2, b2, c2, d2]
         *   [a3, b3, c3, d3]    [a3, b3, c3, d3]
