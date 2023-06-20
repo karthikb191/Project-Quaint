@@ -264,13 +264,13 @@ namespace Quaint
         }
     };
 
-    struct alignas(16) QMat4x4
+    struct __declspec(align(16)) QMat4x4
     {
         QMat4x4() : buffer{0} {}
         QMat4x4(const QVec4& pCol0, const QVec4& pCol1, const QVec4& pCol2, const QVec4& pCol3)
         : col0(pCol0), col1(pCol1), col2(pCol2), col3(pCol3)
         {}
-        QMat4x4(const QMat3x3& pMat, const QVec4& pTranslation)
+        QMat4x4(const QMat3x3& pMat, const QVec4& pTranslation = QVec4(0, 0, 0, 1))
         : col0(pMat.col0), col1(pMat.col1), col2(pMat.col2), col3(pTranslation)
         {}
         QMat4x4(const float (&rowArray)[16])
@@ -294,10 +294,10 @@ namespace Quaint
         {
             struct
             {
-                QVec4 col0;
-                QVec4 col1;
-                QVec4 col2;
-                QVec4 col3;
+                __declspec(align(16)) QVec4 col0;
+                __declspec(align(16)) QVec4 col1;
+                __declspec(align(16)) QVec4 col2;
+                __declspec(align(16)) QVec4 col3;
             };
             float buffer[16];
         #ifdef INTRINSICS_SUPPORTED
@@ -372,7 +372,9 @@ namespace Quaint
         //Conversions
         operator QMat3x3() const
         {
-            return QMat3x3(col0, col1, col2);
+            return QMat3x3(QVec3(col0.x, col0.y, col0.z)
+            , QVec3(col1.x, col1.y, col1.z)
+            , QVec3(col2.x, col2.y, col2.z));
         }
 
         static inline QMat4x4 Identity()

@@ -7,6 +7,7 @@
 #include <BoltRenderer.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <fstream>
+#include <chrono>
 
 //TODO: Remove this once there's a custom version available
 #include <set>
@@ -61,11 +62,23 @@ namespace Bolt
     , m_imageAvailableSemaphores(context)
     , m_renderFinishedSemaphores(context)
     , m_inFlightFences(context)
+    , m_uniformBuffers(context)
+    , m_uniformBufferGpuMemory(context)
+    , m_mappedUniformBuffers(context)
+    , m_descriptorSets(context)
     {
     }
 
     void VulkanRenderer::init()
     {
+        CameraInitInfo info{};
+        info.fov = 90.0f;
+        info.rotation = Quaint::QVec3(0);
+        info.translation = Quaint::QVec4(0);
+        info.nearClipDist = 0.1f;
+        info.farClipDist = 10000.0f;
+        m_camera.init(info);
+
         if(m_context != nullptr)
         {
             createAllocationCallbacks();
@@ -81,11 +94,17 @@ namespace Bolt
         createSwapchain();
         createImageViews();
         createRenderPass();
+        createDescriptorSetLayout();
         createRenderPipeline();
         createFrameBuffers();
         createCommandPool();
         createVertexBuffer();
         createIndexBuffer();
+        
+        createUniformBuffers();
+        createDescriptorPool();
+        createDescriptorSets();
+
         createCommandBuffer();
         createSyncObjects();
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
@@ -111,12 +130,20 @@ namespace Bolt
             vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
         }
 
-        vkDestroyBuffer(m_device, m_indexBuffer, &m_defGraphicsAllocator);
-        vkFreeMemory(m_device, m_indexBufferGpuMemory, &m_defGraphicsAllocator);
-        vkDestroyBuffer(m_device, m_vertexBuffer, &m_defGraphicsAllocator);
-        //Memory in device can be freed once the bound buffer is no longer used
-        vkFreeMemory(m_device, m_vertexBufferGpuMemory, &m_defGraphicsAllocator);
+        for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            vkDestroyBuffer(m_device, m_uniformBuffers[i], m_allocationPtr);
+            vkFreeMemory(m_device, m_uniformBufferGpuMemory[i], m_allocationPtr);
+        }
 
+        vkDestroyBuffer(m_device, m_indexBuffer, m_allocationPtr);
+        vkFreeMemory(m_device, m_indexBufferGpuMemory, m_allocationPtr);
+        vkDestroyBuffer(m_device, m_vertexBuffer, m_allocationPtr);
+        //Memory in device can be freed once the bound buffer is no longer used
+        vkFreeMemory(m_device, m_vertexBufferGpuMemory, m_allocationPtr);
+
+        vkDestroyDescriptorPool(m_device, m_descriptorPool, m_allocationPtr);
+        vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, m_allocationPtr);
         vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocationPtr);
         vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
         vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocationPtr);
@@ -191,7 +218,7 @@ namespace Bolt
         m_defGraphicsAllocator.pfnAllocation = VulkanRenderer::allocationFunction;
         m_defGraphicsAllocator.pfnFree = VulkanRenderer::freeFunction;
         m_defGraphicsAllocator.pfnReallocation = VulkanRenderer::reallocFunction;
-        //m_allocationPtr = &m_defGraphicsAllocator;
+        m_allocationPtr = &m_defGraphicsAllocator;
     }
     //............................................................................
 
@@ -641,6 +668,9 @@ namespace Bolt
     
         m_swapchainFormat = surfaceFormat.format;
         m_swapchainExtent = swapExtent;
+
+        //This builds a proper camera projection matrix
+        m_camera.setAspectRatio((float)m_swapchainExtent.width / (float)m_swapchainExtent.height);
     }
 
     void VulkanRenderer::createImageViews()
@@ -673,6 +703,28 @@ namespace Bolt
 
     }
 //--------------------------------------------------
+
+    void VulkanRenderer::createDescriptorSetLayout()
+    {
+        VkDescriptorSetLayoutBinding info{};
+        info.binding = 0;
+        // It's possible for shader variable to represent an array of Uniform objects.
+        // In that case, we pass the appropriate descriptor count
+        info.descriptorCount = 1;
+        info.descriptorType =VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+        //Specifies in which shader stage the descriptor is going to be referenced
+        info.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+
+        VkDescriptorSetLayoutCreateInfo descriptorLayout{};
+        descriptorLayout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        descriptorLayout.bindingCount = 1;
+        descriptorLayout.pBindings = &info;
+        
+        VkResult res = vkCreateDescriptorSetLayout(m_device, &descriptorLayout, m_allocationPtr, &m_descriptorSetLayout);
+        assert(res == VK_SUCCESS && "Failed to create descriptor set layout");
+    }
 
 //Graphics Pipeline Creation------------------------
 
@@ -763,7 +815,7 @@ namespace Bolt
         rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizationInfo.lineWidth = 1.0f;
         rasterizationInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT; //Cull back faces
-        rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; //Vertices are processed in clock-wise direction
+        rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //Vertices are processed in clock-wise direction
 
         rasterizationInfo.depthBiasEnable = VK_FALSE;
 
@@ -808,8 +860,8 @@ namespace Bolt
         // TODO: We create an empty pipeline for now.
         VkPipelineLayoutCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineInfo.setLayoutCount = 0;
-        pipelineInfo.pSetLayouts = nullptr;
+        pipelineInfo.setLayoutCount = 1;
+        pipelineInfo.pSetLayouts = &m_descriptorSetLayout;
         pipelineInfo.pushConstantRangeCount = 0;
         pipelineInfo.pPushConstantRanges = nullptr;
 
@@ -1045,7 +1097,7 @@ namespace Bolt
             info.pQueueFamilyIndices = queueFamilies.getBuffer();
         }
 
-        VkResult res = vkCreateBuffer(m_device, &info, &m_defGraphicsAllocator, &buffer);
+        VkResult res = vkCreateBuffer(m_device, &info, m_allocationPtr, &buffer);
         assert(res == VK_SUCCESS && "Could not create a vertex buffer");
 
         VkMemoryRequirements requirements{};
@@ -1077,7 +1129,7 @@ namespace Bolt
         allocInfo.memoryTypeIndex = memoryTypeIndex;
         allocInfo.allocationSize = requirements.size;
         
-        res = vkAllocateMemory(m_device, &allocInfo, &m_defGraphicsAllocator, &deviceMemory);
+        res = vkAllocateMemory(m_device, &allocInfo, m_allocationPtr, &deviceMemory);
         assert(res == VK_SUCCESS && "Failed to allocate vertex buffer on device");
 
         //Offset should be a multiple of alignment if it's not 0. 0 works since we are specifically binding data for a vertex
@@ -1158,8 +1210,8 @@ namespace Bolt
         //Immediately copy from staging buffer to vertex buffer
         copyBuffer(m_device, m_transferQueue, stagingBuffer, m_vertexBuffer, bufferSize, m_transferCommandPool);
 
-        vkDestroyBuffer(m_device, stagingBuffer, &m_defGraphicsAllocator);
-        vkFreeMemory(m_device, stagingBufferGpuMemory, &m_defGraphicsAllocator);
+        vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+        vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
     }
 
     void VulkanRenderer::createIndexBuffer()
@@ -1193,8 +1245,87 @@ namespace Bolt
         //Immediately copy from staging buffer to vertex buffer
         copyBuffer(m_device, m_transferQueue, stagingBuffer, m_indexBuffer, bufferSize, m_transferCommandPool);
 
-        vkDestroyBuffer(m_device, stagingBuffer, &m_defGraphicsAllocator);
-        vkFreeMemory(m_device, stagingBufferGpuMemory, &m_defGraphicsAllocator);
+        vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+        vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
+
+    }
+
+    void VulkanRenderer::createUniformBuffers()
+    {
+        m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        m_uniformBufferGpuMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        m_mappedUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+        size_t bufferSize = sizeof(UniformBufferObject);
+
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        Quaint::QArray<uint32_t> queueFamilies(m_context);
+        queueFamilies.pushBack(families.graphics.get());
+        if(families.graphics.get() != families.transfer.get())
+        {
+            queueFamilies.pushBack(families.transfer.get());
+        }
+
+        for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, queueFamilies,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            m_uniformBufferGpuMemory[i], m_uniformBuffers[i]);
+
+            vkMapMemory(m_device, m_uniformBufferGpuMemory[i], 0, bufferSize, 0, &m_mappedUniformBuffers[i]);
+        }
+
+    }
+
+    void VulkanRenderer::createDescriptorPool()
+    {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        VkResult res = vkCreateDescriptorPool(m_device, &poolInfo, m_allocationPtr, &m_descriptorPool);
+        assert(res == VK_SUCCESS && "Failed to create descriptor pool");
+    }
+    void VulkanRenderer::createDescriptorSets()
+    {
+        m_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        Quaint::QArray<VkDescriptorSetLayout> layouts(m_context, MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_descriptorPool;
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        allocInfo.pSetLayouts = layouts.getBuffer();
+
+        VkResult res = vkAllocateDescriptorSets(m_device, &allocInfo, m_descriptorSets.getBuffer_NonConst());
+        assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
+
+        //Descriptor sets are allocated, but they arent filled with approproate values
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = m_uniformBuffers[i];
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(UniformBufferObject);
+        
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.dstSet = m_descriptorSets[i]; //This specifies the descriptor set to update
+            write.dstBinding = 0;
+            write.dstArrayElement = 0;
+
+            write.pBufferInfo = &bufferInfo;
+
+            vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+        }
 
     }
 
@@ -1262,6 +1393,9 @@ namespace Bolt
         
         //vkCmdDraw(commandBuffer, vertices.getSize(), 1, 0, 0);
 
+        vkCmdBindDescriptorSets(commandBuffer,
+         VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_currentFrame], 0, nullptr);
+
         vkCmdDrawIndexed(commandBuffer, indices.getSize(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
@@ -1291,6 +1425,27 @@ namespace Bolt
         }
     }
 
+    void VulkanRenderer::updateUniformBuffer(size_t index)
+    {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        UniformBufferObject ubo{};
+        ubo.model = Quaint::buildRotationMatrixYZX(Quaint::QVec3( 0.f, time * 10.0f, 0.0f ));
+
+        //glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+        
+        m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), Quaint::QVec4(2.0f, 2.0f, 2.0f, 1.0f), Quaint::QVec3(0.0f, 1.0f, 0.0f));
+        ubo.view = m_camera.getViewMatrix();
+        ubo.proj = m_camera.getProjectionMatrix();
+
+        memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
+    }
+
     void VulkanRenderer::drawFrame()
     {
         vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
@@ -1313,6 +1468,7 @@ namespace Bolt
 
         recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
 
+        updateUniformBuffer(m_currentFrame);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

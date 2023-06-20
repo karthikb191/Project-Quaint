@@ -13,7 +13,7 @@ namespace Quaint
 template<typename T, typename ...ARGS>
 T* allocFromContext(Quaint::IMemoryContext* context, ARGS... args)
 {
-    T* allocPtr = (T*)context->Alloc(sizeof(T));
+    T* allocPtr = (T*)context->AllocAligned(sizeof(T), alignof(T));
     new(allocPtr)T(args...);
     return allocPtr;
 }

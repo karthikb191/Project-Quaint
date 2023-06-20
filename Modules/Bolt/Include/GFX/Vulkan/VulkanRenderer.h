@@ -12,6 +12,9 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
+#include <QMath.h>
+#include <Core/Camera.h>
+
 namespace Bolt
 {
     class BoltRenderer;
@@ -64,7 +67,14 @@ namespace Bolt
         }
     };
 
-    class VulkanRenderer : public IRenderer
+    struct UniformBufferObject
+    {
+        Quaint::QMat4x4     model;
+        Quaint::QMat4x4     view;
+        Quaint::QMat4x4     proj;
+    };
+
+    class alignas(16) VulkanRenderer : public IRenderer
     {
         friend class BoltRenderer;
         
@@ -143,6 +153,7 @@ namespace Bolt
 
     //------------------------------
 
+        void updateUniformBuffer(size_t index);
         void drawFrame();
 
         void createAllocationCallbacks();
@@ -154,6 +165,7 @@ namespace Bolt
         void createImageViews();
         void setupFixedFunctions(FixedStageInfo& fixedStageInfo);
         void createRenderPass();
+        void createDescriptorSetLayout();
         void createRenderPipeline();
 
         void createFrameBuffers();
@@ -169,6 +181,10 @@ namespace Bolt
         VkBuffer& buffer);
         void createVertexBuffer();
         void createIndexBuffer();
+        void createUniformBuffers();
+
+        void createDescriptorPool();
+        void createDescriptorSets();
 
         void createCommandBuffer();
         void createSyncObjects();
@@ -198,6 +214,7 @@ namespace Bolt
 
         bool                                m_running = false;
         Quaint::IMemoryContext*             m_context;
+        Camera                              m_camera;
 
         VkAllocationCallbacks               m_defGraphicsAllocator;
         VkAllocationCallbacks*              m_allocationPtr;
@@ -217,6 +234,8 @@ namespace Bolt
         VkPipelineLayout                    m_pipelineLayout = VK_NULL_HANDLE;
         VkPipeline                          m_graphicsPipeline = VK_NULL_HANDLE;
 
+        VkDescriptorSetLayout               m_descriptorSetLayout = VK_NULL_HANDLE;
+
         VkQueue                             m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue                             m_presentQueue = VK_NULL_HANDLE;
         VkQueue                             m_transferQueue = VK_NULL_HANDLE;
@@ -231,6 +250,13 @@ namespace Bolt
         VkBuffer                            m_indexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory                      m_indexBufferGpuMemory = VK_NULL_HANDLE;
 
+        Quaint::QArray<VkBuffer>            m_uniformBuffers;
+        Quaint::QArray<VkDeviceMemory>      m_uniformBufferGpuMemory;
+        Quaint::QArray<void*>               m_mappedUniformBuffers;
+
+        VkDescriptorPool                    m_descriptorPool;
+        Quaint::QArray<VkDescriptorSet>     m_descriptorSets;
+
         Quaint::QArray<VkCommandBuffer>     m_commandBuffers;
 
         Quaint::QArray<VkSemaphore>         m_imageAvailableSemaphores;
@@ -238,6 +264,8 @@ namespace Bolt
         Quaint::QArray<VkFence>             m_inFlightFences;
 
         uint8_t                             m_currentFrame = 0;
+
+        UniformBufferObject                 m_ubo;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

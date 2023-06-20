@@ -19,13 +19,13 @@ namespace Quaint
     QVec4 add_vf(QVec4& a, const QVec3& b);
 
     /*Subtrats 2 vectors and stores result in first vector. Also returns a copy*/
-    QVec2 sub_vf(QVec2& a, const QVec2& b);
-    QVec3 sub_vf(QVec3& a, const QVec3& b);
-    QVec4 sub_vf(QVec4& a, const QVec4& b);
+    QVec2 sub_vf(const QVec2& a, const QVec2& b);
+    QVec3 sub_vf(const QVec3& a, const QVec3& b);
+    QVec4 sub_vf(const QVec4& a, const QVec4& b);
     
-    QVec3 sub_vf(QVec3& a, const QVec2& b);
-    QVec4 sub_vf(QVec4& a, const QVec2& b);
-    QVec4 sub_vf(QVec4& a, const QVec3& b);
+    QVec3 sub_vf(const QVec3& a, const QVec2& b);
+    QVec4 sub_vf(const QVec4& a, const QVec2& b);
+    QVec4 sub_vf(const QVec4& a, const QVec3& b);
 
     /*Dot product*/
     float dot_vf(const QVec2& a, const QVec2& b);
@@ -103,7 +103,6 @@ namespace Quaint
         }
 
 
-
         QVec2 operator+(const QVec2& other)
         {
             return add_vf(QVec2(*this), other);
@@ -138,21 +137,15 @@ namespace Quaint
     };
     struct alignas(16) QVec3
     {
-        QVec3(): x(0), y(0), z(0){}
+        QVec3(): buffer{0, 0, 0, 0}{}
         QVec3(float x, float y, float z)
-        : x(x)
-        , y(y)
-        , z(z)
+        : buffer{x, y, z, 0}
         {}
         QVec3(float val)
-        : x(val)
-        , y(val)
-        , z(val)
+        : buffer{val, val, val, 0}
         {}
         QVec3(float (&valArray)[3])
-        : x(valArray[0])
-        , y(valArray[1])
-        , z(valArray[2])
+        : buffer{valArray[0], valArray[1], valArray[2], 0}
         {}
         QVec3(_f4x32 pPack) : pack(pPack){}
         union
@@ -163,7 +156,7 @@ namespace Quaint
                 float y;
                 float z;
             };
-            float buffer[3];
+            float buffer[4];
         #ifdef INTRINSICS_SUPPORTED                        
             _f4x32      pack;
         #endif
@@ -188,13 +181,18 @@ namespace Quaint
         {
             return sqrtf(sqrMagnitude());
         }
+        QVec3& normalize()
+        {
+            *this *= 1.0f/magnitude();
+            return *this;
+        }
 
         QVec3 operator=(const QVec4& other)
         {
             copy(*this, other);
             return *this;
         }
-        QVec3 operator+(const QVec3& other)
+        QVec3 operator+(const QVec3& other) const
         { 
             return add_vf(QVec3(*this), other);
         }
@@ -204,7 +202,7 @@ namespace Quaint
             return *this;
         }
 
-        QVec3 operator-(const QVec3& other)
+        QVec3 operator-(const QVec3& other) const
         {
             return sub_vf(QVec3(*this), other);
         }
@@ -214,9 +212,15 @@ namespace Quaint
             return *this;
         }
 
-        QVec3& operator*(float scalar)
+        QVec3& operator*(float scalar) const
         {
-            x *= scalar; y *= scalar; z *= scalar;
+            return QVec3( x * scalar, y * scalar, z * scalar);
+        }
+        QVec3& operator*=(float scalar)
+        {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
             return *this;
         }
 
@@ -267,11 +271,11 @@ namespace Quaint
             return os;
         }
 
-        float dot(const QVec3& other)
+        float dot(const QVec3& other) const
         {
             return dot_vf(*this, other);
         }
-        float dot(const QVec4& other)
+        float dot(const QVec4& other) const
         {
             return dot_vf(*this, other);
         }
@@ -284,13 +288,18 @@ namespace Quaint
         {
             return sqrtf(sqrMagnitude());
         }
+        QVec4& normalize()
+        {
+            *this *= 1.0f/magnitude();
+            return *this;
+        }
 
         //Remove These
-        float dot_scalar(const QVec4& other)
+        float dot_scalar(const QVec4& other) const
         {
             return (x * other.x + y * other.y + z * other.z + w * other.w);
         }
-        QVec4 cross_scalar(const QVec4& other)
+        QVec4 cross_scalar(const QVec4& other) const
         {
             QVec4 res(0);
         }
@@ -315,9 +324,16 @@ namespace Quaint
             return *this;
         }
 
-        QVec4& operator*(float scalar)
+        QVec4 operator*(float scalar) const
         {
-            x *= scalar; y *= scalar; z *= scalar; w *= scalar;
+            return QVec4( x * scalar, y * scalar, z * scalar, w * scalar);
+        }
+        QVec4& operator*=(float scalar)
+        {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
+            w *= scalar;
             return *this;
         }
 

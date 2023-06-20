@@ -7,35 +7,41 @@ namespace Quaint
     /*Addition*/
     QVec3 add_vf(QVec3& a, const QVec3& b)
     {
-        a.pack = _mm_add_ps(a.pack, b.pack);
-        return a;
+        return QVec3(_mm_add_ps(a.pack, b.pack));
     }
     QVec4 add_vf(QVec4& a, const QVec4& b)
     {
-        a.pack = _mm_add_ps(a.pack, b.pack);
+        //Addition of two vectors gives a point. W should be 1
+        QVec4 res(_mm_add_ps(a.pack, b.pack));
+        res.w = 1.0f;
         return a;
     }
     QVec4 add_vf(QVec4& a, const QVec3& b)
     {
-        a.pack = _mm_add_ps(a.pack, b.pack);
+        //Addition of two vectors gives a point. W should be 1
+        QVec4 res(_mm_add_ps(a.pack, b.pack));
+        res.w = 1.0f;
         return a;
     }
 
     /*subtraction*/
-    QVec3 sub_vf(QVec3& a, const QVec3& b)
+    QVec3 sub_vf(const QVec3& a, const QVec3& b)
     {
-        a.pack = _mm_sub_ps(a.pack, b.pack);
-        return a;
+        return QVec3(_mm_sub_ps(a.pack, b.pack));
     }
-    QVec4 sub_vf(QVec4& a, const QVec4& b)
+    QVec4 sub_vf(const QVec4& a, const QVec4& b)
     {
-        a.pack = _mm_sub_ps(a.pack, b.pack);
-        return a;
+        //Subtraction of two vectors gives a direction. W should be 0
+        QVec4 res(_mm_sub_ps(a.pack, b.pack));
+        res.w = 0.0f;
+        return res;
     }
-    QVec4 sub_vf(QVec4& a, const QVec3& b)
+    QVec4 sub_vf(const QVec4& a, const QVec3& b)
     {
-        a.pack = _mm_sub_ps(a.pack, b.pack);
-        return a;
+        //Subtraction of two vectors gives a direction. W should be 0
+        QVec4 res(_mm_sub_ps(a.pack, b.pack));
+        res.w = 0.0f;
+        return res;
     }
 
     /*Dot Product*/
@@ -90,7 +96,7 @@ namespace Quaint
     /*This only does cross product for 3 dimensions. Cross product for 4d vectors is not possible*/
     QVec4 cross_vf(const QVec4& a, const QVec4& b)
     {
-        return QVec4(do_cross(a.pack, b.pack));
+        return QVec3(do_cross(a.pack, b.pack));
     }
 
     /*Utils*/

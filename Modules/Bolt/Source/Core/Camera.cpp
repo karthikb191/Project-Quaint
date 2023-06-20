@@ -5,26 +5,48 @@ namespace Bolt
     void Camera::init(const CameraInitInfo& info)
     {
         m_transform = Quaint::makeTransform(info.translation, info.rotation, Quaint::QVec3(1, 1, 1));
+        Quaint::QMat3x3 invRotation = Quaint::transpose_mf(m_transform);
         m_params.fov = info.fov;
         m_params.farClipDist = info.farClipDist;
         m_params.nearClipDist = info.nearClipDist;
+        computeProjection();
     }
-    void Camera::lookAt(const Quaint::QVec4& target, const Quaint::QVec3& up)
+    void Camera::lookAt(const Quaint::QVec4& target,const Quaint::QVec4& camLocation, const Quaint::QVec3& up)
     {
-        //TODO: This should be called from a "Transform" class 
-        Quaint::QMat3x3 lookAtMatrix = Quaint::lookAt(target, m_transform.col3, up);
-        m_transform.col0 = lookAtMatrix.col0;
-        m_transform.col1 = lookAtMatrix.col1;
-        m_transform.col2 = lookAtMatrix.col2;
+        //TODO: This should be called from a "Transform" class
+        Quaint::QMat4x4 lookAtMatrix = Quaint::lookAt(target, camLocation, up);
+
+        m_transform = lookAtMatrix;
+        //m_transform.col0 = lookAtMatrix.col0;
+        //m_transform.col1 = lookAtMatrix.col1;
+        //m_transform.col2 = lookAtMatrix.col2;
+        //m_transform.col3 = camLocation;
     }
-    Quaint::QMat4x4 Camera::getViewMatrix()
+    void Camera::setLocation(const Quaint::QVec4& location)
+    {
+        //TODO: This is wrong!
+        m_transform.col3 = location;
+    }
+    Quaint::QMat4x4 Camera::getViewMatrix() const
     {
         //TODO: Orthogonal check transformation matrix
 
         //Negate translation and tranpose rotation matrix
         Quaint::QMat3x3 invRotation = Quaint::transpose_mf(m_transform);
         Quaint::QVec4 invTranslation = m_transform.col3 * -1.0f;
+        invTranslation.w = 1.0f;
 
-        return Quaint::QMat4x4(invRotation, invTranslation);
+        return Quaint::makeTransform(invTranslation, invRotation);
+        //return Quaint::QMat4x4(invRotation, invTranslation);
+    }
+
+    void Camera::setAspectRatio(float aspectRatio)
+    {
+        m_params.aspectRatio = aspectRatio;
+        computeProjection();
+    }
+    void Camera::computeProjection()
+    {
+        m_projection = Quaint::buildProjectionMatrix(m_params.nearClipDist, m_params.farClipDist, m_params.fov, m_params.aspectRatio);
     }
 }

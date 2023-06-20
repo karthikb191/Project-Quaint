@@ -10,14 +10,15 @@ namespace Quaint
 {
     inline QMat4x4 buildProjectionMatrix(float nearClip, float farClip, float fov, float aspectRatio)
     {
+        //Vulkan's positive Y is downwards
         QMat4x4 res = QMat4x4::Identity();
-        float r = tanf(TO_RADIANS(fov)) * nearClip;
+        float r = tanf(TO_RADIANS(fov/2.0f)) * nearClip;
         float l = -r;
         float t = r * (1.f/aspectRatio);
         float b = -t;
 
         float width = (r - l);
-        float height = (t - b);
+        float height = (b - t);
         float negDepth = (nearClip - farClip);
 
         res.col0.x = (2 * nearClip) / width; 
@@ -31,20 +32,6 @@ namespace Quaint
 
         res.col2.w = -1;
         res.col3.w = 0;
-    }
-
-    /*Gives matrix with columns aligned with target looking at*/
-    inline QMat3x3 lookAt(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
-    {
-        //+Z points away from camera
-        QVec3 forward = source - target;
-        QVec3 right = cross_vf(normalizedUp, forward);
-        QVec3 up = cross_vf(forward, right);
-
-        QMat3x3 res = QMat3x3::Identity();
-        res.col0 = right;
-        res.col1 = up;
-        res.col2 = forward;
         return res;
     }
 
@@ -98,15 +85,45 @@ namespace Quaint
         return rot;
     }
 
+    inline QMat4x4 makeTransform(const QMat4x4& translation, const QMat4x4& rotation, const QMat4x4& scale)
+    {
+        //Colum Major! Scale->Rotate->Translate
+        return translation * rotation * scale;
+    }
     inline QMat4x4 makeTransform(const QVec4& translation, const QVec3& rotation, const QVec3& scale)
     {
-        return(buildTranslationMatrix(translation),
+        return makeTransform(buildTranslationMatrix(translation),
         buildRotationMatrixYZX(rotation), 
         buildScaleMatrix(scale));
     }
-    inline QMat4x4 makeTransform(const QMat4x4& translation, const QMat4x4& rotation, const QMat4x4& scale)
+    inline QMat4x4 makeTransform(const QVec4& translation, const QMat3x3& rotationAndScale)
     {
-        return translation * rotation * scale;
+        return (buildTranslationMatrix(translation) * QMat4x4(rotationAndScale));
+    }
+
+    
+    /*Gives matrix with columns aligned with target looking at*/
+    inline QMat4x4 lookAt(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
+    {
+        //+Z points away from camera
+        QVec3 forward = (source - target).normalize();
+        QVec3 right = cross_vf(normalizedUp, forward).normalize();
+        QVec3 up = cross_vf(forward, right).normalize();
+
+        QMat3x3 rotMatrix = QMat3x3::Identity();
+        rotMatrix.col0 = right;
+        rotMatrix.col1 = up;
+        rotMatrix.col2 = forward;
+
+        QVec4 newPosition(
+            source.dot(right),
+            source.dot(up),
+            source.dot(forward),
+            1.0f
+        );
+        QMat4x4 transformMatrix = makeTransform(newPosition, rotMatrix);
+
+        return transformMatrix;
     }
 }
 

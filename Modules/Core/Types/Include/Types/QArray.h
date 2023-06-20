@@ -38,6 +38,16 @@ namespace Quaint
             m_size = size;
             reserve(((size + 8) / 4) * 4);
         }
+        QArray(IMemoryContext* context, size_t size, const T& defVal)
+        {
+            m_context = context;
+            m_size = size;
+            reserve(((size + 8) / 4) * 4);
+            for(size_t i = 0; i < m_size; i++)
+            {
+                *(m_rawData + i) = defVal;
+            }
+        }
         template<size_t SZ>
         QArray(IMemoryContext* context, const T(&list)[SZ])
         {
@@ -221,6 +231,13 @@ namespace Quaint
         }
         T& operator[](size_t index)
         {
+            if(index < 0 || index >= m_size)
+            {
+                int i = 100;
+                i -= 10;
+                i += 10;
+                index = 0;
+            }
             assert((index >= 0 && index < m_size) && "Trying to access invalid element");
             return *(m_rawData + index);
         }
