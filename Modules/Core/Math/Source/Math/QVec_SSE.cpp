@@ -14,14 +14,14 @@ namespace Quaint
         //Addition of two vectors gives a point. W should be 1
         QVec4 res(_mm_add_ps(a.pack, b.pack));
         res.w = 1.0f;
-        return a;
+        return res;
     }
     QVec4 add_vf(QVec4& a, const QVec3& b)
     {
         //Addition of two vectors gives a point. W should be 1
         QVec4 res(_mm_add_ps(a.pack, b.pack));
         res.w = 1.0f;
-        return a;
+        return res;
     }
 
     /*subtraction*/

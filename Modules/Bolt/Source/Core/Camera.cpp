@@ -16,11 +16,11 @@ namespace Bolt
         //TODO: This should be called from a "Transform" class
         Quaint::QMat4x4 lookAtMatrix = Quaint::lookAt(target, camLocation, up);
 
-        m_transform = lookAtMatrix;
-        //m_transform.col0 = lookAtMatrix.col0;
-        //m_transform.col1 = lookAtMatrix.col1;
-        //m_transform.col2 = lookAtMatrix.col2;
-        //m_transform.col3 = camLocation;
+        //m_transform = lookAtMatrix;
+        m_transform.col0 = lookAtMatrix.col0;
+        m_transform.col1 = lookAtMatrix.col1;
+        m_transform.col2 = lookAtMatrix.col2;
+        m_transform.col3 = camLocation;
     }
     void Camera::setLocation(const Quaint::QVec4& location)
     {
@@ -33,7 +33,11 @@ namespace Bolt
 
         //Negate translation and tranpose rotation matrix
         Quaint::QMat3x3 invRotation = Quaint::transpose_mf(m_transform);
-        Quaint::QVec4 invTranslation = m_transform.col3 * -1.0f;
+        //Quaint::QVec4 invTranslation = m_transform.col3 * -1.0f;
+        Quaint::QVec4 invTranslation;
+        invTranslation.x = -Quaint::dot_vf(m_transform.col0, m_transform.col3);
+        invTranslation.y = -Quaint::dot_vf(m_transform.col1, m_transform.col3);
+        invTranslation.z = -Quaint::dot_vf(m_transform.col2, m_transform.col3);
         invTranslation.w = 1.0f;
 
         return Quaint::makeTransform(invTranslation, invRotation);

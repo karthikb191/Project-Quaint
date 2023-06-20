@@ -212,7 +212,7 @@ namespace Quaint
             return *this;
         }
 
-        QVec3& operator*(float scalar) const
+        QVec3 operator*(float scalar) const
         {
             return QVec3( x * scalar, y * scalar, z * scalar);
         }

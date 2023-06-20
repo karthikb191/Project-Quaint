@@ -103,7 +103,7 @@ namespace Quaint
 
     
     /*Gives matrix with columns aligned with target looking at*/
-    inline QMat4x4 lookAt(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
+    inline QMat3x3 lookAt(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
     {
         //+Z points away from camera
         QVec3 forward = (source - target).normalize();
@@ -115,15 +115,7 @@ namespace Quaint
         rotMatrix.col1 = up;
         rotMatrix.col2 = forward;
 
-        QVec4 newPosition(
-            source.dot(right),
-            source.dot(up),
-            source.dot(forward),
-            1.0f
-        );
-        QMat4x4 transformMatrix = makeTransform(newPosition, rotMatrix);
-
-        return transformMatrix;
+        return rotMatrix;
     }
 }
 

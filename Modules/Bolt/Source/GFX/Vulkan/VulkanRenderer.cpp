@@ -72,9 +72,9 @@ namespace Bolt
     void VulkanRenderer::init()
     {
         CameraInitInfo info{};
+        info.translation = Quaint::QVec4(0, 0, 3, 1);
+        info.rotation = Quaint::QVec3(0, 0, 0);
         info.fov = 90.0f;
-        info.rotation = Quaint::QVec3(0);
-        info.translation = Quaint::QVec4(0);
         info.nearClipDist = 0.1f;
         info.farClipDist = 10000.0f;
         m_camera.init(info);
@@ -1439,7 +1439,9 @@ namespace Bolt
         //ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         //glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         
-        m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), Quaint::QVec4(2.0f, 2.0f, 2.0f, 1.0f), Quaint::QVec3(0.0f, 1.0f, 0.0f));
+        m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
+        Quaint::QVec4(2.0f, 1.0f, 2.0f, 1.0f),
+        Quaint::QVec3(0.0f, 1.0f, 0.0f));
         ubo.view = m_camera.getViewMatrix();
         ubo.proj = m_camera.getProjectionMatrix();
 

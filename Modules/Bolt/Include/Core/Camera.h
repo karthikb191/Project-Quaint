@@ -11,8 +11,8 @@ namespace Bolt
         float               aspectRatio = 1.33f;
         float               nearClipDist = 0.1f;
         float               farClipDist = 1000.0f;
-        Quaint::QVec4       translation;
-        Quaint::QVec3       rotation;
+        Quaint::QVec4       translation = Quaint::QVec4(1, 1, 1, 1);
+        Quaint::QVec3       rotation = Quaint::QVec3(0, 0, 0);
     };
     class alignas(16) Camera
     {
