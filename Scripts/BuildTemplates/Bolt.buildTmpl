@@ -1,0 +1,17 @@
+@:
+Settings={
+    "Name" : "Bolt",
+    "Location" : "./Modules/Bolt",
+    "OutputDirectory" : "./Build/Bolt",
+    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
+}
+:@
+
+@:
+Settings2={
+    "Name" : "Bolt",
+    "Location" : "./Modules/Bolt",
+    "OutputDirectory" : "./Build/Bolt",
+    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
+}
+:@

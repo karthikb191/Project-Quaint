@@ -14,7 +14,7 @@ namespace Bolt
         Quaint::QVec4       translation = Quaint::QVec4(1, 1, 1, 1);
         Quaint::QVec3       rotation = Quaint::QVec3(0, 0, 0);
     };
-    class alignas(16) Camera
+    class Camera
     {
     private:
         struct CameraParams
