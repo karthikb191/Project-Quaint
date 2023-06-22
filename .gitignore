@@ -2,6 +2,9 @@
 *.vcxproj
 *.sln
 
+#Cache
+**/__pycache__/**
+
 #Build Folders
 Build
 Saved
