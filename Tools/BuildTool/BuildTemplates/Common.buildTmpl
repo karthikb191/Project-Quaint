@@ -1,0 +1,17 @@
+@:
+DebugSettings={
+    "OutputFolderName" = "Debug",
+    "CMakeOptions"=[],
+    "CompileFlags"=[],
+    "LinkerFlags"=[],
+    "PreProcessorDefines"=["DEBUG_BUILD"]
+}:@
+
+@:
+ReleaseSettings={
+    "OutputFolderName" = "Release",
+    "CMakeOptions"=[],
+    "CompileFlags"=[],
+    "LinkerFlags"=[],
+    "PreProcessorDefines"=["RELEASE_BUILD"]
+}:@
