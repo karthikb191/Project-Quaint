@@ -1,17 +1,23 @@
 @:
-DebugSettings={
-    "OutputFolderName" = "Debug",
-    "CMakeOptions"=[],
-    "CompileFlags"=[],
-    "LinkerFlags"=[],
-    "PreProcessorDefines"=["DEBUG_BUILD"]
+"DebugSettings"={
+    "OutputFolderName" : "Debug",
+    "CMakeOptions" : ["DEBUG_BUILD"],
+
+#if defined UNKNOWN_PLATFORM
+    "CompileFlags" : ["-testFlag1", "-testFlag2"],
+#elif defined WINDOWS
+    "CompileFlags" : ["/Zi", "/O2"],
+#endif
+
+    "LinkerFlags" : [],
+    "PreProcessorDefines" : ["DEBUG_BUILD"]
 }:@
 
 @:
-ReleaseSettings={
-    "OutputFolderName" = "Release",
-    "CMakeOptions"=[],
-    "CompileFlags"=[],
-    "LinkerFlags"=[],
-    "PreProcessorDefines"=["RELEASE_BUILD"]
+"ReleaseSettings"={
+    "OutputFolderName" : "Release",
+    "CMakeOptions" : [],
+    "CompileFlags" : [],
+    "LinkerFlags" : [],
+    "PreProcessorDefines" : ["RELEASE_BUILD"]
 }:@

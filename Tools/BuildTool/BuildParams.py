@@ -37,9 +37,8 @@ class ModuleOject:
         self.Params = {}
 
 
-    def setModuleParamsFromDictionary(self, params = {}):
-        if(params["Name"]):
-            self.Params.Name = params["Name"]
+    def setModuleParams(self, params : dict):
+        
         return
 
     Params = {}
