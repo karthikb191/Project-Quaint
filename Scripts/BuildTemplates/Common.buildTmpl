@@ -1,17 +1,34 @@
 @:
+#if defined UNKNOWN_PLATFORM
+    #if defined JDGKJSDG
+"DebugSettings"={
+    "OutputFolderName" : "Debug",
+    "CMakeOptions" : ["DEBUG_BUILD"],
+    "CompileFlags" : ["-testFlag1", "-testFlag2"],
+    "LinkerFlags" : [],
+    "PreProcessorDefines" : ["DEBUG_BUILD"]
+}
+    #endif
+
+#elif defined WINDOWS
+
 "DebugSettings"={
     "OutputFolderName" : "Debug",
     "CMakeOptions" : ["DEBUG_BUILD"],
 
 #if defined UNKNOWN_PLATFORM
     "CompileFlags" : ["-testFlag1", "-testFlag2"],
-#elif defined WINDOWS
-    "CompileFlags" : ["/Zi", "/O2"],
+#else
+    #if defined LALALA
+        "CompileFlags" : ["/Zi", "/O2"],
+    #endif
 #endif
 
     "LinkerFlags" : [],
-    "PreProcessorDefines" : ["DEBUG_BUILD"]
-}:@
+    "PreProcessorDefines" : ["DEBUG_BUILD00000"]
+}
+#endif
+:@
 
 @:
 "ReleaseSettings"={

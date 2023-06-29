@@ -4,17 +4,17 @@ from BuildParams import GlobalBuildSettings
 from BuildParams import ModuleOject
 
 TokenDictionary = {
-    "WINDOWS" : 0,
+    "UNKNOWN_PLATFORM" : 0,
     "TestVal" : 10,
     "TestVal2" : 10,
     "TestVal3" : 0
 }
 
-def IdentifyParamTypeAndCleanup(Param : str) -> tuple[str, str] | None:
+def IdentifyParamTypeAndCleanup(Param : str, Index) -> tuple[str, str] | None:
     if (Param is None) or (len(Param) == 0):
         return (None, "")
     
-    Index = GetNextValidCharacterIndex(Param, -1)
+    Index = GetNextValidCharacterIndex(Param, Index)
 
     Type = ""
     assert (Index < len(Param)), "Invalid Index retrieved"
@@ -115,24 +115,39 @@ def PrasePreprocessorBlock(Param, Index, PreProcessorToken) -> tuple[str, int]:
             return (Param, Index)        
         else:
             #If condition is false, jump the control to #else or #endif
-            while(Param[Index] != '#'):
-                Index += 1
-            Index = GetNextValidCharacterIndex(Param, Index)
-            (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
-            if PreProcessorToken == "elif":
+            IfStack = []
+            while Param[Index] != '#' or len(IfStack) != 0:
+                Index = GetNextValidCharacterIndex(Param, Index)
+                if(Param[Index] == '#'):
+                    Index = GetNextValidCharacterIndex(Param, Index)
+                    (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
+                    if(PreProcessorToken == "if"):
+                        IfStack.append(PreProcessorToken)
+                    elif (PreProcessorToken == "endif") and len(IfStack) != 0:
+                        IfStack.pop()
+                    elif len(IfStack) == 0:
+                        break
+
+            if PreProcessorToken == "elif" or PreProcessorToken == "else":
                 return PrasePreprocessorBlock(Param, Index, "elif")
             else:
                 return(Param, Index)
             
     #If control reaches the 'else' block, skip it entirely. else block will be handled within if, elif 
     elif PreProcessorToken == "else":
-        while(PreProcessorToken != "endif"):
+        IfStack = ["if"]
+        while(PreProcessorToken != "endif") and len(IfStack) == 0:
             while(Token[Index] != '#'):
                 Index += 1
                 assert(Index != len(Param)), "#endif not encountered"
             (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
-        
+            
+            if(PreProcessorToken == "if"):
+                IfStack.append("if")
+            elif(PreProcessorToken == "endif"):
+                IfStack.pop()    
         return(Param, Index)
+    
     else:
         return(Param, Index)
 
@@ -275,8 +290,8 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
     return(DictRes, Index)
 
 
-def ProcessParam(Param) -> dict | list | str | None:
-    (Type, Index, ResParam) = IdentifyParamTypeAndCleanup(Param)
+def ProcessParam(Param, Index) -> dict | list | str | None:
+    (Type, Index, ResParam) = IdentifyParamTypeAndCleanup(Param, Index)
     Res = {}
     if Type == "Dictionary":
         (Res, Index) = ParseDictionary(ResParam, Index)
@@ -308,13 +323,26 @@ def ReadTemplateFile(TemplateFilePath):
     ParamDictionary = {}
     for Params in ModuleParamItr:
         CleanedStr = re.sub("(@:)|(:@)", "", Params.group())
+        Index = GetNextValidCharacterIndex(CleanedStr, -1)
+        while(Index < len(CleanedStr) and CleanedStr[Index] == '#'):
+            Index = GetNextValidCharacterIndex(CleanedStr, Index)
+            (Token, Index) = GetPreProcessorToken(CleanedStr, Index)
+            (CleanedStr, Index) = PrasePreprocessorBlock(CleanedStr, Index, Token)
+            Index = GetNextValidCharacterIndex(CleanedStr, Index)
+        
+        if(Index >= len(CleanedStr)):
+            print("No settings retrieved from Build Template file. Check your defines")
+            return ParamDictionary
+
         #CleanedStr = re.sub("(@:)|(:@)|[\n\r\s]", "", Params.group())
         #Remove New line and carriage return characters
         #CleanedStr = re.sub("(@:)|(:@)|[\n\r]", "", Params.group())
-        MyList = CleanedStr.split("=")
-        KeyIndex = GetNextValidCharacterIndex(MyList[0], 0)
-        (CleanedKey, KeyIndex) = ParseString(MyList[0], KeyIndex)
-        ParamDictionary[CleanedKey] = ProcessParam(MyList[1])
-        print(MyList)
+        #MyList = CleanedStr.split("=")
+        (CleanedKey, Index) = ParseString(CleanedStr, Index)
+        Index = GetNextValidCharacterIndex(CleanedStr, Index)
+        assert CleanedStr[Index] == '=', "Not a valid entry"
+        
+        ParamDictionary[CleanedKey] = ProcessParam(CleanedStr, Index)
+        #print(MyList)
         
     return ParamDictionary
