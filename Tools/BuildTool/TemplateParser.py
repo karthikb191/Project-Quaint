@@ -1,7 +1,7 @@
 import re
 import os
 from BuildParams import GlobalBuildSettings
-from BuildParams import ModuleOject
+from BuildParams import ModuleObject
 
 TokenDictionary = {
     "UNKNOWN_PLATFORM" : 0,

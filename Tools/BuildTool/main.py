@@ -3,8 +3,9 @@ import re
 import os
 import ast
 import TemplateParser as Parser
-from BuildParams import GlobalBuildSettings
-from BuildParams import ModuleOject
+from BuildParams import BuildSettings
+from BuildParams import ModuleObject
+import CMakeFileBuilder
 
 
 #TODO: Read this from a settings file
@@ -12,22 +13,40 @@ RootDirectory = "D:\\Works\\Project-Quaint\\"
 BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
-BuildTargetDirectory = BuildTemplatesDirectory + "Core\\"
 BuildTarget = "Core"
+BuildTargetDirectory = BuildTemplatesDirectory + BuildTarget + "\\"
 
-GlobalSettings = GlobalBuildSettings()
-RootModule = ModuleOject()
+BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
+IntermediateDirectory = BuildDirectory + "Intermediates\\"
+OutputDirectory = BuildDirectory + "Output\\"
+BinaryDirectory = BuildDirectory + "Bin\\"
 
-def InitializeBuild():
+GlobalSettings = BuildSettings()
+RootModule = ModuleObject()
+
+def InitDirectories():
+    if not os.path.exists(OutputDirectory):
+        os.makedirs(OutputDirectory)
+    if not os.path.exists(IntermediateDirectory):
+        os.makedirs(IntermediateDirectory)
+
+
+def InitBuildSettings():
+    InitDirectories()
+    GlobalSettings.OutputDirectory = OutputDirectory
+    GlobalSettings.IntermediateDirectory = IntermediateDirectory
+
+
+def ParseTemplates():
     GlobalSettings.BuildTarget = BuildTarget
     CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
     ParamDictionary = Parser.ReadTemplateFile(os.path.join(BuildTargetDirectory, BuildTarget + ExtensionName))
-    module = ModuleOject()
+    module = ModuleObject()
     module.setModuleParams(ParamDictionary)
     ScanForSubmodules(BuildTargetDirectory, RootModule, (BuildTarget + ExtensionName))
     return
 
-def ScanForSubmodules(Directory, ParentModule : ModuleOject, Excludes = []):
+def ScanForSubmodules(Directory, ParentModule : ModuleObject, Excludes = []):
     iterator = os.walk(Directory)
     (dirPath, dirNames, fileNames) = next(iterator)
 
@@ -41,7 +60,7 @@ def ScanForSubmodules(Directory, ParentModule : ModuleOject, Excludes = []):
             continue
     
         ParamDictionary = Parser.ReadTemplateFile(os.path.join(Directory, templateFile))
-        module = ModuleOject()
+        module = ModuleObject()
         module.setModuleParams(ParamDictionary)
         if module is not None:
             ParentModule.SubModules.append(module)
@@ -61,10 +80,13 @@ def ReadTemplateDirectory(DirectoryPath):
         return None
     
     ParamDictionary = Parser.ReadTemplateFile(templateFilePath)
-    module = ModuleOject()
+    module = ModuleObject()
     module.setModuleParams(ParamDictionary)
     ScanForSubmodules(DirectoryPath, module, [templateFile])
     return module
 
 if __name__ == "__main__":
-    InitializeBuild()
+    InitBuildSettings()
+    ParseTemplates()
+    builder = CMakeFileBuilder.CMakeBuilder(GlobalSettings, RootModule)
+    CMakeFileBuilder.Build()

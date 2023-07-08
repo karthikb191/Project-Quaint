@@ -3,9 +3,39 @@
     "Name" : "Core",
     "Location" : "./Modules/Core",
     "Type" : "Static",
-    "OutputSubDirectory" : "./Build/Core",
+    "OutputSubDirectory" : "./Core",
     "Test" : [["Test1", "Test1.1", "Test1.2"], "Test2", "Test3", "Test4"]
 }:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "IPC",
+        "Type" : "Module",
+        "Location" : "Scripts/BuildTemplates/Core/IPC.buildTmpl"
+    },
+    {
+        "Name" : "Logger",
+        "Type" : "Module",
+        "Location" : "Scripts/BuildTemplates/Core/Logger.buildTmpl"
+    },
+    {
+        "Name" : "Math",
+        "Type" : "Module",
+        "Location" : "Scripts/BuildTemplates/Core/Math.buildTmpl"
+    },
+    {
+        "Name" : "Memory",
+        "Type" : "Module",
+        "Location" : "Scripts/BuildTemplates/Core/Memory/Memory.buildTmpl"
+    },
+    {
+        "Name" : "Types",
+        "Type" : "Module",
+        "Location" : "Scripts/BuildTemplates/Core/Types.buildTmpl"
+    },
+]
+:@
 
 @:
 "CompileFlags"=["CompileFlag1", 0.11, 100, "CompileFlag2", "CompileFlag3"]

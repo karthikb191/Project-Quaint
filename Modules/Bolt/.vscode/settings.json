@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory":"${workspaceFolder}",
+    "cmake.sourceDirectory":"${workspaceFolder}/",
     "cmake.buildDirectory": "${workspaceFolder}/Build",
     "files.associations": {
         "memory": "cpp",
