@@ -1,7 +1,5 @@
 import re
 import os
-from BuildParams import GlobalBuildSettings
-from BuildParams import ModuleObject
 
 TokenDictionary = {
     "UNKNOWN_PLATFORM" : 0,
@@ -20,9 +18,9 @@ def IdentifyParamTypeAndCleanup(Param : str, Index) -> tuple[str, str] | None:
     assert (Index < len(Param)), "Invalid Index retrieved"
 
     c = Param[Index]
-    if c is '{' : 
+    if c == '{' : 
         Type = "Dictionary"
-    elif c is '[' or c is '(':
+    elif c == '[' or c == '(':
         Type = "List"
     elif ord(c) >= 48 and ord(c) <= 57:
         Type = "Number"
@@ -331,7 +329,7 @@ def ReadTemplateFile(TemplateFilePath):
             Index = GetNextValidCharacterIndex(CleanedStr, Index)
         
         if(Index >= len(CleanedStr)):
-            print("No settings retrieved from Build Template file. Check your defines")
+            print(f"No settings retrieved from Build Template file at:{TemplateFilePath}. Check your defines")
             return ParamDictionary
 
         #CleanedStr = re.sub("(@:)|(:@)|[\n\r\s]", "", Params.group())

@@ -9,6 +9,7 @@ import CMakeFileBuilder
 
 
 #TODO: Read this from a settings file
+GlobalSettings = BuildSettings()
 RootDirectory = "D:\\Works\\Project-Quaint\\"
 BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
@@ -21,7 +22,6 @@ IntermediateDirectory = BuildDirectory + "Intermediates\\"
 OutputDirectory = BuildDirectory + "Output\\"
 BinaryDirectory = BuildDirectory + "Bin\\"
 
-GlobalSettings = BuildSettings()
 RootModule = ModuleObject()
 
 def InitDirectories():
@@ -33,6 +33,7 @@ def InitDirectories():
 
 def InitBuildSettings():
     InitDirectories()
+    GlobalSettings.RootDirectory = RootDirectory
     GlobalSettings.OutputDirectory = OutputDirectory
     GlobalSettings.IntermediateDirectory = IntermediateDirectory
 
@@ -89,4 +90,4 @@ if __name__ == "__main__":
     InitBuildSettings()
     ParseTemplates()
     builder = CMakeFileBuilder.CMakeBuilder(GlobalSettings, RootModule)
-    CMakeFileBuilder.Build()
+    builder.StartBuild()
