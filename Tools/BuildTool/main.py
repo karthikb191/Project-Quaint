@@ -33,17 +33,18 @@ def InitDirectories():
 
 def InitBuildSettings():
     InitDirectories()
-    GlobalSettings.RootDirectory = RootDirectory
-    GlobalSettings.OutputDirectory = OutputDirectory
-    GlobalSettings.IntermediateDirectory = IntermediateDirectory
+    BuildSettings.RootDirectory = RootDirectory
+    BuildSettings.OutputDirectory = OutputDirectory
+    BuildSettings.IntermediateDirectory = IntermediateDirectory
+    BuildSettings.BinaryDirectory = BinaryDirectory
 
 
 def ParseTemplates():
-    GlobalSettings.BuildTarget = BuildTarget
+    BuildSettings.BuildTarget = BuildTarget
     CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
     ParamDictionary = Parser.ReadTemplateFile(os.path.join(BuildTargetDirectory, BuildTarget + ExtensionName))
-    module = ModuleObject()
-    module.setModuleParams(ParamDictionary)
+    
+    RootModule.setModuleParams(ParamDictionary)
     ScanForSubmodules(BuildTargetDirectory, RootModule, (BuildTarget + ExtensionName))
     return
 

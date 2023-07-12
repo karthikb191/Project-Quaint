@@ -29,11 +29,11 @@ class ModuleParams:
         self.Name = ""
         self.ModulePath = ""
         self.IntermediatePath = ""
-        self.PathInfo = {
-            "LibPath" : str,
-            "SrcPaths" : [str],
-            "SrcExcludePaths" : [str],
-            "HeaderPaths" : [str]
+        self.PathInfo : dict[str, list[str]] = {
+            "LibPath" : "",
+            "SrcPaths" : [],
+            "SrcExcludePaths" : [],
+            "HeaderPaths" : []
         }
         
     Name=""
@@ -45,30 +45,33 @@ class ModuleObject:
         self.TemplateFile = ""
         self.Type = ModuleType.STATIC
         self.Params = ModuleParams()
-        self.SubModules = [ModuleObject]
+        self.SubModules : list[ModuleObject] = []
         self.CMakeDefines = []
         self.CompileOptions = []
         self.LinkerOptions = []
         self.Dependencies = []
         self.BuildFlags = []
         self.PreProcessorDefines = []
-        self.Params = {}
 
 
     def setModuleParams(self, paramDict : dict):
         if "Settings" in paramDict:
             self.Params.Name = paramDict["Settings"]["Name"]
             self.Params.ModulePath = BuildSettings.RootDirectory + paramDict["Settings"]["Path"]
-            self.Type = paramDict["Settings"]["Type"]
+            self.Type = ModuleType[paramDict["Settings"]["Type"]]
         
-        self.Params.PathInfo["LibPath"] = [os.path.join(self.Params.ModulePath + str) for str in paramDict["LibPath"]]
-        self.Params.PathInfo["SrcPaths"] = [os.path.join(self.Params.ModulePath + str) for str in  paramDict["SrcPaths"]]
-        self.Params.PathInfo["SrcExcludePaths"] = [os.path.join(self.Params.ModulePath + str) for str in paramDict["SrcExcludePaths"]]
-        self.Params.PathInfo["HeaderPaths"] = [os.path.join(self.Params.ModulePath + str) for str in paramDict["HeaderPaths"]]
+        if("LibPath" in paramDict):
+            self.Params.PathInfo["LibPath"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["LibPath"]]
+        if("SrcPaths" in paramDict):
+            self.Params.PathInfo["SrcPaths"] = [os.path.join(self.Params.ModulePath, s) for s in  paramDict["SrcPaths"]]
+        if("SrcExcludePaths" in paramDict):
+            self.Params.PathInfo["SrcExcludePaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["SrcExcludePaths"]]
+        if("HeaderPaths" in paramDict):
+            self.Params.PathInfo["HeaderPaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["HeaderPaths"]]
+
 
         return
 
-    Params = {}
     TemplateFile=""
     Type = ModuleType.STATIC
     Params = ModuleParams()

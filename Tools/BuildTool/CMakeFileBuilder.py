@@ -1,4 +1,5 @@
 import os
+import re
 from io import TextIOWrapper
 from BuildParams import ModuleObject
 from BuildParams import ModuleType
@@ -9,9 +10,9 @@ class CMakeBuilder:
         self._BuildSettings = buildSettings
         self._RootModule = rootModule
         #Update Build settings to point to the current Root Module's directory
-        self._BuildSettings.BinaryDirectory = os.path.join(self._BuildSettings.BinaryDirectory, rootModule.Params.Name)
-        self._BuildSettings.IntermediateDirectory = os.path.join(self._BuildSettings.IntermediateDirectory, rootModule.Params.Name)
-        self._BuildSettings.OutputDirectory = os.path.join(self._BuildSettings.OutputDirectory, rootModule.Params.Name)
+        #self._BuildSettings.BinaryDirectory = os.path.join(self._BuildSettings.BinaryDirectory, rootModule.Params.Name)
+        #self._BuildSettings.IntermediateDirectory = os.path.join(self._BuildSettings.IntermediateDirectory, rootModule.Params.Name)
+        #self._BuildSettings.OutputDirectory = os.path.join(self._BuildSettings.OutputDirectory, rootModule.Params.Name)
         self._BuildList = []
         pass
     
@@ -24,7 +25,7 @@ class CMakeBuilder:
         fd.write(newLineStr)
 
     def WriteCMakeVersion(self, fd : TextIOWrapper, version : str) -> None:
-        fd.write(f"cmake_minimum_required(VERSION{version})")
+        fd.write(f"cmake_minimum_required(VERSION {version})")
         self.AddNewLines(fd, 2)
         pass
 
@@ -38,10 +39,15 @@ class CMakeBuilder:
         if(module.Params.PathInfo.get("SrcPaths") == None):
             fd.write(f"add_executable({module.Params.Name} INTERFACE)")
             return
-                
-        Sources = self.CollectSourceFiles(fd, module.Params.PathInfo["SrcPaths"])
+        
+        ExcludeRegex = module.Params.PathInfo["SrcExcludePaths"]
+        if (module.Type != ModuleType.EXECUTABLE) and (ExcludeRegex.count(".*[mM]ain.cpp") == 0):
+            ExcludeRegex.append(".*[mM]ain.cpp")
+
+        Sources = self.CollectSourceFiles(fd, module.Params.PathInfo["SrcPaths"], ExcludeRegex)
         if(len(Sources) == 0):
-            fd.write(f"add_executable({module.Params.Name} INTERFACE)")
+            assert(module.Type != ModuleType.EXECUTABLE), "An Executable should atleast contain main.cpp"
+            fd.write(f"add_library({module.Params.Name} INTERFACE)")
             return
 
         if(module.Type == ModuleType.EXECUTABLE):
@@ -66,32 +72,48 @@ class CMakeBuilder:
         self.AddNewLines(fd, 2)
         pass
 
-    def CollectSourceFilesInDir(self, fd : TextIOWrapper, dirPath : str, excludesPaths : list[str]) -> list[str]:
+    def CollectSourceFilesInDir(self, dirPath : str, excludeRegex : list[str]) -> list[str]:
         Sources = []
         dirList = os.listdir(dirPath)
         for path in dirList:
-            if os.path.isfile(path):
-                if os.path.splitext(path) in self._BuildSettings.SourceExtensions:
-                    Sources.extend(path)
+            fullPath = os.path.join(dirPath, path)
+            fullPath = fullPath.replace('\\', os.path.sep)
+            fullPath = fullPath.replace('/', os.path.sep)
+
+            mustExclude = False
+            for exclExpr in excludeRegex:
+                RES = re.search(exclExpr, fullPath)
+                if re.search(exclExpr, fullPath) != None:
+                    mustExclude = True
+                    break
+            
+            if mustExclude:
+                continue
+
+            if os.path.isfile(fullPath):
+                if os.path.splitext(fullPath)[1] in self._BuildSettings.SourceExtensions:
+                    Sources.append(fullPath)
             else:
-                if path not in excludesPaths:
-                    Sources.extend(self.CollectSourceFilesInDir(path))
+                if fullPath not in excludeRegex:
+                    Sources.extend(self.CollectSourceFilesInDir(fullPath, excludeRegex))
 
         return Sources
         pass
 
-    def CollectSourceFiles(self, fd : TextIOWrapper, srcPaths : list[str], excludePaths : list[str]) -> list[str]:
+    def CollectSourceFiles(self, fd : TextIOWrapper, srcPaths : list[str], excludeRegex : list[str]) -> list[str]:
         sources = []
 
         for path in srcPaths:
             if not os.path.isdir(path):
                 print("Path to source is not a directory. Check your source entries")
                 continue
-            sources.extend(self.CollectSourceFilesInDir(path), excludePaths)
+            sources.extend(self.CollectSourceFilesInDir(path, excludeRegex))
 
 
         sourceString = ',\n'.join(sources)
-        fd.write(f"set(SOURCES {sourceString})")
+        if len(sources) > 0 :
+            fd.write(f"set(SOURCES {sourceString})")
+            self.AddNewLines(fd, 2)
         return sources
         pass
 
@@ -101,10 +123,11 @@ class CMakeBuilder:
                 continue
             if(depModule.Params.Name == self._RootModule.Params.Name):
                 continue
-            
+
+            depModule.Params.IntermediatePath = os.path.join(depModule.Params.IntermediatePath, module.Params.Name)
             if (depModule.Type is ModuleType.BUILD_STATIC) or (depModule.Type is ModuleType.BUILD_DYNAMIC):
                 self._IncludeList.append(depModule.Params.Name)
-                dirPath = os.path.join(self._BuildSettings.IntermediateDirectory, module.Params.IntermediatePath, module.Params.Name)
+                dirPath = os.path.join(self._BuildSettings.IntermediateDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
                 fileName = os.path.join(dirPath, "CMakeLists.txt")
                 fd.write(f"include({fileName})")
                 self.AddNewLines(fd, 1)
@@ -123,7 +146,11 @@ class CMakeBuilder:
                     fd.write(f"add_dependencies({module.Params.Name} {depModule.Params.Name})")
                     self.AddNewLines(fd, 1)
                 
-                binPath = os.path.join(self._BuildSettings.BinaryDirectory, depModule.Params.Name)
+                #binPath = os.path.join(self._BuildSettings.BinaryDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
+                binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
+                if not os.path.exists(binPath):
+                    os.makedirs(binPath)
+                
                 extension = self._BuildSettings.StaticLibExtension \
                     if depModule.Type == ModuleType.BUILD_STATIC else self._BuildSettings.DynamicLibExtension  
                 binPath = os.path.join(binPath, depModule.Params.Name + extension)
@@ -136,7 +163,10 @@ class CMakeBuilder:
     def OpenCMakeFile(self, module : ModuleObject) -> TextIOWrapper :
         DirPath = os.path.join(self._BuildSettings.IntermediateDirectory, module.Params.IntermediatePath, module.Params.Name)
         FileName = os.path.join(DirPath, "CMakeLists.txt")
-        return open(FileName, 'w')
+        
+        if not os.path.exists(DirPath):
+            os.makedirs(DirPath)
+        return open(FileName, 'w', -1, "utf-8")
         pass
         
     def CloseCMakeFile(self, fd : TextIOWrapper):
@@ -160,14 +190,14 @@ class CMakeBuilder:
         #Include all submodules/dependency headers if they are not already included
         self.AddSubModuleIncludes(fd, module)
 
+        self.AddDependencies(fd, module)
+
         #Generate subModule Make files before adding dependencies
         for depModule in module.SubModules:
             assert(module.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
             if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
-                depModule.Params.IntermediatePath += module.Params.Name + "/"
-                self.Build(depModule)
+                self._Build(depModule)
 
-        self.AddDependencies(fd, module)
         self.CloseCMakeFile(fd)
         pass
 
