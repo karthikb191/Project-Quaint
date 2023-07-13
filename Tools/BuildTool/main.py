@@ -14,8 +14,8 @@ RootDirectory = "D:\\Works\\Project-Quaint\\"
 BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
-BuildTarget = "Core"
-BuildTargetDirectory = BuildTemplatesDirectory + BuildTarget + "\\"
+BuildTarget = "Core\\Types"
+BuildTargetDirectory = BuildTemplatesDirectory
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
@@ -42,10 +42,14 @@ def InitBuildSettings():
 def ParseTemplates():
     BuildSettings.BuildTarget = BuildTarget
     CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
-    ParamDictionary = Parser.ReadTemplateFile(os.path.join(BuildTargetDirectory, BuildTarget + ExtensionName))
+    templateFilePath = os.path.join(BuildTargetDirectory, BuildTarget + ExtensionName)
+    ParamDictionary = Parser.ReadTemplateFile(templateFilePath)
     
+    dirName = os.path.basename(os.path.dirname(templateFilePath))
     RootModule.setModuleParams(ParamDictionary)
-    ScanForSubmodules(BuildTargetDirectory, RootModule, (BuildTarget + ExtensionName))
+
+    if(dirName == RootModule.Params.Name):
+        ScanForSubmodules(BuildTargetDirectory, RootModule, (BuildTarget + ExtensionName))
     return
 
 def ScanForSubmodules(Directory, ParentModule : ModuleObject, Excludes = []):

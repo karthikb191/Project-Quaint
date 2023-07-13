@@ -49,7 +49,7 @@ class ModuleObject:
         self.CMakeDefines = []
         self.CompileOptions = []
         self.LinkerOptions = []
-        self.Dependencies = []
+        self.Dependencies : list[ModuleObject] = []
         self.BuildFlags = []
         self.PreProcessorDefines = []
 

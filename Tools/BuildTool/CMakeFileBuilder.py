@@ -14,6 +14,9 @@ class CMakeBuilder:
         #self._BuildSettings.IntermediateDirectory = os.path.join(self._BuildSettings.IntermediateDirectory, rootModule.Params.Name)
         #self._BuildSettings.OutputDirectory = os.path.join(self._BuildSettings.OutputDirectory, rootModule.Params.Name)
         self._BuildList = []
+        binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
+        if not os.path.exists(binPath):
+            os.makedirs(binPath)
         pass
     
     def AddNewLines(self, fd : TextIOWrapper, num : int) -> None:
@@ -34,10 +37,10 @@ class CMakeBuilder:
         self.AddNewLines(fd, 1)
         pass
 
-    def AddProject(self, fd : TextIOWrapper, module : ModuleObject) -> None:
+    def AddProject(self, fd : TextIOWrapper, module : ModuleObject, isSubModule : bool = False) -> None:
         
         if(module.Params.PathInfo.get("SrcPaths") == None):
-            fd.write(f"add_executable({module.Params.Name} INTERFACE)")
+            fd.write(f"add_executable(${{PROJECT_NAME}} INTERFACE)")
             return
         
         ExcludeRegex = module.Params.PathInfo["SrcExcludePaths"]
@@ -45,17 +48,29 @@ class CMakeBuilder:
             ExcludeRegex.append(".*[mM]ain.cpp")
 
         Sources = self.CollectSourceFiles(fd, module.Params.PathInfo["SrcPaths"], ExcludeRegex)
-        if(len(Sources) == 0):
+        if(len(Sources) == 0) and not isSubModule:
             assert(module.Type != ModuleType.EXECUTABLE), "An Executable should atleast contain main.cpp"
-            fd.write(f"add_library({module.Params.Name} INTERFACE)")
+            if(module.Type == ModuleType.EXECUTABLE):
+                fd.write(f"add_executable(${{PROJECT_NAME}})")
+            elif(module.Type == ModuleType.BUILD_STATIC):
+                fd.write(f"add_library(${{PROJECT_NAME}} STATIC)")
+            elif(module.Type == ModuleType.BUILD_DYNAMIC):
+                fd.write(f"add_library(${{PROJECT_NAME}} SHARED)")
+            else:
+                assert(False), "Trying to build module of invalid type"
+            return
+            
+        if isSubModule:
+            fd.write(f"target_sources(${{PROJECT_NAME}} PUBLIC ${{SOURCES}})")
+            self.AddNewLines(fd, 2)
             return
 
         if(module.Type == ModuleType.EXECUTABLE):
-            fd.write(f"add_executable({module.Params.Name} SOURCES)")
+            fd.write(f"add_executable(${{PROJECT_NAME}} ${{SOURCES}})")
         elif(module.Type == ModuleType.BUILD_STATIC):
-            fd.write(f"add_library({module.Params.Name} STATIC SOURCES)")
+            fd.write(f"add_library(${{PROJECT_NAME}} STATIC ${{SOURCES}})")
         elif(module.Type == ModuleType.BUILD_DYNAMIC):
-            fd.write(f"add_library({module.Params.Name} SHARED SOURCES)")
+            fd.write(f"add_library(${{PROJECT_NAME}} SHARED ${{SOURCES}})")
         else:
             assert(False), "Trying to build module of invalid type"
 
@@ -65,9 +80,10 @@ class CMakeBuilder:
     def CollectHeaderDirs(self, fd : TextIOWrapper, module : ModuleObject) -> None:
         HeaderPaths = module.Params.PathInfo["HeaderPaths"]
         for path in HeaderPaths:
+            path = path.replace('\\', '/')
             fd.write(f"include_directories({path})")
             self.AddNewLines(fd, 1)
-            fd.write(f"target_include_directories({module.Params.Name} PUBLIC {path})")
+            fd.write(f"target_include_directories(${{PROJECT_NAME}} PUBLIC {path})")
             self.AddNewLines(fd, 2)
         self.AddNewLines(fd, 2)
         pass
@@ -77,8 +93,7 @@ class CMakeBuilder:
         dirList = os.listdir(dirPath)
         for path in dirList:
             fullPath = os.path.join(dirPath, path)
-            fullPath = fullPath.replace('\\', os.path.sep)
-            fullPath = fullPath.replace('/', os.path.sep)
+            fullPath = fullPath.replace('\\', '/')
 
             mustExclude = False
             for exclExpr in excludeRegex:
@@ -110,7 +125,7 @@ class CMakeBuilder:
             sources.extend(self.CollectSourceFilesInDir(path, excludeRegex))
 
 
-        sourceString = ',\n'.join(sources)
+        sourceString = '\n'.join(sources)
         if len(sources) > 0 :
             fd.write(f"set(SOURCES {sourceString})")
             self.AddNewLines(fd, 2)
@@ -129,33 +144,36 @@ class CMakeBuilder:
                 self._IncludeList.append(depModule.Params.Name)
                 dirPath = os.path.join(self._BuildSettings.IntermediateDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
                 fileName = os.path.join(dirPath, "CMakeLists.txt")
+
+                fileName = fileName.replace('\\', '/')
                 fd.write(f"include({fileName})")
                 self.AddNewLines(fd, 1)
 
         self.AddNewLines(fd, 1)
         pass
 
-    def AddDependencies(self, fd : TextIOWrapper, module : ModuleObject) -> None:
-        for depModule in module.SubModules:
-            if(depModule.Params.Name == self._RootModule.Params.Name):
-                continue
+    def AddDependencyModule(self, fd : TextIOWrapper, depModule : ModuleObject) -> None:
+        
+        if(depModule.Params.Name == self._RootModule.Params.Name):
+            return
+        
+        if (depModule.Type is ModuleType.BUILD_STATIC) or (depModule.Type is ModuleType.BUILD_DYNAMIC):
+            #include CMakeLists of this Module
+            if depModule.Params.Name not in self._BuildList:
+                fd.write(f"add_dependencies(${{PROJECT_NAME}} {depModule.Params.Name})")
+                self.AddNewLines(fd, 1)
             
-            if (depModule.Type is ModuleType.BUILD_STATIC) or (depModule.Type is ModuleType.BUILD_DYNAMIC):
-                #include CMakeLists of this Module
-                if depModule.Params.Name not in self._BuildList:
-                    fd.write(f"add_dependencies({module.Params.Name} {depModule.Params.Name})")
-                    self.AddNewLines(fd, 1)
-                
-                #binPath = os.path.join(self._BuildSettings.BinaryDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
-                binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
-                if not os.path.exists(binPath):
-                    os.makedirs(binPath)
-                
-                extension = self._BuildSettings.StaticLibExtension \
-                    if depModule.Type == ModuleType.BUILD_STATIC else self._BuildSettings.DynamicLibExtension  
-                binPath = os.path.join(binPath, depModule.Params.Name + extension)
-                fd.write(f"target_link_libraries({module.Params.Name} {binPath})")
-                self.AddNewLines(fd, 2)
+            #binPath = os.path.join(self._BuildSettings.BinaryDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
+            binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
+            if not os.path.exists(binPath):
+                os.makedirs(binPath)
+            
+            extension = self._BuildSettings.StaticLibExtension \
+                if depModule.Type == ModuleType.BUILD_STATIC else self._BuildSettings.DynamicLibExtension  
+            binPath = os.path.join(binPath, depModule.Params.Name + extension)
+            binPath = binPath.replace('\\', '/')
+            fd.write(f"target_link_libraries(${{PROJECT_NAME}} {binPath})")
+            self.AddNewLines(fd, 2)
 
             #TODO: Add code to include libs and dlls
         pass
@@ -164,6 +182,8 @@ class CMakeBuilder:
         DirPath = os.path.join(self._BuildSettings.IntermediateDirectory, module.Params.IntermediatePath, module.Params.Name)
         FileName = os.path.join(DirPath, "CMakeLists.txt")
         
+        DirPath = DirPath.replace('\\', '/')
+        FileName = FileName.replace('\\', '/')
         if not os.path.exists(DirPath):
             os.makedirs(DirPath)
         return open(FileName, 'w', -1, "utf-8")
@@ -173,16 +193,17 @@ class CMakeBuilder:
         fd.close()
         pass
 
-    def _Build(self, module : ModuleObject):
+    def _Build(self, module : ModuleObject, isSubModule : bool = False):
         assert(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC\
                 or module.Type == ModuleType.EXECUTABLE), "Trying to build an invalid module"
         self._BuildList.append(module.Params.Name)
         
         fd = self.OpenCMakeFile(module)
-        self.WriteCMakeVersion(fd, "3.10")
-        self.WriteProjectName(fd, module.Params.Name)        
+        if not isSubModule:
+            self.WriteCMakeVersion(fd, "3.10")
+            self.WriteProjectName(fd, module.Params.Name)
 
-        self.AddProject(fd, module)
+        self.AddProject(fd, module, isSubModule)
 
         if(module.Params.PathInfo.get("HeaderPaths") != None):
             self.CollectHeaderDirs(fd, module)
@@ -190,11 +211,17 @@ class CMakeBuilder:
         #Include all submodules/dependency headers if they are not already included
         self.AddSubModuleIncludes(fd, module)
 
-        self.AddDependencies(fd, module)
-
         #Generate subModule Make files before adding dependencies
         for depModule in module.SubModules:
+            assert(module.Type != ModuleType.EXECUTABLE), "SubModule cannot be an executable. Check your structure!"
+            if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
+                self._Build(depModule, True)
+
+        #Dependencies are Modules/External Libs that are explictly specified in the Build Template file. Need to be addressed
+        #!TODO: This needs to be tested 
+        for depModule in module.Dependencies:
             assert(module.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
+            self.AddDependencyModule(fd, depModule)
             if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
                 self._Build(depModule)
 
