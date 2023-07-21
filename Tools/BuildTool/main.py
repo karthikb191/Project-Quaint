@@ -5,6 +5,7 @@ import ast
 import TemplateParser as Parser
 from BuildParams import BuildSettings
 from BuildParams import ModuleObject
+from BuildParams import ModuleType
 import CMakeFileBuilder
 
 
@@ -14,8 +15,8 @@ RootDirectory = "D:\\Works\\Project-Quaint\\"
 BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
-BuildTarget = "Core\\Types"
 BuildTargetDirectory = BuildTemplatesDirectory
+BuildTarget = "Core\\Memory\\Memory" + ExtensionName
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
@@ -37,19 +38,75 @@ def InitBuildSettings():
     BuildSettings.OutputDirectory = OutputDirectory
     BuildSettings.IntermediateDirectory = IntermediateDirectory
     BuildSettings.BinaryDirectory = BinaryDirectory
-
-
-def ParseTemplates():
     BuildSettings.BuildTarget = BuildTarget
-    CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
-    templateFilePath = os.path.join(BuildTargetDirectory, BuildTarget + ExtensionName)
-    ParamDictionary = Parser.ReadTemplateFile(templateFilePath)
-    
-    dirName = os.path.basename(os.path.dirname(templateFilePath))
-    RootModule.setModuleParams(ParamDictionary)
 
-    if(dirName == RootModule.Params.Name):
-        ScanForSubmodules(BuildTargetDirectory, RootModule, (BuildTarget + ExtensionName))
+def ParseCommonTemplate():
+    CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
+
+# Checks if module is already marked to be built
+def FindModule(module : ModuleObject, moduleToFind : str) -> ModuleObject | None:
+    processedModules : list[ModuleObject] = []
+    stack : set[ModuleObject] = {module}
+    
+    resModule = None
+    while(len(stack)) > 0:
+        currentModule = stack.pop()
+        if(currentModule.Params.Name == moduleToFind):
+            resModule = currentModule
+            break
+        
+        for subModule in module.SubModules:
+            if (subModule not in processedModules):
+                stack.add(subModule)
+
+        for dependency in module.Dependencies:
+            if (dependency not in processedModules):
+                stack.add(dependency)
+
+        processedModules.append(currentModule)
+    
+    if(module.Params.Name == moduleToFind):
+        return module
+
+    return resModule
+
+def IsModuleResolved(moduleName : str) -> tuple[bool, ModuleObject]:
+    resModule = FindModule(RootModule, moduleName)
+
+    if resModule == None:
+        return (False, None)
+
+    if resModule.Type == ModuleType.MODULE:
+        return (False, resModule)
+
+    return (True, resModule)
+
+def ParseTemplate(templatePath : str, ModuleRef : ModuleObject):
+    #TODO: Add some invalid/fail conditions
+    ParamDictionary = Parser.ReadTemplateFile(templatePath)
+
+    dirName = os.path.basename(os.path.dirname(templatePath))
+    ModuleRef.setModuleParams(ParamDictionary)
+
+    dirPath = os.path.dirname(templatePath)
+    if(dirName == ModuleRef.Params.Name):
+        ScanForSubmodules(dirPath, ModuleRef, ModuleRef.TemplateFile)
+    
+    # If there's a dependency and it's a "Module Type" file, Parse the dependency chain
+    # Module's params will be overwritten with parsed values
+    for i in range(len(ModuleRef.Dependencies)):
+        if ModuleRef.Dependencies[i].Type == ModuleType.MODULE:
+            (resolved, module) = IsModuleResolved(ModuleRef.Dependencies[i].Params.Name)
+            
+            if (resolved):
+                #if dependency module is already resolved, override current dependency param with resolved one
+                ModuleRef.Dependencies[i] = module
+                pass
+            else:
+                #if dependency module is not resolved, Parse template
+                dependencyTemplatePath = os.path.join(BuildSettings.RootDirectory, ModuleRef.Dependencies[i].Params.ModulePath)
+                ParseTemplate(dependencyTemplatePath, ModuleRef.Dependencies[i])
+
     return
 
 def ScanForSubmodules(Directory, ParentModule : ModuleObject, Excludes = []):
@@ -70,11 +127,13 @@ def ScanForSubmodules(Directory, ParentModule : ModuleObject, Excludes = []):
         module.setModuleParams(ParamDictionary)
         if module is not None:
             ParentModule.SubModules.append(module)
+            module.ParentModule = ParentModule
     
     for templateFolder in dirNames:
         module = ReadTemplateDirectory(os.path.join(Directory, templateFolder))
         if module is not None:
             ParentModule.SubModules.append(module)
+            module.ParentModule = ParentModule
     return
 
 def ReadTemplateDirectory(DirectoryPath):
@@ -93,6 +152,7 @@ def ReadTemplateDirectory(DirectoryPath):
 
 if __name__ == "__main__":
     InitBuildSettings()
-    ParseTemplates()
+    ParseCommonTemplate()
+    ParseTemplate(BuildTemplatesDirectory + BuildTarget, RootModule)
     builder = CMakeFileBuilder.CMakeBuilder(GlobalSettings, RootModule)
     builder.StartBuild()

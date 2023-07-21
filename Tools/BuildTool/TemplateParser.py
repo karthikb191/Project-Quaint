@@ -211,7 +211,7 @@ def ParseList(Param, Index) -> tuple[list, int]:
             ListRes.append(Res)
         
         elif Param[Index] == '{':
-            (Res, Index) = ParseList(Param, Index)
+            (Res, Index) = ParseDictionary(Param, Index)
             ListRes.append(Res)
         
         elif ord(Param[Index]) >= 48 and ord(Param[Index]) <= 57:

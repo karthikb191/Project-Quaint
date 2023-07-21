@@ -44,6 +44,7 @@ class ModuleObject:
     def __init__(self):
         self.TemplateFile = ""
         self.Type = ModuleType.STATIC
+        self.ParentModule : ModuleObject = None
         self.Params = ModuleParams()
         self.SubModules : list[ModuleObject] = []
         self.CMakeDefines = []
@@ -59,6 +60,7 @@ class ModuleObject:
             self.Params.Name = paramDict["Settings"]["Name"]
             self.Params.ModulePath = BuildSettings.RootDirectory + paramDict["Settings"]["Path"]
             self.Type = ModuleType[paramDict["Settings"]["Type"]]
+            self.TemplateFile = self.Params.Name + ".buildTmpl"
         
         if("LibPath" in paramDict):
             self.Params.PathInfo["LibPath"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["LibPath"]]
@@ -68,13 +70,20 @@ class ModuleObject:
             self.Params.PathInfo["SrcExcludePaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["SrcExcludePaths"]]
         if("HeaderPaths" in paramDict):
             self.Params.PathInfo["HeaderPaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["HeaderPaths"]]
-
+        if("Dependencies" in paramDict):
+            for dependency in paramDict["Dependencies"]:
+                Module = ModuleObject()
+                Module.Type = ModuleType[dependency["Type"]]
+                Module.Params.Name = dependency["Name"]
+                Module.Params.ModulePath = dependency["Path"]
+                self.Dependencies.append(Module)
 
         return
 
     TemplateFile=""
     Type = ModuleType.STATIC
     Params = ModuleParams()
+    ParentModule = None 
     SubModules = []
     CMakeDefines=[]
     CompileOptions = []
