@@ -156,3 +156,4 @@ if __name__ == "__main__":
     ParseTemplate(BuildTemplatesDirectory + BuildTarget, RootModule)
     builder = CMakeFileBuilder.CMakeBuilder(GlobalSettings, RootModule)
     builder.StartBuild()
+    print("Project Generation Complete")

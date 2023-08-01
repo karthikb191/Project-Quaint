@@ -1,14 +1,38 @@
 @:
-Settings={
-    "Name" : "Bolt",
-    "Location" : "./Modules/Bolt",
-    "OutputDirectory" : "./Build/Bolt",
-    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
+"Settings"={
+    "Name" : "Math",
+    "Path" : "Modules/Core/Math",
+    "Type" : "BUILD_STATIC"
 }:@
 
-@:Settings2={
-    "Name" : "Bolt",
-    "Location" : "./Modules/Bolt",
-    "OutputDirectory" : "./Build/Bolt",
-    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
-}:@
+@:
+"SrcPaths"=[
+    "Source"
+]
+:@
+
+@:
+"HeaderPaths"=[
+    "Include"
+]
+:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Types",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Types.buildTmpl"
+    },
+    {
+        "Name" : "Logger",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Logger/Logger.buildTmpl"
+    },
+    {
+        "Name" : "Memory",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.buildTmpl"
+    }
+]
+:@

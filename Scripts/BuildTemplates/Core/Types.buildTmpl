@@ -1,0 +1,18 @@
+@:
+"Settings"={
+    "Name" : "Types",
+    "Path" : "Modules/Core/Types",
+    "Type" : "BUILD_STATIC"
+}:@
+
+@:
+"SrcPaths"=[
+    "Source"
+]
+:@
+
+@:
+"HeaderPaths"=[
+    "Include"
+]
+:@

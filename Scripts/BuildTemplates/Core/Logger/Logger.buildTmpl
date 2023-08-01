@@ -1,0 +1,29 @@
+@:
+"Settings"={
+    "Name" : "Logger",
+    "Path" : "Modules/Core/Logger",
+    "Type" : "BUILD_STATIC"
+}
+:@
+
+@:
+"SrcPaths"=[
+    "Source"
+]
+:@
+
+@:
+"HeaderPaths"=[
+    "Include"
+]
+:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Types",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Types/Types.buildTmpl"
+    }
+]
+:@

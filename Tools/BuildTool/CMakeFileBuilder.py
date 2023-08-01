@@ -7,6 +7,7 @@ from BuildParams import BuildSettings
 
 class CMakeBuilder:
     def __init__(self, buildSettings : BuildSettings, rootModule : ModuleObject) -> None:
+        self._Version = "3.10"
         self._BuildSettings = buildSettings
         self._RootModule = rootModule
         #Update Build settings to point to the current Root Module's directory
@@ -17,6 +18,31 @@ class CMakeBuilder:
         binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
         if not os.path.exists(binPath):
             os.makedirs(binPath)
+        pass
+
+    def BuildRootCMakeFile(self) -> None:
+        FileName = os.path.join(self._BuildSettings.IntermediateDirectory, "CMakeLists.txt")
+        fd = open(FileName, 'w', -1, "utf-8")
+
+        if fd is None:
+            return
+
+        fd.write(f"cmake_minimum_required(VERSION {self._Version})\n")
+        fd.write(f"project({self._RootModule.Params.Name})\n\n")
+        
+        BuildDir = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
+        BuildDir = BuildDir.replace('\\', '/')
+        #TODO: This might need to be handled some more 
+        fd.write(f"set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY {BuildDir})\n"\
+                    f"set(CMAKE_LIBRARY_OUTPUT_DIRECTORY {BuildDir})\n"\
+                    f"set(CMAKE_RUNTIME_OUTPUT_DIRECTORY {BuildDir})\n\n")
+        
+        RootCMakeDir = os.path.join(self._BuildSettings.IntermediateDirectory, self._RootModule.Params.Name)
+        RootCMakePath = os.path.join(RootCMakeDir, "CMakeLists.txt")
+        RootCMakePath = RootCMakePath.replace('\\', '/')
+        fd.write(f"include({RootCMakePath})")
+
+        fd.close()
         pass
     
     def AddNewLines(self, fd : TextIOWrapper, num : int) -> None:
@@ -59,7 +85,8 @@ class CMakeBuilder:
             else:
                 assert(False), "Trying to build module of invalid type"
             return
-            
+        self.AddNewLines(fd, 2)
+
         if isSubModule:
             fd.write(f"target_sources(${{PROJECT_NAME}} PUBLIC ${{SOURCES}})")
             self.AddNewLines(fd, 2)
@@ -151,9 +178,23 @@ class CMakeBuilder:
 
         self.AddNewLines(fd, 1)
         pass
+    
+    def AddDependentCMakeIncludes(self, fd : TextIOWrapper, module : ModuleObject) -> None:
+        for depModule in module.Dependencies:
+            assert(depModule.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
+            if \
+            (depModule.Params.Name not in self._DependencyList) and \
+            (depModule.Params.Name != self._RootModule.Params.Name) and \
+            (depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC) :
+                self._DependencyList.append(depModule.Params.Name)
+                DirPath = os.path.join(self._BuildSettings.IntermediateDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
+                FileName = os.path.join(DirPath, "CMakeLists.txt").replace('\\', '/')
+                fd.write(f"include(\"{FileName}\")")
+                self.AddNewLines(fd, 1)
+        pass
 
     def AddDependencyModule(self, fd : TextIOWrapper, depModule : ModuleObject) -> None:
-        
+        #If any of the dependencies has ROOT module as dependency, skip and dont add it
         if(depModule.Params.Name == self._RootModule.Params.Name):
             return
         
@@ -164,15 +205,15 @@ class CMakeBuilder:
                 self.AddNewLines(fd, 1)
             
             #binPath = os.path.join(self._BuildSettings.BinaryDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
-            binPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
-            if not os.path.exists(binPath):
-                os.makedirs(binPath)
+            BinPath = os.path.join(self._BuildSettings.BinaryDirectory, self._RootModule.Params.Name)
+            if not os.path.exists(BinPath):
+                os.makedirs(BinPath)
             
             extension = self._BuildSettings.StaticLibExtension \
                 if depModule.Type == ModuleType.BUILD_STATIC else self._BuildSettings.DynamicLibExtension  
-            binPath = os.path.join(binPath, depModule.Params.Name + extension)
-            binPath = binPath.replace('\\', '/')
-            fd.write(f"target_link_libraries(${{PROJECT_NAME}} {binPath})")
+            BinPath = os.path.join(BinPath, "${CMAKE_BUILD_TYPE}/" + depModule.Params.Name + extension)
+            BinPath = BinPath.replace('\\', '/')
+            fd.write(f"target_link_libraries(${{PROJECT_NAME}} {BinPath})")
             self.AddNewLines(fd, 2)
 
             #TODO: Add code to include libs and dlls
@@ -187,7 +228,6 @@ class CMakeBuilder:
         if not os.path.exists(DirPath):
             os.makedirs(DirPath)
         return open(FileName, 'w', -1, "utf-8")
-        pass
         
     def CloseCMakeFile(self, fd : TextIOWrapper):
         fd.close()
@@ -199,9 +239,14 @@ class CMakeBuilder:
         self._BuildList.append(module.Params.Name)
         
         fd = self.OpenCMakeFile(module)
+
+        #Include dependent CMakeLists at the very beginning
+        self.AddDependentCMakeIncludes(fd, module)
+
         if not isSubModule:
             self.WriteCMakeVersion(fd, "3.10")
             self.WriteProjectName(fd, module.Params.Name)
+
 
         self.AddProject(fd, module, isSubModule)
 
@@ -217,18 +262,20 @@ class CMakeBuilder:
             if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
                 self._Build(depModule, True)
 
-        #Dependencies are Modules/External Libs that are explictly specified in the Build Template file. Need to be addressed
-        #!TODO: This needs to be tested 
+        #Dependencies are Modules/External Libs that are explictly specified to be built. Need to be addressed
+        #!TODO: This needs to be tested
         for depModule in module.Dependencies:
             assert(module.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
             self.AddDependencyModule(fd, depModule)
-            if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
+            if depModule.Params.Name not in self._BuildList\
+            and (depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC) :
                 self._Build(depModule)
 
         self.CloseCMakeFile(fd)
         pass
 
     def StartBuild(self):
+        self.BuildRootCMakeFile()
         self._Build(self._RootModule)
         pass
 
@@ -236,4 +283,5 @@ class CMakeBuilder:
     _BuildSettings = BuildSettings()
     _BuildList = []
     _IncludeList = []
+    _DependencyList = []
 
