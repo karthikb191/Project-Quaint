@@ -22,6 +22,7 @@ class BuildSettings:
     StaticLibExtension = ".lib"
     DynamicLibExtension = ".dll"
     SourceExtensions = [".c", ".cpp"]
+    CommonSettings = {}
 
 
 class ModuleParams:
@@ -47,12 +48,12 @@ class ModuleObject:
         self.ParentModule : ModuleObject = None
         self.Params = ModuleParams()
         self.SubModules : list[ModuleObject] = []
-        self.CMakeDefines = []
-        self.CompileOptions = []
-        self.LinkerOptions = []
+        self.CMakeDefines : dict[str, str] = {}
+        self.CompileOptions : list[str] = []
+        self.LinkerOptions : list[str] = []
         self.Dependencies : list[ModuleObject] = []
         self.BuildFlags = []
-        self.PreProcessorDefines = []
+        self.PreProcessorDefines :list[str] = []
 
 
     def setModuleParams(self, paramDict : dict):
@@ -77,6 +78,13 @@ class ModuleObject:
                 Module.Params.Name = dependency["Name"]
                 Module.Params.ModulePath = dependency["Path"]
                 self.Dependencies.append(Module)
+        
+        if("CMakeDefines" in paramDict):
+            self.CMakeDefines = paramDict["CMakeDefines"]
+        if("CompileOptions" in paramDict):
+            self.CompileOptions = paramDict["CompileOptions"]
+        if("PreProcessorDefines" in paramDict):
+            self.PreProcessorDefines = paramDict["PreProcessorDefines"]
 
         return
 
@@ -85,7 +93,7 @@ class ModuleObject:
     Params = ModuleParams()
     ParentModule = None 
     SubModules = []
-    CMakeDefines=[]
+    CMakeDefines = {}
     CompileOptions = []
     LinkerOptions = []
     Dependencies = []

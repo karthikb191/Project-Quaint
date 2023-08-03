@@ -30,7 +30,7 @@ namespace Quaint
 #include <Types/QRBTree.h>
 #include <Types/QMap.h>
 #include <Types/QSet.h>
-#include <Math/QVec.hpp>
+#include <Math/QVec.h>
 
 class A
 {

@@ -6,6 +6,14 @@
 }:@
 
 @:
+"PreProcessorDefines" = ["INTRINSICS_SUPPORTED"]
+:@
+
+@:
+"CompileOptions"=["/arch:SSE2"]
+:@
+
+@:
 "SrcPaths"=[
     "Source"
 ]

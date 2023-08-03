@@ -3,9 +3,7 @@ import os
 
 TokenDictionary = {
     "UNKNOWN_PLATFORM" : 0,
-    "TestVal" : 10,
-    "TestVal2" : 10,
-    "TestVal3" : 0
+    "DEBUG_BUILD" : 1
 }
 
 def IdentifyParamTypeAndCleanup(Param : str, Index) -> tuple[str, str] | None:
@@ -222,7 +220,7 @@ def ParseList(Param, Index) -> tuple[list, int]:
             Index = GetNextValidCharacterIndex(Param, Index)
             (Token, Index) = GetPreProcessorToken(Param, Index)
             (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-            (Param, Index) = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextValidCharacterIndex(Param, Index)
             continue
         else:
             assert False, "Invalid Symbol Encountered when Parsing List"

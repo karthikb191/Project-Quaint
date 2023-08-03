@@ -1,11 +1,19 @@
 @:
 #if defined DEBUG_BUILD
-"DebugSettings"={
-    "OutputFolderName" : "Debug",
-    "CMakeOptions" : ["DEBUG_BUILD"],
-    "CompileFlags" : ["-testFlag1", "-testFlag2"],
-    "LinkerFlags" : [],
-    "PreProcessorDefines" : ["DEBUG_BUILD"]
+"CMakeDefines"={
+    "CMAKE_BUILD_TYPE" : "Debug"
 }
 #endif
+:@
+
+
+@:
+    "PreProcessorDefines" = [
+
+#if defined DEBUG_BUILD
+        "DEBUG_BUILD",   
+#endif
+
+        "QUAINT_PLATFORM_${BUILD_PLATFORM}"
+    ]
 :@

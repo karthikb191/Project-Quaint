@@ -16,7 +16,7 @@ BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
 BuildTargetDirectory = BuildTemplatesDirectory
-BuildTarget = "Core\\Memory\\Memory" + ExtensionName
+BuildTarget = "Core\\Core" + ExtensionName
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
@@ -41,7 +41,7 @@ def InitBuildSettings():
     BuildSettings.BuildTarget = BuildTarget
 
 def ParseCommonTemplate():
-    CommonDictionary = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
+    BuildSettings.CommonSettings = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
 
 # Checks if module is already marked to be built
 def FindModule(module : ModuleObject, moduleToFind : str) -> ModuleObject | None:
