@@ -31,7 +31,7 @@ class ModuleParams:
         self.ModulePath = ""
         self.IntermediatePath = ""
         self.PathInfo : dict[str, list[str]] = {
-            "LibPath" : "",
+            "LibPaths" : [],
             "SrcPaths" : [],
             "SrcExcludePaths" : [],
             "HeaderPaths" : []
@@ -59,25 +59,38 @@ class ModuleObject:
     def setModuleParams(self, paramDict : dict):
         if "Settings" in paramDict:
             self.Params.Name = paramDict["Settings"]["Name"]
-            self.Params.ModulePath = BuildSettings.RootDirectory + paramDict["Settings"]["Path"]
             self.Type = ModuleType[paramDict["Settings"]["Type"]]
-            self.TemplateFile = self.Params.Name + ".buildTmpl"
+            self.Params.ModulePath = BuildSettings.RootDirectory + paramDict["Settings"]["Path"]
+            if(self.Type == ModuleType.BUILD_STATIC or self.Type == ModuleType.BUILD_DYNAMIC or self.Type == ModuleType.EXECUTABLE):
+                self.TemplateFile = self.Params.Name + ".buildTmpl"
+            else:
+                self.TemplateFile = "Dependency"
         
-        if("LibPath" in paramDict):
-            self.Params.PathInfo["LibPath"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["LibPath"]]
+        if("LibPaths" in paramDict):
+            #Populates actual paths to lib files
+            for libPaths in paramDict["LibPaths"]:
+                for path in libPaths:
+                    self.Params.PathInfo["LibPaths"].extend([os.path.join(self.Params.ModulePath, path, lib) for lib in libPaths[path]])
+
         if("SrcPaths" in paramDict):
             self.Params.PathInfo["SrcPaths"] = [os.path.join(self.Params.ModulePath, s) for s in  paramDict["SrcPaths"]]
         if("SrcExcludePaths" in paramDict):
             self.Params.PathInfo["SrcExcludePaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["SrcExcludePaths"]]
         if("HeaderPaths" in paramDict):
             self.Params.PathInfo["HeaderPaths"] = [os.path.join(self.Params.ModulePath, s) for s in paramDict["HeaderPaths"]]
+        
         if("Dependencies" in paramDict):
             for dependency in paramDict["Dependencies"]:
-                Module = ModuleObject()
-                Module.Type = ModuleType[dependency["Type"]]
-                Module.Params.Name = dependency["Name"]
-                Module.Params.ModulePath = dependency["Path"]
-                self.Dependencies.append(Module)
+                module = ModuleObject()
+                #If dependency has "Settings" param, then the usual "setParams" logic follows
+                if "Settings" in dependency:
+                    module.setModuleParams(dependency)
+                else:
+                    module.Type = ModuleType[dependency["Type"]]
+                    module.Params.Name = dependency["Name"]
+                    module.Params.ModulePath = dependency["Path"]
+
+                self.Dependencies.append(module)
         
         if("CMakeDefines" in paramDict):
             self.CMakeDefines = paramDict["CMakeDefines"]

@@ -3,6 +3,7 @@ import os
 
 TokenDictionary = {
     "UNKNOWN_PLATFORM" : 0,
+    "QUAINT_PLATFORM_WIN32" : 1,
     "DEBUG_BUILD" : 1
 }
 
@@ -132,10 +133,13 @@ def PrasePreprocessorBlock(Param, Index, PreProcessorToken) -> tuple[str, int]:
     #If control reaches the 'else' block, skip it entirely. else block will be handled within if, elif 
     elif PreProcessorToken == "else":
         IfStack = ["if"]
-        while(PreProcessorToken != "endif") and len(IfStack) == 0:
-            while(Token[Index] != '#'):
+        while(PreProcessorToken != "endif") and len(IfStack) != 0:
+            while(Param[Index] != '#'):
                 Index += 1
                 assert(Index != len(Param)), "#endif not encountered"
+            
+            assert Param[Index] == '#', "Invalid Preprocessor block"
+            Index = GetNextValidCharacterIndex(Param, Index)
             (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
             
             if(PreProcessorToken == "if"):
@@ -226,7 +230,7 @@ def ParseList(Param, Index) -> tuple[list, int]:
             assert False, "Invalid Symbol Encountered when Parsing List"
 
         Index = GetNextValidCharacterIndex(Param, Index)
-        assert Param[Index] == ',' or Param[Index] == ']'
+        assert Param[Index] == ',' or Param[Index] == ']' or Param[Index] == '#'
         if Param[Index] == ',':
             Index = GetNextValidCharacterIndex(Param, Index)
         pass
@@ -279,7 +283,7 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
             assert False, "Invalid Symbol Encountered when Parsing dictionary"
 
         Index = GetNextValidCharacterIndex(Param, Index)
-        assert Param[Index] == ',' or Param[Index] == '}'
+        assert Param[Index] == ',' or Param[Index] == '}' or Param[Index] == '#'
         if Param[Index] == ',':
             Index = GetNextValidCharacterIndex(Param, Index)
 

@@ -37,6 +37,14 @@ class CMakeBuilder:
                     f"set(CMAKE_LIBRARY_OUTPUT_DIRECTORY {BuildDir})\n"\
                     f"set(CMAKE_RUNTIME_OUTPUT_DIRECTORY {BuildDir})\n\n")
         
+        if("CMakeDefines" in self._BuildSettings.CommonSettings):
+            self.AddCMakeDefinitions(fd, self._BuildSettings.CommonSettings["CMakeDefines"])
+        if("CompileOptions" in self._BuildSettings.CommonSettings):
+            self.AddCompileFlags(fd, self._BuildSettings.CommonSettings["CompileOptions"])
+        if("PreProcessorDefines" in self._BuildSettings.CommonSettings):
+            self.AddCompileDefinitions(fd, self._BuildSettings.CommonSettings["PreProcessorDefines"])
+        self.AddNewLines(fd, 1)
+
         RootCMakeDir = os.path.join(self._BuildSettings.IntermediateDirectory, self._RootModule.Params.Name)
         RootCMakePath = os.path.join(RootCMakeDir, "CMakeLists.txt")
         RootCMakePath = RootCMakePath.replace('\\', '/')
@@ -60,6 +68,31 @@ class CMakeBuilder:
 
     def WriteProjectName(self, fd : TextIOWrapper, name : str) -> None:
         fd.write(f"project({name})")
+        self.AddNewLines(fd, 2)
+        pass
+
+    def AddCMakeDefinitions(self, fd : TextIOWrapper, definitions : dict[str, str]) -> None:
+        if len(definitions) == 0 : return
+
+        for definition in definitions:
+            fd.write(f"set({definition} {definitions[definition]})\n")
+
+        self.AddNewLines(fd, 1)
+        pass
+
+    def AddCompileFlags(self, fd : TextIOWrapper, flags : list[str]):
+        if len(flags) == 0 : return
+
+        flagString = ' '.join(flags)
+        fd.write(f"add_compile_options({flagString})")
+        self.AddNewLines(fd, 1)
+        pass
+
+    def AddCompileDefinitions(self, fd : TextIOWrapper, definitions : list[str]):
+        if len(definitions) == 0 : return
+
+        definitionString = ' '.join(definitions)
+        fd.write(f"add_compile_definitions({definitionString})")
         self.AddNewLines(fd, 1)
         pass
 
@@ -74,6 +107,7 @@ class CMakeBuilder:
             ExcludeRegex.append(".*[mM]ain.cpp")
 
         Sources = self.CollectSourceFiles(fd, module.Params.PathInfo["SrcPaths"], ExcludeRegex)
+        #TODO: This logic feels off. Review it
         if(len(Sources) == 0) and not isSubModule:
             assert(module.Type != ModuleType.EXECUTABLE), "An Executable should atleast contain main.cpp"
             if(module.Type == ModuleType.EXECUTABLE):
@@ -110,8 +144,7 @@ class CMakeBuilder:
             path = path.replace('\\', '/')
             fd.write(f"include_directories({path})")
             self.AddNewLines(fd, 1)
-            fd.write(f"target_include_directories(${{PROJECT_NAME}} PUBLIC {path})")
-            self.AddNewLines(fd, 2)
+            fd.write(f"target_include_directories(${{PROJECT_NAME}} PUBLIC {path})\n")
         self.AddNewLines(fd, 2)
         pass
 
@@ -159,6 +192,7 @@ class CMakeBuilder:
         return sources
         pass
 
+    #TODO: Deprecate this
     def AddSubModuleIncludes(self, fd : TextIOWrapper, module : ModuleObject) -> None:
         for depModule in module.SubModules:
             if depModule.Params.Name in self._IncludeList:
@@ -176,12 +210,13 @@ class CMakeBuilder:
                 fd.write(f"include({fileName})")
                 self.AddNewLines(fd, 1)
 
-        self.AddNewLines(fd, 1)
+        self.AddNewLines(fd, 2)
         pass
     
-    def AddDependentCMakeIncludes(self, fd : TextIOWrapper, module : ModuleObject) -> None:
-        for depModule in module.Dependencies:
-            assert(depModule.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
+    def AddDependentCMakeIncludes(self, fd : TextIOWrapper, dependencies : list[ModuleObject]) -> None:
+        for depModule in dependencies:
+            if(depModule.Type == ModuleType.EXECUTABLE) : continue
+            
             if \
             (depModule.Params.Name not in self._DependencyList) and \
             (depModule.Params.Name != self._RootModule.Params.Name) and \
@@ -215,8 +250,23 @@ class CMakeBuilder:
             BinPath = BinPath.replace('\\', '/')
             fd.write(f"target_link_libraries(${{PROJECT_NAME}} {BinPath})")
             self.AddNewLines(fd, 2)
+        
+        elif (depModule.Type is ModuleType.STATIC):
+            if len(depModule.Params.PathInfo["LibPaths"]) == 0: return
 
-            #TODO: Add code to include libs and dlls
+            #Key is the relative path from module. Value is the list of libraries to link from this path
+            for libpath in depModule.Params.PathInfo["LibPaths"]:
+                libFullPath = libpath + self._BuildSettings.StaticLibExtension
+                libFullPath = libFullPath.replace('\\', '/')
+                if not os.path.exists(libFullPath) : continue
+                
+                if(depModule.Params.PathInfo.get("HeaderPaths") != None):
+                    self.CollectHeaderDirs(fd, depModule)
+                fd.write(f"target_link_libraries(${{PROJECT_NAME}} {libFullPath})\n")
+            self.AddNewLines(fd, 2)
+
+            pass
+        #TODO: Add code to include and handle dlls
         pass
 
     def OpenCMakeFile(self, module : ModuleObject) -> TextIOWrapper :
@@ -240,32 +290,46 @@ class CMakeBuilder:
         
         fd = self.OpenCMakeFile(module)
 
-        #Include dependent CMakeLists at the very beginning
-        self.AddDependentCMakeIncludes(fd, module)
-
         if not isSubModule:
             self.WriteCMakeVersion(fd, "3.10")
+
+        #Populate cmake variables, compile options and compile definitions here so that they are passed to subsequent modules being built
+        self.AddCMakeDefinitions(fd, module.CMakeDefines)
+        self.AddCompileFlags(fd, module.CompileOptions)
+        self.AddCompileDefinitions(fd, module.PreProcessorDefines)
+        self.AddNewLines(fd, 1)
+        
+        #Include dependent CMakeLists at the very beginning
+        self.AddDependentCMakeIncludes(fd, module.Dependencies)
+
+        if not isSubModule:
             self.WriteProjectName(fd, module.Params.Name)
 
-
         self.AddProject(fd, module, isSubModule)
+
+
 
         if(module.Params.PathInfo.get("HeaderPaths") != None):
             self.CollectHeaderDirs(fd, module)
 
+        #Add any Submodule include. Submodules don't define "project". Their sources target last defined project
+        self.AddDependentCMakeIncludes(fd, module.SubModules)
+
+        #TODO: Deprecate this
         #Include all submodules/dependency headers if they are not already included
-        self.AddSubModuleIncludes(fd, module)
+        #self.AddSubModuleIncludes(fd, module)
 
         #Generate subModule Make files before adding dependencies
         for depModule in module.SubModules:
-            assert(module.Type != ModuleType.EXECUTABLE), "SubModule cannot be an executable. Check your structure!"
-            if(module.Type == ModuleType.BUILD_STATIC or module.Type == ModuleType.BUILD_DYNAMIC):
+            assert(depModule.Type != ModuleType.EXECUTABLE), "SubModule cannot be an executable. Check your structure!"
+            if(depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC):
                 self._Build(depModule, True)
 
         #Dependencies are Modules/External Libs that are explictly specified to be built. Need to be addressed
         #!TODO: This needs to be tested
         for depModule in module.Dependencies:
-            assert(module.Type != ModuleType.EXECUTABLE), "Dependency Module cannot be an executable. Check your structure!"
+            if(depModule.Type == ModuleType.EXECUTABLE) : continue
+
             self.AddDependencyModule(fd, depModule)
             if depModule.Params.Name not in self._BuildList\
             and (depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC) :

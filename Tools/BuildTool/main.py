@@ -16,7 +16,8 @@ BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
 BuildTargetDirectory = BuildTemplatesDirectory
-BuildTarget = "Core\\Core" + ExtensionName
+#BuildTarget = "Core\\Core" + ExtensionName
+BuildTarget = "Bolt\\Bolt" + ExtensionName
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
@@ -43,7 +44,7 @@ def InitBuildSettings():
 def ParseCommonTemplate():
     BuildSettings.CommonSettings = Parser.ReadTemplateFile(os.path.join(BuildTemplatesDirectory, "Common" + ExtensionName))
 
-# Checks if module is already marked to be built
+#TODO: Room for improvement here
 def FindModule(module : ModuleObject, moduleToFind : str) -> ModuleObject | None:
     processedModules : list[ModuleObject] = []
     stack : set[ModuleObject] = {module}
@@ -70,7 +71,9 @@ def FindModule(module : ModuleObject, moduleToFind : str) -> ModuleObject | None
 
     return resModule
 
+# Checks if module is already marked to be built
 def IsModuleResolved(moduleName : str) -> tuple[bool, ModuleObject]:
+    #TODO: Room for improvement here
     resModule = FindModule(RootModule, moduleName)
 
     if resModule == None:
@@ -103,7 +106,7 @@ def ParseTemplate(templatePath : str, ModuleRef : ModuleObject):
                 ModuleRef.Dependencies[i] = module
                 pass
             else:
-                #if dependency module is not resolved, Parse template
+                #if dependency module is not resolved, Parse template. Type will change from "MODULE" to whatever is specified in build template
                 dependencyTemplatePath = os.path.join(BuildSettings.RootDirectory, ModuleRef.Dependencies[i].Params.ModulePath)
                 ParseTemplate(dependencyTemplatePath, ModuleRef.Dependencies[i])
 

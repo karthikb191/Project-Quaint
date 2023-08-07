@@ -1,14 +1,49 @@
 @:
-Settings={
+"Settings"={
     "Name" : "Bolt",
-    "Location" : "./Modules/Bolt",
-    "OutputDirectory" : "./Build/Bolt",
-    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
+    "Path" : "Modules/Bolt",
+    "Type" : "EXECUTABLE"
 }:@
 
-@:Settings2={
-    "Name" : "Bolt",
-    "Location" : "./Modules/Bolt",
-    "OutputDirectory" : "./Build/Bolt",
-    "BinaryOutputDirectory" : "./Modules/Bolt/Build"
-}:@
+@:
+"SrcPaths"=[
+    "Source"
+]
+:@
+
+@:
+"HeaderPaths"=[
+    "Include"
+]
+:@
+
+@:
+"Dependencies"=[
+    {
+        "Settings" : {
+            "Name" : "Vulkan-1.2.176.1",
+            "Type" : "STATIC",
+            "Path" : "External/Libs/Vulkan-1.2.176.1"
+        },
+
+        "LibPaths" : [
+        {
+#if QUAINT_PLATFORM_WIN32
+            "Lib32" : ["vulkan-1"]
+#else
+            "Lib" : ["vulkan-1"]
+#endif
+        }
+        ],
+        
+        "HeaderPaths" : [
+            "Include"
+        ]
+    },
+    {
+        "Name" : "Memory",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
+    }
+]
+:@

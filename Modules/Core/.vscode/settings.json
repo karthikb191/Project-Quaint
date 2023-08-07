@@ -1,6 +1,6 @@
 {
-    "cmake.sourceDirectory":"${workspaceFolder}",
-    "cmake.buildDirectory": "${workspaceFolder}/Build/",
+    "cmake.sourceDirectory":"D:\\Works\\Project-Quaint\\Build\\Intermediates\\CMakeLists.txt",
+    "cmake.buildDirectory": "D:\\Works\\Project-Quaint\\Build\\Output",
     "files.associations": {
         "memory": "cpp",
         "atomic": "cpp",
