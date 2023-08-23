@@ -17,12 +17,15 @@ ExtensionName = ".buildTmpl"
 
 BuildTargetDirectory = BuildTemplatesDirectory
 #BuildTarget = "Core\\Core" + ExtensionName
-BuildTarget = "Bolt\\Bolt" + ExtensionName
+#BuildTarget = "Bolt\\Bolt" + ExtensionName
+BuildTarget = "Core\\Types" + ExtensionName
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
 OutputDirectory = BuildDirectory + "Output\\"
 BinaryDirectory = BuildDirectory + "Bin\\"
+
+bForceRootExecutable = True
 
 RootModule = ModuleObject()
 
@@ -157,6 +160,10 @@ if __name__ == "__main__":
     InitBuildSettings()
     ParseCommonTemplate()
     ParseTemplate(BuildTemplatesDirectory + BuildTarget, RootModule)
+
+    if bForceRootExecutable and RootModule.Type != ModuleType.EXECUTABLE:
+        RootModule.Type = ModuleType.EXECUTABLE
+
     builder = CMakeFileBuilder.CMakeBuilder(GlobalSettings, RootModule)
     builder.StartBuild()
     print("Project Generation Complete")
