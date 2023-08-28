@@ -15,6 +15,9 @@
 #include <QMath.h>
 #include <Core/Camera.h>
 
+//stb
+#include <stb/stb_image.h>
+
 namespace Bolt
 {
     class BoltRenderer;

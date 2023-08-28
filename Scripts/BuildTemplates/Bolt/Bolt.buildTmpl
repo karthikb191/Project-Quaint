@@ -41,6 +41,17 @@
         ]
     },
     {
+        "Settings" : {
+            "Name" : "stb",
+            "Type" : "STATIC",
+            "Path" : "External/Libs/stb"
+        },
+        
+        "HeaderPaths" : [
+            "./"
+        ]
+    },
+    {
         "Name" : "Memory",
         "Type" : "MODULE",
         "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"

@@ -1,6 +1,6 @@
 #include<iostream>
 
-int main_temp()
+int main()
 {
     std::cout << "Hello Memory Manager\n";
     return 0;

@@ -252,17 +252,21 @@ class CMakeBuilder:
             self.AddNewLines(fd, 2)
         
         elif (depModule.Type is ModuleType.STATIC):
-            if len(depModule.Params.PathInfo["LibPaths"]) == 0: return
+            
+            if(depModule.Params.PathInfo.get("HeaderPaths") != None):
+                self.CollectHeaderDirs(fd, depModule)
 
+            if len(depModule.Params.PathInfo["LibPaths"]) == 0:
+                print(f"No Libs found in {depModule.Params.Name}. Only headers might be registered.")
+                return
+            
             #Key is the relative path from module. Value is the list of libraries to link from this path
             for libpath in depModule.Params.PathInfo["LibPaths"]:
                 libFullPath = libpath + self._BuildSettings.StaticLibExtension
                 libFullPath = libFullPath.replace('\\', '/')
-                if not os.path.exists(libFullPath) : continue
                 
-                if(depModule.Params.PathInfo.get("HeaderPaths") != None):
-                    self.CollectHeaderDirs(fd, depModule)
                 fd.write(f"target_link_libraries(${{PROJECT_NAME}} {libFullPath})\n")
+
             self.AddNewLines(fd, 2)
 
             pass
