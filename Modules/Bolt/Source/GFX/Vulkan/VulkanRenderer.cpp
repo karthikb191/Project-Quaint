@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
@@ -98,6 +99,9 @@ namespace Bolt
         createRenderPipeline();
         createFrameBuffers();
         createCommandPool();
+
+        createSampleImage();
+
         createVertexBuffer();
         createIndexBuffer();
         
@@ -1077,13 +1081,111 @@ namespace Bolt
         assert(res==VK_SUCCESS && "Could not create command pool");
     }
 //---------------------------------------------------------------------------------------
+    
+    bool getMemoryTypeIndex(const VkPhysicalDevice physicalDevice, const uint32_t memoryTypeBits, const VkMemoryPropertyFlags propertyFlags, uint32_t* memIndex)
+    {
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-    void VulkanRenderer::createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags, 
-    const Quaint::QArray<uint32_t>& queueFamilies, 
+        bool found = false;
+        for(size_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        {
+            // memoryTypeBits is bit field of memory types that are suitable for buffer
+            // Also, we are not just interested in memory type that's suitable to the buffer. We should also be able to write to it
+            // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT properties indicate that we can write to it from CPU
+            
+            if((memoryTypeBits & (1 << i)) && 
+            (memoryProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags)
+            {
+                *memIndex = i;
+                found = true;
+                break;
+            }
+        }
+        return true;
+    }
+
+    void VulkanRenderer::createSampleImage()
+    {
+        //TODO: This is obviously temporary till we have a file system in place
+        const char* path = "D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg";
+
+        int width = 0, height = 0, comp = 0;
+        stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
+
+        //Staging buffer that's used used as a source for transfer operations and has host visible memory
+        size_t bufferSize = width * height * 4;
+        VkBuffer stagingBuffer; 
+        VkDeviceMemory stagingBufferGpuMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBufferGpuMemory, stagingBuffer);
+
+        void* data;
+        vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &data);
+        memcpy(data, pixels, bufferSize);
+        vkUnmapMemory(m_device, stagingBufferGpuMemory);
+
+        VkImageCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.extent.width = width;
+        info.extent.height = height;
+        info.extent.depth = 1;
+        info.arrayLayers = 1;
+        info.mipLevels = 1;
+        info.format = VK_FORMAT_R8G8B8A8_SRGB;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        //Apparently only 2 values are supported for initial layout.
+        //VK_IMAGE_LAYOUT_UNDEFINED: Not usable by the GPU and the very first transition will discard the texels.
+        //VK_IMAGE_LAYOUT_PREINITIALIZED: Not usable by the GPU, but the first transition will preserve the texels.
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        
+        // VK_IMAGE_USAGE_SAMPLED_BIT Specifies that image can be used to create VkImageView suitable for occupying descriptor set slot of
+        // type VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE or VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and be sampled by a shader.
+        info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.flags = 0;
+
+        VkResult res = vkCreateImage(m_device, &info, m_allocationPtr, &m_texture);
+        assert(res == VK_SUCCESS && "Failed to Image for the sample texture");
+
+        VkMemoryRequirements memReq{};
+        vkGetImageMemoryRequirements(m_device, m_texture, &memReq);
+
+        VkMemoryAllocateInfo memInfo{};
+        memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memInfo.allocationSize = memReq.size;
+        
+        uint32_t memoryTypeIndex;
+        bool found = getMemoryTypeIndex(m_physicalDevice, memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memoryTypeIndex);
+        assert(found && "Could not find suitable a memory type for device memory allocation");
+        memInfo.memoryTypeIndex = memoryTypeIndex;
+
+        res = vkAllocateMemory(m_device, &memInfo, m_allocationPtr, &m_textureGpuMemory);
+        assert(res == VK_SUCCESS && "Could not allocate memory on GPU for the texture image");
+
+        res = vkBindImageMemory(m_device, m_texture, m_textureGpuMemory, 0);
+        assert(res == VK_SUCCESS && "Failed to bind Image to GPU Backing Memory");
+
+    }
+
+
+    void VulkanRenderer::createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
     VkMemoryPropertyFlags propertyFlags,
     VkDeviceMemory& deviceMemory,
     VkBuffer& buffer)
     {
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+
+        Quaint::QArray<uint32_t> queueFamilies(m_context);
+        queueFamilies.pushBack(families.graphics.get());
+        if(families.graphics.get() != families.transfer.get())
+        {
+            queueFamilies.pushBack(families.transfer.get());
+        }
+
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         info.size = bufferSize;
@@ -1103,25 +1205,8 @@ namespace Bolt
         VkMemoryRequirements requirements{};
         vkGetBufferMemoryRequirements(m_device, buffer, &requirements);
         
-        VkPhysicalDeviceMemoryProperties memoryProperties;
-        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
-
         uint32_t memoryTypeIndex;
-        bool found = false;
-        for(size_t i = 0; i < memoryProperties.memoryTypeCount; i++)
-        {
-            // memoryTypeBits is bit field of memory types that are suitable for buffer
-            // Also, we are not just interested in memory type that's suitable to the buffer. We should also be able to write to it
-            // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT properties indicate that we can write to it from CPU
-            
-            if((requirements.memoryTypeBits & (1 << i)) && 
-            (memoryProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags)
-            {
-                memoryTypeIndex = i;
-                found = true;
-                break;
-            }
-        }
+        bool found = getMemoryTypeIndex(m_physicalDevice, requirements.memoryTypeBits, propertyFlags, &memoryTypeIndex);
         assert(found && "Could not find suitable a memory type for device memory allocation");
 
         VkMemoryAllocateInfo allocInfo{};
@@ -1181,20 +1266,11 @@ namespace Bolt
     void VulkanRenderer::createVertexBuffer()
     {
         size_t bufferSize = sizeof(QVertex) * vertices.getSize();
-        QueueFamilies families;
-        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
-
-        Quaint::QArray<uint32_t> queueFamilies(m_context);
-        queueFamilies.pushBack(families.graphics.get());
-        if(families.graphics.get() != families.transfer.get())
-        {
-            queueFamilies.pushBack(families.transfer.get());
-        }
         
         //Staging buffer creation
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferGpuMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueFamilies, 
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBufferGpuMemory, stagingBuffer);
 
         //Move vertex data to staging buffer
@@ -1204,7 +1280,7 @@ namespace Bolt
         vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
         //Vertex Buffer creation
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, queueFamilies,
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_vertexBufferGpuMemory, m_vertexBuffer);
         
         //Immediately copy from staging buffer to vertex buffer
@@ -1217,19 +1293,10 @@ namespace Bolt
     void VulkanRenderer::createIndexBuffer()
     {
         size_t bufferSize = sizeof(decltype(indices)::value_type) * indices.getSize();
-        QueueFamilies families;
-        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
-
-        Quaint::QArray<uint32_t> queueFamilies(m_context);
-        queueFamilies.pushBack(families.graphics.get());
-        if(families.graphics.get() != families.transfer.get())
-        {
-            queueFamilies.pushBack(families.transfer.get());
-        }
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferGpuMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueFamilies,
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBufferGpuMemory, stagingBuffer);
 
         //Move index data to staging buffer
@@ -1239,7 +1306,7 @@ namespace Bolt
         vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
         //Index Buffer creation
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, queueFamilies,
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_indexBufferGpuMemory, m_indexBuffer);
         
         //Immediately copy from staging buffer to vertex buffer
@@ -1258,18 +1325,9 @@ namespace Bolt
 
         size_t bufferSize = sizeof(UniformBufferObject);
 
-        QueueFamilies families;
-        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
-        Quaint::QArray<uint32_t> queueFamilies(m_context);
-        queueFamilies.pushBack(families.graphics.get());
-        if(families.graphics.get() != families.transfer.get())
-        {
-            queueFamilies.pushBack(families.transfer.get());
-        }
-
         for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, queueFamilies,
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             m_uniformBufferGpuMemory[i], m_uniformBuffers[i]);
 

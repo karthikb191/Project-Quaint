@@ -177,8 +177,9 @@ namespace Bolt
         void createGraphicsCommandPool();
         void createTransferCommandPool();
 
-        void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags, 
-        const Quaint::QArray<uint32_t>& queueFamilies, 
+        void createSampleImage();
+
+        void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
@@ -269,6 +270,9 @@ namespace Bolt
         uint8_t                             m_currentFrame = 0;
 
         UniformBufferObject                 m_ubo;
+
+        VkImage                             m_texture;
+        VkDeviceMemory                      m_textureGpuMemory;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;
