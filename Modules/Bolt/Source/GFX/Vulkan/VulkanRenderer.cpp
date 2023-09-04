@@ -129,6 +129,10 @@ namespace Bolt
 
         vkDestroyCommandPool(m_device, m_graphicsCommandPool, m_allocationPtr);
         vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
+
+        vkDestroyImage(m_device, m_texture, m_allocationPtr);
+        vkFreeMemory(m_device, m_textureGpuMemory, m_allocationPtr);
+
         for(const VkFramebuffer& buffer : m_frameBuffers)
         {
             vkDestroyFramebuffer(m_device, buffer, m_allocationPtr);
@@ -1081,7 +1085,7 @@ namespace Bolt
         assert(res==VK_SUCCESS && "Could not create command pool");
     }
 //---------------------------------------------------------------------------------------
-    
+    //------------Helpers
     bool getMemoryTypeIndex(const VkPhysicalDevice physicalDevice, const uint32_t memoryTypeBits, const VkMemoryPropertyFlags propertyFlags, uint32_t* memIndex)
     {
         VkPhysicalDeviceMemoryProperties memoryProperties;
@@ -1105,8 +1109,195 @@ namespace Bolt
         return true;
     }
 
+    void createAndBindImage(VkPhysicalDevice physicalDevice, VkDevice device, VkAllocationCallbacks* allocPtr,
+    uint32_t width, uint32_t height, const Quaint::QArray<uint32_t>& queueFamilies, VkFormat format, VkImageTiling tiling,
+    VkImageUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkImage* image, VkDeviceMemory* gpuMemory)
+    {
+        VkImageCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.extent.width = width;
+        info.extent.height = height;
+        info.extent.depth = 1;
+        info.arrayLayers = 1;
+        info.mipLevels = 1;
+        info.format = format;
+        info.tiling = tiling;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if(queueFamilies.getSize() > 1)
+        {
+            info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            info.queueFamilyIndexCount = queueFamilies.getSize();
+            info.pQueueFamilyIndices = queueFamilies.getBuffer();
+        }
+
+        //Apparently only 2 values are supported for initial layout.
+        //VK_IMAGE_LAYOUT_UNDEFINED: Not usable by the GPU and the very first transition will discard the texels.
+        //VK_IMAGE_LAYOUT_PREINITIALIZED: Not usable by the GPU, but the first transition will preserve the texels.
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        
+        // VK_IMAGE_USAGE_SAMPLED_BIT Specifies that image can be used to create VkImageView suitable for occupying descriptor set slot of
+        // type VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE or VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and be sampled by a shader.
+        info.usage = usageFlags;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.flags = 0;
+
+        VkResult res = vkCreateImage(device, &info, allocPtr, image);
+        assert(res == VK_SUCCESS && "Failed to Image for the sample texture");
+
+        VkMemoryRequirements memReq{};
+        vkGetImageMemoryRequirements(device, *image, &memReq);
+
+        VkMemoryAllocateInfo memInfo{};
+        memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memInfo.allocationSize = memReq.size;
+        
+        uint32_t memoryTypeIndex;
+        bool found = getMemoryTypeIndex(physicalDevice, memReq.memoryTypeBits, propertyFlags, &memoryTypeIndex);
+        assert(found && "Could not find suitable a memory type for device memory allocation");
+        memInfo.memoryTypeIndex = memoryTypeIndex;
+
+        res = vkAllocateMemory(device, &memInfo, allocPtr, gpuMemory);
+        assert(res == VK_SUCCESS && "Could not allocate memory on GPU for the texture image");
+
+        res = vkBindImageMemory(device, *image, *gpuMemory, 0);
+        assert(res == VK_SUCCESS && "Failed to bind Image to GPU Backing Memory");
+    }
+
+    VkCommandBuffer beginOneTimeCommands(const VkDevice device, const VkCommandPool commandPool)
+    {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.pNext = nullptr;
+
+
+        VkCommandBuffer cmdBuffer;
+        VkResult res = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);
+        assert(res == VK_SUCCESS && "Failed to create a single usage command buffer");
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        res = vkBeginCommandBuffer(cmdBuffer, &beginInfo);
+        assert(res == VK_SUCCESS && "Failed to begin a single usage command buffer");
+
+        return cmdBuffer;
+    }
+
+    void endOneTimeCommands(const VkDevice device, const VkCommandBuffer commandBuffer, const VkCommandPool commandPool, const VkQueue queue)
+    {
+        VkResult res = vkEndCommandBuffer(commandBuffer);
+        assert(res == VK_SUCCESS && "Failed to end the single usage command buffer");
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+        assert(res == VK_SUCCESS && "Failed to submit command buffer to queue");
+        vkQueueWaitIdle(queue);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    void copyImageFromStaging(const VkDevice device, const VkImage image, const VkBuffer stagingBuffer,
+    const uint32_t width, const uint32_t height, const VkCommandPool pool, const VkQueue queue)
+    {
+        VkCommandBuffer cpyCmd = beginOneTimeCommands(device, pool);
+        VkBufferImageCopy imgCpy;
+        imgCpy.bufferOffset = 0;
+        imgCpy.bufferRowLength = 0;
+        imgCpy.bufferImageHeight = 0;
+        imgCpy.imageOffset = {0, 0, 0};
+        imgCpy.imageExtent = {width, height, 1};
+        imgCpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imgCpy.imageSubresource.baseArrayLayer = 0;
+        imgCpy.imageSubresource.mipLevel = 0;
+        imgCpy.imageSubresource.layerCount = 1;
+
+        // dstImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) is the layout that this command expects the image to be in
+        // when the command executes
+        vkCmdCopyBufferToImage(cpyCmd, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCpy);
+
+        endOneTimeCommands(device, cpyCmd, pool, queue);
+    }
+
+    void transitionImageLayout(const VkDevice device, const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
+    const VkCommandPool cmdPool, const VkQueue queue)
+    {
+        VkCommandBuffer transitionBuffer = beginOneTimeCommands(device, cmdPool);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = srcLayout;
+        barrier.newLayout = dstLayout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        // srcStage specifies the operations in pipeline stage that should happen before the barrier.
+        // dstStage specifies the operations in pipeline stage that should wait on the barrier.
+        // Pipeline stages that you are allowed to specify before and after the barrier depends on barrier's AccessMasks
+        VkPipelineStageFlags srcStage;
+        VkPipelineStageFlags dstStage;
+
+        if(srcLayout == VK_IMAGE_LAYOUT_UNDEFINED && dstLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+        {
+            //Comman Buffer submission results in an implicit VK_ACCESS_HOST_WRITE_BIT synchronization
+            //All host writes submitted must be finished before transfer operations can start
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        }
+        else if(srcLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && dstLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        {
+            //All transfer operations must be finished before shader starts reading in this pipeline
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            
+            srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else
+        {
+            assert(false && "Invalid src and dst stages provided");
+        }
+        //TODO:
+
+        vkCmdPipelineBarrier(
+        transitionBuffer,
+        srcStage, dstStage,     // src and dst pipeline stage masks
+        0,                      // Dependency flags
+        0, nullptr,             // Memory Barriers
+        0, nullptr,             // Buffer Barriers
+        1, &barrier             // Image Barriers
+        );   
+
+        endOneTimeCommands(device, transitionBuffer, cmdPool, queue);
+    }
+    //-------
+
     void VulkanRenderer::createSampleImage()
     {
+        QueueFamilies families;
+        getQueueFamilies(m_context, m_physicalDevice, m_surface, families);
+        Quaint::QArray<uint32_t> queueFamilies(m_context);
+        queueFamilies.pushBack(families.graphics.get());
+        if(families.graphics.get() != families.transfer.get())
+        {
+            queueFamilies.pushBack(families.transfer.get());
+        }
+
         //TODO: This is obviously temporary till we have a file system in place
         const char* path = "D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg";
 
@@ -1121,55 +1312,34 @@ namespace Bolt
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         stagingBufferGpuMemory, stagingBuffer);
 
+        //This copies pixels to staging buffer
         void* data;
         vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &data);
         memcpy(data, pixels, bufferSize);
         vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
-        VkImageCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        info.imageType = VK_IMAGE_TYPE_2D;
-        info.extent.width = width;
-        info.extent.height = height;
-        info.extent.depth = 1;
-        info.arrayLayers = 1;
-        info.mipLevels = 1;
-        info.format = VK_FORMAT_R8G8B8A8_SRGB;
-        info.tiling = VK_IMAGE_TILING_OPTIMAL;
-        //Apparently only 2 values are supported for initial layout.
-        //VK_IMAGE_LAYOUT_UNDEFINED: Not usable by the GPU and the very first transition will discard the texels.
-        //VK_IMAGE_LAYOUT_PREINITIALIZED: Not usable by the GPU, but the first transition will preserve the texels.
-        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        
-        // VK_IMAGE_USAGE_SAMPLED_BIT Specifies that image can be used to create VkImageView suitable for occupying descriptor set slot of
-        // type VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE or VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, and be sampled by a shader.
-        info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        info.samples = VK_SAMPLE_COUNT_1_BIT;
-        info.flags = 0;
+        //Here, we create and bind image to GPU memory
+        createAndBindImage(m_physicalDevice, m_device, m_allocationPtr, width, height, queueFamilies,
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &m_texture, &m_textureGpuMemory);
 
-        VkResult res = vkCreateImage(m_device, &info, m_allocationPtr, &m_texture);
-        assert(res == VK_SUCCESS && "Failed to Image for the sample texture");
+        // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
+        // If this Image has explicit ownership 
+        transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB,
+         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_transferCommandPool, m_transferQueue);
 
-        VkMemoryRequirements memReq{};
-        vkGetImageMemoryRequirements(m_device, m_texture, &memReq);
+        //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
+        copyImageFromStaging(m_device, m_texture, stagingBuffer, width, height, m_transferCommandPool, m_transferQueue);
 
-        VkMemoryAllocateInfo memInfo{};
-        memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memInfo.allocationSize = memReq.size;
-        
-        uint32_t memoryTypeIndex;
-        bool found = getMemoryTypeIndex(m_physicalDevice, memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memoryTypeIndex);
-        assert(found && "Could not find suitable a memory type for device memory allocation");
-        memInfo.memoryTypeIndex = memoryTypeIndex;
+        //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
+        transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_graphicsCommandPool, m_graphicsQueue);
 
-        res = vkAllocateMemory(m_device, &memInfo, m_allocationPtr, &m_textureGpuMemory);
-        assert(res == VK_SUCCESS && "Could not allocate memory on GPU for the texture image");
-
-        res = vkBindImageMemory(m_device, m_texture, m_textureGpuMemory, 0);
-        assert(res == VK_SUCCESS && "Failed to bind Image to GPU Backing Memory");
-
+        //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
+        vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
+        vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+        stbi_image_free(pixels);
     }
-
 
     void VulkanRenderer::createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
     VkMemoryPropertyFlags propertyFlags,
@@ -1224,23 +1394,7 @@ namespace Bolt
 
     void copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool)
     {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-        allocInfo.commandPool = srcCommandPool;
-
-
-        VkCommandBuffer copyBuffer;
-        VkResult res = vkAllocateCommandBuffers(device, &allocInfo, &copyBuffer);
-        assert(res == VK_SUCCESS && "Could not create copy buffer");
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        
-        res = vkBeginCommandBuffer(copyBuffer, &beginInfo);
-        assert(res == VK_SUCCESS && "Could not begin copy command buffer");
+        VkCommandBuffer copyBuffer = beginOneTimeCommands(device, srcCommandPool);
 
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0; // Optional
@@ -1248,19 +1402,7 @@ namespace Bolt
         copyRegion.size = size;
         vkCmdCopyBuffer(copyBuffer, src, dst, 1, &copyRegion);
 
-        vkEndCommandBuffer(copyBuffer);
-
-        //Submit to GPU immediately
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &copyBuffer;
-
-        res = vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        assert(res == VK_SUCCESS && "Failed to submit copy command to transfer queue");
-        vkQueueWaitIdle(transferQueue);
-
-        vkFreeCommandBuffers(device, srcCommandPool, 1, &copyBuffer);
+        endOneTimeCommands(device, copyBuffer, srcCommandPool, transferQueue);
     }
 
     void VulkanRenderer::createVertexBuffer()
