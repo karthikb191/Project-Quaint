@@ -34,15 +34,15 @@ namespace Bolt
 
     auto vertices = Quaint::createFastArray<QVertex>(
     {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},    //vertex 0
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},     //vertex 1
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},    //vertex 2
-        {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}}    //vertex 3
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},    //vertex 0
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},     //vertex 1
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},    //vertex 2
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}    //vertex 3
     }
     );
 
     auto indices = Quaint::createFastArray<uint16_t>(
-        {0, 1, 2, 0, 3, 1}
+        {0, 1, 2, 0, 2, 3}
     );
 
     
@@ -100,7 +100,10 @@ namespace Bolt
         createFrameBuffers();
         createCommandPool();
 
+        //Sample Texture binding to rect
         createSampleImage();
+        createSampleImageView();
+        createSampleImageSampler();
 
         createVertexBuffer();
         createIndexBuffer();
@@ -130,8 +133,13 @@ namespace Bolt
         vkDestroyCommandPool(m_device, m_graphicsCommandPool, m_allocationPtr);
         vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
 
+        //Sample texture bind region
+        vkDestroySampler(m_device, m_textureSampler, m_allocationPtr);
+        vkDestroyImageView(m_device, m_textureView, m_allocationPtr);
         vkDestroyImage(m_device, m_texture, m_allocationPtr);
         vkFreeMemory(m_device, m_textureGpuMemory, m_allocationPtr);
+        //-----
+
 
         for(const VkFramebuffer& buffer : m_frameBuffers)
         {
@@ -719,16 +727,27 @@ namespace Bolt
         // It's possible for shader variable to represent an array of Uniform objects.
         // In that case, we pass the appropriate descriptor count
         info.descriptorCount = 1;
-        info.descriptorType =VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
+        info.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         //Specifies in which shader stage the descriptor is going to be referenced
         info.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 
+        //This descriptor makes it possible for shaders to access image resource through sampler
+        VkDescriptorSetLayoutBinding samplerBinding{};
+        samplerBinding.binding = 1;
+        samplerBinding.descriptorCount = 1;
+        samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        //We intend to use the combined image sampler in fragment shader stage
+        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerBinding.pImmutableSamplers = nullptr;
+
+
+        auto bindings = Quaint::createFastArray({info, samplerBinding});
+
         VkDescriptorSetLayoutCreateInfo descriptorLayout{};
         descriptorLayout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorLayout.bindingCount = 1;
-        descriptorLayout.pBindings = &info;
+        descriptorLayout.bindingCount = bindings.getSize();
+        descriptorLayout.pBindings = bindings.getBuffer();
         
         VkResult res = vkCreateDescriptorSetLayout(m_device, &descriptorLayout, m_allocationPtr, &m_descriptorSetLayout);
         assert(res == VK_SUCCESS && "Failed to create descriptor set layout");
@@ -985,7 +1004,7 @@ namespace Bolt
 
 //-------------Vertex Shader input binding----------------------
         auto inputBindingDesc = QVertex::getBindingDescription();
-        Quaint::QFastArray<VkVertexInputAttributeDescription, 2> attributeDesc;
+        Quaint::QFastArray<VkVertexInputAttributeDescription, 3> attributeDesc;
         QVertex::getAttributeDescription(attributeDesc);
         fixedStageInfo.vertexInputStateInfo.vertexBindingDescriptionCount = 1;
         fixedStageInfo.vertexInputStateInfo.pVertexBindingDescriptions = &inputBindingDesc;
@@ -1287,6 +1306,7 @@ namespace Bolt
     }
     //-------
 
+
     void VulkanRenderer::createSampleImage()
     {
         QueueFamilies families;
@@ -1340,6 +1360,59 @@ namespace Bolt
         vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
         stbi_image_free(pixels);
     }
+
+    void VulkanRenderer::createSampleImageView()
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = m_texture;
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        
+        //subresource range selects mipmap levels and array layers to be accessible to the view
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+
+        VkResult res = vkCreateImageView(m_device, &createInfo, m_allocationPtr, &m_textureView);
+        assert(res == VK_SUCCESS && "Failed to create image view of sample texture");
+    }
+
+    void VulkanRenderer::createSampleImageSampler()
+    {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+
+        samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.maxAnisotropy = 0;
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+        //TODO: Not entirely sure of the way this functions. Need to read more on this
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0;
+        samplerInfo.minLod = 0;
+        samplerInfo.maxLod = 0;
+
+        VkResult res = vkCreateSampler(m_device, &samplerInfo, m_allocationPtr, &m_textureSampler);
+        assert(res == VK_SUCCESS && "Failed to create sampler for sample texture");
+    }
+
 
     void VulkanRenderer::createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
     VkMemoryPropertyFlags propertyFlags,
@@ -1481,14 +1554,19 @@ namespace Bolt
 
     void VulkanRenderer::createDescriptorPool()
     {
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+        Quaint::QFastArray<VkDescriptorPoolSize, 2> descPools;
+        
+        descPools[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descPools[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+        //Descriptor pool info for our sample texture
+        descPools[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descPools[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.poolSizeCount = descPools.getSize();
+        poolInfo.pPoolSizes = descPools.getBuffer();
 
         poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         VkResult res = vkCreateDescriptorPool(m_device, &poolInfo, m_allocationPtr, &m_descriptorPool);
@@ -1514,18 +1592,30 @@ namespace Bolt
             bufferInfo.buffer = m_uniformBuffers[i];
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
+
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = m_textureView;
+            imageInfo.sampler = m_textureSampler;
         
-            VkWriteDescriptorSet write{};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.descriptorCount = 1;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            write.dstSet = m_descriptorSets[i]; //This specifies the descriptor set to update
-            write.dstBinding = 0;
-            write.dstArrayElement = 0;
+            Quaint::QFastArray<VkWriteDescriptorSet, 2> writes;
+            writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[0].descriptorCount = 1;
+            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[0].dstSet = m_descriptorSets[i]; //This specifies the descriptor set to update
+            writes[0].dstBinding = 0;
+            writes[0].dstArrayElement = 0;
+            writes[0].pBufferInfo = &bufferInfo;
 
-            write.pBufferInfo = &bufferInfo;
+            writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[1].descriptorCount = 1;
+            writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[1].dstSet = m_descriptorSets[i]; //This specifies the descriptor set to update
+            writes[1].dstBinding = 1;
+            writes[1].dstArrayElement = 0;
+            writes[1].pImageInfo = &imageInfo;
 
-            vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+            vkUpdateDescriptorSets(m_device, writes.getSize(), writes.getBuffer(), 0, nullptr);
         }
 
     }
@@ -1645,7 +1735,7 @@ namespace Bolt
         Quaint::QVec3(0.0f, 1.0f, 0.0f));
         ubo.view = m_camera.getViewMatrix();
         ubo.proj = m_camera.getProjectionMatrix();
-
+        
         memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
     }
 

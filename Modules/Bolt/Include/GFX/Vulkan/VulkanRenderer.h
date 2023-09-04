@@ -41,16 +41,17 @@ namespace Bolt
     {
         QVector2    position;
         QVector3    color;
+        QVector2    texCoord;
 
         static VkVertexInputBindingDescription getBindingDescription()
         {
             VkVertexInputBindingDescription desc{};
-            desc.binding = 0; //only 1 binding for now
+            desc.binding = 0; //only 1 binding for now. This parameter specifies the index of binding in array of bindings
             desc.stride = sizeof(QVertex);
             desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; //Must be read per vertex
             return desc;
         }
-        static void getAttributeDescription(Quaint::QFastArray<VkVertexInputAttributeDescription, 2>& res)
+        static void getAttributeDescription(Quaint::QFastArray<VkVertexInputAttributeDescription, 3>& res)
         {
             VkVertexInputAttributeDescription desc{};
             //From which VertexInputBindingDescription we are trying to access the attribute from
@@ -67,6 +68,13 @@ namespace Bolt
             desc.offset = offsetof(QVertex, color);
             desc.format = VK_FORMAT_R32G32B32_SFLOAT;
             res[1] = desc;
+
+            //Accessing texcoord attribute
+            desc.binding = 0;
+            desc.location = 2;
+            desc.offset = offsetof(QVertex, texCoord);
+            desc.format = VK_FORMAT_R32G32_SFLOAT;
+            res[2] = desc;
         }
     };
 
@@ -178,6 +186,8 @@ namespace Bolt
         void createTransferCommandPool();
 
         void createSampleImage();
+        void createSampleImageView();
+        void createSampleImageSampler();
 
         void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -272,6 +282,8 @@ namespace Bolt
         UniformBufferObject                 m_ubo;
 
         VkImage                             m_texture;
+        VkImageView                         m_textureView;
+        VkSampler                           m_textureSampler;
         VkDeviceMemory                      m_textureGpuMemory;
 
     #ifdef DEBUG_BUILD      
