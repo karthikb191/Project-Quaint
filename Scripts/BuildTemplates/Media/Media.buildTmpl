@@ -1,0 +1,16 @@
+@:
+"Settings"={
+    "Name" : "Media",
+    "Path" : "Modules/Media",
+    "Type" : "BUILD_STATIC"
+}:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Core",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
+    }
+]
+:@

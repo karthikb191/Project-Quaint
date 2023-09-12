@@ -109,7 +109,7 @@ class CMakeBuilder:
         Sources = self.CollectSourceFiles(fd, module.Params.PathInfo["SrcPaths"], ExcludeRegex)
         #TODO: This logic feels off. Review it
         if(len(Sources) == 0) and not isSubModule:
-            assert(module.Type != ModuleType.EXECUTABLE), "An Executable should atleast contain main.cpp"
+            assert(module.Type != ModuleType.EXECUTABLE), "No Sources found. Cannot build a library"
             if(module.Type == ModuleType.EXECUTABLE):
                 fd.write(f"add_executable(${{PROJECT_NAME}})")
             elif(module.Type == ModuleType.BUILD_STATIC):

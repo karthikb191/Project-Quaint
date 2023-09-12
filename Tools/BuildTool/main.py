@@ -18,7 +18,9 @@ ExtensionName = ".buildTmpl"
 BuildTargetDirectory = BuildTemplatesDirectory
 #BuildTarget = "Core\\Core" + ExtensionName
 #BuildTarget = "Bolt\\Bolt" + ExtensionName
-BuildTarget = "Core\\Types" + ExtensionName
+#BuildTarget = "Core\\Types" + ExtensionName
+#BuildTarget = "Media\\Media" + ExtensionName
+BuildTarget = "Media\\Video" + ExtensionName
 
 BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"

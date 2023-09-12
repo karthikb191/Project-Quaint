@@ -52,7 +52,7 @@
         ]
     },
     {
-        "Name" : "Memory",
+        "Name" : "Core",
         "Type" : "MODULE",
         "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
     }

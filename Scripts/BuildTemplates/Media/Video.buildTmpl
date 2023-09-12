@@ -1,0 +1,28 @@
+@:
+"Settings"={
+    "Name" : "Video",
+    "Path" : "Modules/Media/Video",
+    "Type" : "BUILD_STATIC"
+}:@
+
+@:
+"SrcPaths"=[
+    "Source"
+]
+:@
+
+@:
+"HeaderPaths"=[
+    "Include"
+]
+:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Core",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
+    }
+]
+:@
