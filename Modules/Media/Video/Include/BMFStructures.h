@@ -59,6 +59,13 @@ namespace Quaint { namespace Media
         uint32_t*   m_compatibleBrands = nullptr; //Extends to the end of Box
     };
 
+    struct MediaDataBox : public Box
+    {
+        MediaDataBox(){};
+        MediaDataBox(const uint32_t pSz) : Box(pSz, "mdat"){};
+        MediaDataBox(const Box& box) : Box(box){}        
+    };
+
 }}
 
 #endif //_H_BMF_STRUCTURES

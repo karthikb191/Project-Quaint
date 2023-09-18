@@ -2,7 +2,7 @@
 #include <VideoModule.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <QuaintLogger.h>
-
+#include <iostream>
 
 namespace Quaint {namespace Media{
     DECLARE_LOG_CATEGORY(BMF);
@@ -47,6 +47,7 @@ namespace Quaint {namespace Media{
         char buf[8];
         m_handle.read(buf, 4);
         uint32_t size = BMF_CHAR_TO_UINT32(buf);
+        std::cout << std::hex << size;
         m_handle.read(buf, 4);
         bytesRead += 8;
 
@@ -62,10 +63,15 @@ namespace Quaint {namespace Media{
 
         switch (box.m_hdr.m_ty)
         {
-        case (BMF_CHAR_TO_UINT32("ftyp")):
+        case BMF_BOX_ftyp:
             parseFileTypeBox(box, bytesRead);
             break;
-        
+        case BMF_BOX_mdat:
+            parseMediaDataBox(box, bytesRead);
+            break;
+        case BMF_BOX_moov:
+            parseMovieBox(box, bytesRead);
+            break;
         default:
             break;
         }
@@ -94,6 +100,26 @@ namespace Quaint {namespace Media{
         {
             m_fileTypeBox.m_compatibleBrands = (uint32_t*)resBuffer;
         }
+
+    }
+
+    void BMF::parseMediaDataBox(const Box& box, uint64_t bytesRead)
+    {
+        m_mediDataBox = MediaDataBox(box);
+        
+        //Skipping media box for now
+        if(box.m_hdr.m_sz != 1)
+        {
+            m_handle.seekg(box.m_hdr.m_sz - bytesRead, std::ios::cur);
+        }
+        else
+        {
+            m_handle.seekg(box.m_hdr.m_lSz - bytesRead, std::ios::cur);
+        }
+    }
+
+    void BMF::parseMovieBox(const Box& box, uint64_t bytesRead)
+    {
 
     }
     

@@ -36,11 +36,14 @@ namespace Quaint {namespace Media{
         void parseBox();
 
         void parseFileTypeBox(const Box& box, uint64_t bytesRead);
+        void parseMediaDataBox(const Box& box, uint64_t bytesRead);
+        void parseMovieBox(const Box& box, uint64_t bytesRead);
 
         QPath               m_path;
         std::fstream        m_handle;
         
         FileTypeBox         m_fileTypeBox;
+        MediaDataBox        m_mediDataBox; //TODO: Handle this. There can be multiple of these boxes
     };
 }}
 
