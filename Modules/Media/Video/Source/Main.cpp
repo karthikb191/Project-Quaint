@@ -3,6 +3,8 @@
 #include <fstream>
 #include <QuaintLogger.h>
 #include <MemoryModule.h>
+#include <VideoModule.h>
+
 namespace Quaint
 {
     CREATE_MODULE(LoggerModule);
@@ -10,6 +12,12 @@ namespace Quaint
 
     CREATE_MODULE(MemoryModule);
     INIT_MODULE(MemoryModule);
+    namespace Media
+    {
+
+        CREATE_MODULE(VideoModule);
+        INIT_MODULE(VideoModule);
+    }
 }
 
 
@@ -17,27 +25,22 @@ DECLARE_LOG_CATEGORY(MediaLogger);
 DEFINE_LOG_CATEGORY(MediaLogger);
 
 using namespace Quaint;
+
+#include <BMF.h>
+#include <BMFParser.h>
+
 int main()
 {
     std::cout << "Hello Video module\n";
 
-    std::fstream file("D:\\Works\\Project-Quaint\\Data\\Media\\Sample\\EarthRotation.mov", std::ios::in | std::ios::binary);
-    if(!file.is_open())
+    Media::BMF bmf("D:\\Works\\Project-Quaint\\Data\\Media\\Sample\\EarthRotation.mov");
+    if(!bmf.isOpen())
     {
         QLOG_W(MediaLogger, "Quitting! Failed to open file");
     }
     QLOG_I(MediaLogger, "Successfully opened file");
 
-    Media::BoxHeader header;
-
-    char buf[4];
-    file.read(buf, 4);
-    uint32_t size = buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
-    
-    file.read(buf, 4);
-
-    file.close();
-
+    bmf.parse();
 
     return 0;
 }

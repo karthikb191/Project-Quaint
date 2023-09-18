@@ -54,11 +54,13 @@ namespace Quaint
 
     MemoryContext* MemoryManager::getMemoryContenxtByIndex(uint32_t index)
     {
-        return nullptr;
+        assert((int)index < m_validContexts && "Invalid index passed for memory context retrieval");
+        return &m_MemoryContexts[index];
     }
 
     MemoryContext* MemoryManager::getMemoryContextByName(const char* name)
     {
+        assert(false && "Not Defined Yet");
         return nullptr;
     }
 
