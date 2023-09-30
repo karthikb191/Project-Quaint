@@ -7,6 +7,13 @@
 #include <fstream>
 
 namespace Quaint {namespace Media{
+    template<typename T>
+    struct BoxParseRes
+    {
+        T           box;
+        uint64_t    bytesParsed = 0;
+    };
+
     class BMF
     {
     public:
@@ -33,17 +40,20 @@ namespace Quaint {namespace Media{
     private:
 
         void startParsing();
-        void parseBox();
+        BoxParseRes<Box> parseBox();
+        BoxParseRes<FullBox> parseFullBox(const Box& box);
 
         void parseFileTypeBox(const Box& box, uint64_t bytesRead);
         void parseMediaDataBox(const Box& box, uint64_t bytesRead);
         void parseMovieBox(const Box& box, uint64_t bytesRead);
+        MovieHeader parseMovieHeader(const Box& box, uint64_t bytesRead);
 
         QPath               m_path;
         std::fstream        m_handle;
         
         FileTypeBox         m_fileTypeBox;
         MediaDataBox        m_mediDataBox; //TODO: Handle this. There can be multiple of these boxes
+        MovieBox            m_movieBox;
     };
 }}
 

@@ -162,7 +162,7 @@ namespace Quaint
         : col0(pCol0), col1(pCol1), col2(pCol2)
         {}
         QMat3x3(const float (&rowArray)[9])
-        : col0{rowArray[0], rowArray[2], rowArray[6], 0}
+        : col0{rowArray[0], rowArray[3], rowArray[6], 0}
         , col1{rowArray[1], rowArray[4], rowArray[7], 0}
         , col2{rowArray[2], rowArray[5], rowArray[8], 0}
         {}
@@ -176,6 +176,12 @@ namespace Quaint
         QMat3x3(QMat3x3&&) = default;
         QMat3x3& operator=(const QMat3x3&) = default;
         QMat3x3& operator=(QMat3x3&&) = default;
+
+        QMat3x3& operator=(const float (&rowArray)[9])
+        {
+            *this = QMat3x3(rowArray);
+            return *this;
+        }
 
         union
         {

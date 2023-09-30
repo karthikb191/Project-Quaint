@@ -9,7 +9,7 @@ namespace Quaint {namespace Media{
     DEFINE_LOG_CATEGORY(BMF);
 
     /*Forward Declares*/
-    void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle);
+    void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle, bool skip = false);
     
     bool BMF::open()
     {
@@ -36,11 +36,27 @@ namespace Quaint {namespace Media{
     {
         while(m_handle.peek() != EOF)
         {
-            parseBox();
+            BoxParseRes<Box> res = parseBox();
+            Box& box = res.box;
+            uint64_t bytesRead = res.bytesParsed;
+            switch (box.m_hdr.m_ty)
+            {
+            case BMF_BOX_ftyp:
+                parseFileTypeBox(box, bytesRead);
+                break;
+            case BMF_BOX_mdat:
+                parseMediaDataBox(box, bytesRead);
+                break;
+            case BMF_BOX_moov:
+                parseMovieBox(box, bytesRead);
+                break;
+            default:
+                break;
+            }
         }
     }
 
-    void BMF::parseBox()
+    BoxParseRes<Box> BMF::parseBox()
     {
         //Get the size and type of box and move to a more specific parsing function
         uint64_t bytesRead = 0;
@@ -58,24 +74,10 @@ namespace Quaint {namespace Media{
         {
             m_handle.read(buf, 8);
             uint64_t extSize = BMF_CHAR_TO_UINT64(buf);
+            box.m_hdr.m_lSz = extSize;
             bytesRead += 8;
         }
-
-        switch (box.m_hdr.m_ty)
-        {
-        case BMF_BOX_ftyp:
-            parseFileTypeBox(box, bytesRead);
-            break;
-        case BMF_BOX_mdat:
-            parseMediaDataBox(box, bytesRead);
-            break;
-        case BMF_BOX_moov:
-            parseMovieBox(box, bytesRead);
-            break;
-        default:
-            break;
-        }
-
+        return {box, bytesRead};
     }
 
     void BMF::parseFileTypeBox(const Box& box, uint64_t bytesRead)
@@ -118,14 +120,77 @@ namespace Quaint {namespace Media{
         }
     }
 
+    /*This is the most important box that contains all the info needed to sample videos*/
     void BMF::parseMovieBox(const Box& box, uint64_t bytesRead)
     {
+        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");
+        
+        while(bytesRead < box.m_hdr.m_sz)
+        {
+            BoxParseRes<Box> res = parseBox();
+            Box& box = res.box;
+            switch (box.m_hdr.m_ty)
+            {
+            case BMF_BOX_mvhd:
+                m_movieBox.m_movieHeader = parseMovieHeader(box, res.bytesParsed);
+                break;
+            
+            default:
+                //Box of unknown type encountered. Skip it.
+                QLOG_W(BMF, "Encountered box of unkonwn type when parsing Movie box. Skipping it!")
+                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+                bytesRead += box.m_hdr.m_sz;
+                break;
+            }
+        }
+    }
 
+    BoxParseRes<FullBox> BMF::parseFullBox(const Box& box)
+    {
+        BoxParseRes<FullBox> res;
+        res.box = Box(box);
+        char buf[4] = "\0";
+
+        BMF_READ(buf, 1, m_handle, BMF_CHAR_TO_UINT8, res.box.m_fHdr.m_ver);
+        BMF_READ(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flgs);
+        res.bytesParsed += 4;
+
+        return res;
+    }
+
+    MovieHeader BMF::parseMovieHeader(const Box& box, uint64_t bytesRead)
+    {
+        MovieHeader header;
+        
+        BoxParseRes<FullBox> res = parseFullBox(box);
+        bytesRead += res.bytesParsed;
+        char buf[36] = "\0";
+
+        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
+        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_modificationTime);
+        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_timeScale);
+        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_duration);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_preferredRate, 16, 16);
+        BMF_READ_FP16(buf, 2, m_handle, header.m_preferredVolume, 8, 8);
+        
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.x, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.x, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.x, 2, 30);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.y, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.y, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.y, 2, 30);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.z, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.z, 16, 16);
+        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.z, 2, 30);
+
+        
+
+        return header;
     }
     
 
     /*Helpers*/
-    void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle)
+    void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle, bool skip)
     {        
         uint64_t remaining = 0;
         if(box.m_hdr.m_sz == 1)
@@ -137,7 +202,7 @@ namespace Quaint {namespace Media{
             remaining = box.m_hdr.m_sz - bytesRead;
         }
 
-        if(remaining != 0)
+        if(remaining != 0 && !skip)
         {
             *buffer = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), (size_t)remaining);
             handle.read(*buffer, remaining);

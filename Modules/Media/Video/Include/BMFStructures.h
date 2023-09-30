@@ -2,6 +2,7 @@
 #define _H_BMF_STRUCTURES
 
 #include <BMFHelpers.h>
+#include <Math/QMat.h>
 
 namespace Quaint { namespace Media
 {
@@ -11,15 +12,18 @@ namespace Quaint { namespace Media
     {
         BoxHeader(){}
         BoxHeader(uint32_t pSz, char pTy[4])
-        {
-            m_sz = pSz;
-            m_ty = BMF_CHAR_TO_UINT32(pTy);   
-        }
+        : m_sz(pSz)
+        , m_ty(BMF_CHAR_TO_UINT32(pTy))
+        , m_cTy{pTy[0],pTy[1],pTy[2],pTy[3]}
+        {}
 
         uint32_t m_sz       = 0;
         uint32_t m_ty       = 0;
         uint64_t m_lSz      = 0;
         uint8_t m_uTy[16]   = {0};
+
+        //For Debug
+        char m_cTy[4];
     };
     struct alignas(8) FullBoxHeader
     {
@@ -28,7 +32,7 @@ namespace Quaint { namespace Media
             uint32_t m_dat;
             struct
             {
-                uint8_t         m_hdr : 8;
+                uint8_t         m_ver : 8;
                 uint32_t        m_flgs : 24;
             };
         };
@@ -43,6 +47,8 @@ namespace Quaint { namespace Media
     };
     struct alignas(8) FullBox : public Box
     {
+        FullBox() {}
+        FullBox(const Box& box) : Box(box){}
         FullBoxHeader   m_fHdr;
     };
 
@@ -66,6 +72,35 @@ namespace Quaint { namespace Media
         MediaDataBox(const Box& box) : Box(box){}        
     };
 
+    //TODO
+    struct ProfileBox : public Box
+    {
+
+    };
+
+    /*Movie header is a leaf atom*/
+    struct MovieHeader : public FullBox
+    {
+        uint32_t            m_creationTime;
+        uint32_t            m_modificationTime;
+        uint32_t            m_timeScale;
+        uint32_t            m_duration;
+        float               m_preferredRate;
+        float               m_preferredVolume;
+        QMat3x3             m_matStructure;
+        uint32_t            m_previewTime;
+        uint32_t            m_previewDuration;
+        uint32_t            m_posterTime;
+        uint32_t            m_selectionTime;
+        uint32_t            m_selectionDuration;
+        uint32_t            m_currentTime;
+        uint32_t            m_nextTrackID;
+    };
+
+    struct MovieBox : public Box
+    {
+        MovieHeader     m_movieHeader;
+    };
 }}
 
 #endif //_H_BMF_STRUCTURES
