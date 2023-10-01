@@ -17,8 +17,8 @@ namespace Quaint {namespace Media{
     class BMF
     {
     public:
-        BMF(){}
-        BMF(const QPath& path)
+        BMF();
+        BMF(const QPath& path) : BMF()
         {
             m_path = path;
             open();
@@ -43,10 +43,12 @@ namespace Quaint {namespace Media{
         BoxParseRes<Box> parseBox();
         BoxParseRes<FullBox> parseFullBox(const Box& box);
 
-        void parseFileTypeBox(const Box& box, uint64_t bytesRead);
-        void parseMediaDataBox(const Box& box, uint64_t bytesRead);
-        void parseMovieBox(const Box& box, uint64_t bytesRead);
-        MovieHeader parseMovieHeader(const Box& box, uint64_t bytesRead);
+        void parseFileTypeBox(const Box& box, FileTypeBox& ftypBox, uint64_t bytesRead);
+        void parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead);
+        void parseMovieBox(const Box& box, MovieBox& movieBox, uint64_t bytesRead);
+        void parseMovieHeader(const Box& box, MovieHeader& header, uint64_t bytesRead);
+        void parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead);
+
 
         QPath               m_path;
         std::fstream        m_handle;

@@ -87,6 +87,7 @@ namespace Quaint { namespace Media
         uint32_t            m_duration;
         float               m_preferredRate;
         float               m_preferredVolume;
+        char                m_reserved[10]; //10 Bytes reserved for Apple. This might change across file formats 
         QMat3x3             m_matStructure;
         uint32_t            m_previewTime;
         uint32_t            m_previewDuration;
@@ -97,9 +98,20 @@ namespace Quaint { namespace Media
         uint32_t            m_nextTrackID;
     };
 
+    struct TrackBox : public Box
+    {
+
+    };
+
     struct MovieBox : public Box
     {
-        MovieHeader     m_movieHeader;
+        MovieBox(IMemoryContext* context)
+        : m_context(context)
+        , m_tracks(context)
+        {}
+        MovieHeader                     m_movieHeader;
+        IMemoryContext*                 m_context;
+        Quaint::QArray<TrackBox>        m_tracks;
     };
 }}
 

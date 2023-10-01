@@ -11,6 +11,11 @@ namespace Quaint {namespace Media{
     /*Forward Declares*/
     void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle, bool skip = false);
     
+    BMF::BMF()
+    : m_movieBox(VideoModule::get().getVideoMemoryContext())
+    {
+    }
+
     bool BMF::open()
     {
         m_handle = std::fstream(m_path.getBuffer(), std::ios::in | std::ios::binary);
@@ -42,13 +47,13 @@ namespace Quaint {namespace Media{
             switch (box.m_hdr.m_ty)
             {
             case BMF_BOX_ftyp:
-                parseFileTypeBox(box, bytesRead);
+                parseFileTypeBox(box, m_fileTypeBox, bytesRead);
                 break;
             case BMF_BOX_mdat:
-                parseMediaDataBox(box, bytesRead);
+                parseMediaDataBox(box, m_mediDataBox, bytesRead);
                 break;
             case BMF_BOX_moov:
-                parseMovieBox(box, bytesRead);
+                parseMovieBox(box, m_movieBox, bytesRead);
                 break;
             default:
                 break;
@@ -80,16 +85,16 @@ namespace Quaint {namespace Media{
         return {box, bytesRead};
     }
 
-    void BMF::parseFileTypeBox(const Box& box, uint64_t bytesRead)
+    void BMF::parseFileTypeBox(const Box& box, FileTypeBox& ftypBox, uint64_t bytesRead)
     {
         char buf[8];
-        m_fileTypeBox = FileTypeBox(box);
+        ftypBox = FileTypeBox(box);
         m_handle.read(buf, 4);
-        m_fileTypeBox.m_majorBrand = BMF_CHAR_TO_UINT32(buf);
+        ftypBox.m_majorBrand = BMF_CHAR_TO_UINT32(buf);
         m_handle.read(buf, 4);
-        m_fileTypeBox.m_minor_version = BMF_CHAR_TO_UINT32(buf);
+        ftypBox.m_minor_version = BMF_CHAR_TO_UINT32(buf);
 
-        if(m_fileTypeBox.m_majorBrand == BMF_BRAND_QT)
+        if(ftypBox.m_majorBrand == BMF_BRAND_QT)
         {
             QLOG_I(BMF, "Major Brand is 'qt'");
         }
@@ -100,14 +105,14 @@ namespace Quaint {namespace Media{
         parseTillEndOfBox(box, bytesRead, &resBuffer, m_handle);
         if(resBuffer != nullptr)
         {
-            m_fileTypeBox.m_compatibleBrands = (uint32_t*)resBuffer;
+            ftypBox.m_compatibleBrands = (uint32_t*)resBuffer;
         }
 
     }
 
-    void BMF::parseMediaDataBox(const Box& box, uint64_t bytesRead)
+    void BMF::parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead)
     {
-        m_mediDataBox = MediaDataBox(box);
+        mediaDataBox = MediaDataBox(box);
         
         //Skipping media box for now
         if(box.m_hdr.m_sz != 1)
@@ -121,7 +126,7 @@ namespace Quaint {namespace Media{
     }
 
     /*This is the most important box that contains all the info needed to sample videos*/
-    void BMF::parseMovieBox(const Box& box, uint64_t bytesRead)
+    void BMF::parseMovieBox(const Box& box, MovieBox& movieBox, uint64_t bytesRead)
     {
         assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");
         
@@ -132,7 +137,13 @@ namespace Quaint {namespace Media{
             switch (box.m_hdr.m_ty)
             {
             case BMF_BOX_mvhd:
-                m_movieBox.m_movieHeader = parseMovieHeader(box, res.bytesParsed);
+                parseMovieHeader(box, movieBox.m_movieHeader, res.bytesParsed);
+                bytesRead += box.m_hdr.m_sz;
+                break;
+
+            case BMF_BOX_trak:
+                movieBox.m_tracks.pushBack(TrackBox());
+                parseTrackBox(box, movieBox.m_tracks[movieBox.m_tracks.getSize() - 1], bytesRead);
                 break;
             
             default:
@@ -151,41 +162,56 @@ namespace Quaint {namespace Media{
         res.box = Box(box);
         char buf[4] = "\0";
 
-        BMF_READ(buf, 1, m_handle, BMF_CHAR_TO_UINT8, res.box.m_fHdr.m_ver);
-        BMF_READ(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flgs);
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, res.box.m_fHdr.m_ver);
+        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flgs);
         res.bytesParsed += 4;
 
         return res;
     }
 
-    MovieHeader BMF::parseMovieHeader(const Box& box, uint64_t bytesRead)
+    void BMF::parseMovieHeader(const Box& box, MovieHeader& header, uint64_t bytesRead)
     {
-        MovieHeader header;
-        
         BoxParseRes<FullBox> res = parseFullBox(box);
         bytesRead += res.bytesParsed;
         char buf[36] = "\0";
 
-        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
-        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_modificationTime);
-        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_timeScale);
-        BMF_READ(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_duration);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_preferredRate, 16, 16);
-        BMF_READ_FP16(buf, 2, m_handle, header.m_preferredVolume, 8, 8);
-        
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.x, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.x, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.x, 2, 30);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.y, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.y, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.y, 2, 30);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col0.z, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col1.z, 16, 16);
-        BMF_READ_FP32(buf, 4, m_handle, header.m_matStructure.col2.z, 2, 30);
+        //TODO: if Version = 1, the format of a few params will change
 
-        
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_modificationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_timeScale);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_duration);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_preferredRate, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 2, m_handle, BMF_CHAR_TO_FP16, header.m_preferredVolume, 8, 8);
 
-        return header;
+        //TODO: This reserved location might be specific to MOV files.
+        BMF_READ(header.m_reserved, 10, m_handle);
+        
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col0.x, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col1.x, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col2.x, 2, 30);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col0.y, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col1.y, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col2.y, 2, 30);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col0.z, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col1.z, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matStructure.col2.z, 2, 30);
+
+        //TODO: Fields below upto NextTrackID might be specific to QuickTime files
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_previewTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_previewDuration);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_posterTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_selectionTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_selectionDuration)
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_currentTime)
+
+        //Conforms to Base Media File(BMF) file format
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_nextTrackID)
+    }
+
+    void BMF::parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead)
+    {
+        
     }
     
 
