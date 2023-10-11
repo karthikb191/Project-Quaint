@@ -101,13 +101,18 @@ namespace Quaint {namespace Media{
         
         bytesRead += 8;
 
-        char* resBuffer = nullptr;
-        parseTillEndOfBox(box, bytesRead, &resBuffer, m_handle);
-        if(resBuffer != nullptr)
+        uint32_t remainingBytes = box.m_hdr.m_sz - (uint32_t)bytesRead;
+        assert(remainingBytes % 4 == 0 && "Parse failed");
+        uint32_t numCompatiblBrands = remainingBytes / 4;
+        for (uint32_t i = 0; i < numCompatiblBrands; i++)
         {
-            ftypBox.m_compatibleBrands = (uint32_t*)resBuffer;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT8, ftypBox.m_compatibleBrands[i]);
         }
-
+        //parseTillEndOfBox(box, bytesRead, &resBuffer, m_handle);
+        //if(resBuffer != nullptr)
+        //{
+        //    ftypBox.m_compatibleBrands = (uint32_t*)resBuffer;
+        //}
     }
 
     void BMF::parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead)
@@ -142,9 +147,12 @@ namespace Quaint {namespace Media{
                 break;
 
             case BMF_BOX_trak:
-                movieBox.m_tracks.pushBack(TrackBox());
+            {
+                TrackBox tb(VideoModule::get().getVideoMemoryContext());
+                movieBox.m_tracks.pushBack(TrackBox(VideoModule::get().getVideoMemoryContext()));
                 parseTrackBox(box, movieBox.m_tracks[movieBox.m_tracks.getSize() - 1], bytesRead);
                 break;
+            }
             
             default:
                 //Box of unknown type encountered. Skip it.
@@ -163,13 +171,13 @@ namespace Quaint {namespace Media{
         char buf[4] = "\0";
 
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, res.box.m_fHdr.m_ver);
-        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flgs);
+        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flags.uiFlags);
         res.bytesParsed += 4;
 
         return res;
     }
 
-    void BMF::parseMovieHeader(const Box& box, MovieHeader& header, uint64_t bytesRead)
+    void BMF::parseMovieHeader(const Box& box, MovieBox::MovieHeader& header, uint64_t bytesRead)
     {
         BoxParseRes<FullBox> res = parseFullBox(box);
         bytesRead += res.bytesParsed;
@@ -209,9 +217,109 @@ namespace Quaint {namespace Media{
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_nextTrackID)
     }
 
+    void BMF::parseTrackHeaderBox(const Box& box, TrackBox::TrackHeaderBox& header, uint64_t bytesRead)
+    {
+        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");
+
+        BoxParseRes<FullBox> res = parseFullBox(box);
+        bytesRead += res.bytesParsed;
+        char buf[36] = "\0";
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_modificationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_trackId);
+        BMF_READ(header.m_reserved1, 4, m_handle);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_duration);
+        BMF_READ(header.m_reserved2, 8, m_handle);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_INT16, header.m_layer);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_INT16, header.m_alternateGroup);
+        BMF_READ_FIXED_POINT(buf, 2, m_handle, BMF_CHAR_TO_FP16, header.m_volume, 8, 8);
+        BMF_READ(header.m_reserved3, 2, m_handle);
+
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col0.x, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col1.x, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col2.x, 2, 30);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col0.y, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col1.y, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col2.y, 2, 30);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col0.z, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col1.z, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_matrix.col2.z, 2, 30);
+
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_width, 16, 16);
+        BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, header.m_height, 16, 16);
+
+        bool enabled = header.isTrackEnabled();
+        bool canPresent = header.canTrackOrAnySubTrackPresentDirectly();
+        canPresent = header.canTrackOrAnySubTrackPresentDirectly();
+
+    }
+
+    void BMF::parseEditBox(const Box& box, TrackBox::EditBox& edit, uint64_t bytesRead)
+    {
+        while(bytesRead < box.m_hdr.m_sz)
+        {
+            BoxParseRes<Box> res = parseBox();
+            Box& box = res.box;
+            if(box.m_hdr.m_ty == BMF_BOX_elst)
+            {
+                edit.m_editLists.pushBack(TrackBox::EditBox::EditListBox(VideoModule::get().getVideoMemoryContext()));
+                parseEditListBox(box, edit.m_editLists[edit.m_editLists.getSize() - 1], res.bytesParsed);
+            }
+            else
+            {
+                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+            }
+            bytesRead += box.m_hdr.m_sz;
+        }
+    }
+
+    void BMF::parseEditListBox(const Box& box, TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead)
+    {
+        BoxParseRes<FullBox> res = parseFullBox(box);
+        bytesRead += res.bytesParsed;
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, editList.m_numEntries);
+        for(uint32_t i = 0; i < editList.m_numEntries; ++i)
+        {
+            TrackBox::EditBox::EditListBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_duration);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_mediaTime);
+            BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_FP32, entry.m_mediaRate, 16, 16);
+
+            editList.m_entries.pushBack(entry);
+        }
+    }
+
     void BMF::parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead)
     {
+        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");   
         
+        while(bytesRead < box.m_hdr.m_sz)
+        {
+            BoxParseRes<Box> res = parseBox();
+            Box& box = res.box;
+            switch (box.m_hdr.m_ty)
+            {
+            case BMF_BOX_tkhd:
+                parseTrackHeaderBox(box, trackBox.m_trackHeader, res.bytesParsed);
+                break;
+
+            case BMF_BOX_edts:
+                parseEditBox(box, trackBox.m_edit, res.bytesParsed);
+                break;
+            
+            default:
+                //Box of unknown type encountered. Skip it.
+                QLOG_W(BMF, "Encountered box of unkonwn type when parsing Track box. Skipping it!")
+                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+                
+                break;
+            }
+            bytesRead += box.m_hdr.m_sz;
+        }
+
     }
     
 
@@ -228,10 +336,11 @@ namespace Quaint {namespace Media{
             remaining = box.m_hdr.m_sz - bytesRead;
         }
 
-        if(remaining != 0 && !skip)
+        if(remaining != 0)
         {
-            *buffer = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), (size_t)remaining);
-            handle.read(*buffer, remaining);
+            handle.seekg(std::ios::cur + remaining - 1);
+            //*buffer = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), (size_t)remaining);
+            //handle.read(*buffer, remaining);
         }
     }
 }}

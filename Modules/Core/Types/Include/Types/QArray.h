@@ -26,17 +26,20 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
-        QArray(IMemoryContext* context)
+        template<typename ...ARGS>
+        QArray(IMemoryContext* context, ARGS... args)
         {
             m_context = context;
             m_size = 0;
             reserve(4);
+            construct(args...);
         }
         QArray(IMemoryContext* context, size_t size)
         {
             m_context = context;
             m_size = size;
             reserve(((size + 8) / 4) * 4);
+            defConstruct();
         }
         QArray(IMemoryContext* context, size_t size, const T& defVal)
         {
@@ -83,9 +86,12 @@ namespace Quaint
         QArray& operator=(const QArray<T>& other)
         {
             //deep copy from other
+            m_rawData = nullptr;
+            m_context = other.getMemoryContext();
             reserve(other.getReservedSize());
             memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
             m_size = other.getSize();
+            return *this;
         }
         /*Reclaims storage in current object and simply points to data in the other structure*/
         QArray& operator=(QArray<T>&& other)
@@ -95,7 +101,7 @@ namespace Quaint
             {
                 if(m_context != nullptr)
                 {
-                    QUAINT_DELETE_ARRAY(m_context, m_rawData);
+                    destroy();
                     //m_context->Free(m_rawData);
                 }
                 else
@@ -117,7 +123,7 @@ namespace Quaint
             
             if(m_context != nullptr)
             {
-                QUAINT_DELETE_ARRAY(m_context, m_rawData);
+                destroy();
                 //m_context->Free(m_rawData);
             }
             else
@@ -263,28 +269,52 @@ namespace Quaint
         }
         void resize()
         {
+            assert(m_context != nullptr && "Null Context is not currently supported");
+            //TODO: Add support for null context
             T* oldData = m_rawData;
             
             if(m_context != nullptr)
             {
-                m_rawData = QUAINT_NEW_ARRAY(m_context, T, m_reservedSize); 
-                //(T*)m_context->Alloc(m_reservedSize * TYPE_SIZE);
+                m_rawData = (T*)QUAINT_ALLOC_MEMORY_ALIGNED(m_context, m_reservedSize * TYPE_SIZE, alignof(T));
+                
                 if(oldData != nullptr)
                 {
                     memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
-                    QUAINT_DELETE_ARRAY(m_context, oldData);
-                    //m_context->Free(oldData);
+                    QUAINT_DEALLOC_MEMORY(m_context, oldData); //No need to call destructor here
                 }
             }
-            else
+            //else
+            //{
+            //    m_rawData = new T[m_reservedSize];
+            //    if(oldData != nullptr)
+            //    {
+            //        memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
+            //        delete[] oldData;
+            //    }
+            //}
+        }
+        template<typename ...ARGS>
+        void construct(ARGS... args)
+        {
+            for(size_t i = 0; i < m_size; i++)
             {
-                m_rawData = new T[m_reservedSize];
-                if(oldData != nullptr)
-                {
-                    memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
-                    delete[] oldData;
-                }
+                new(m_rawData + i)T(args...);
             }
+        }
+        void defConstruct()
+        {
+            for(size_t i = 0; i < m_size; i++)
+            {
+                new(m_rawData + i)T();
+            }
+        }
+        void destroy()
+        {
+            for(size_t i = 0; i < m_size; i++)
+            {
+                (m_rawData + i)->~T();
+            }
+            QUAINT_DEALLOC_MEMORY(m_context, m_rawData);
         }
 
         IMemoryContext*     m_context       = nullptr;

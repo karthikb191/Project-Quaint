@@ -46,8 +46,12 @@ namespace Quaint {namespace Media{
         void parseFileTypeBox(const Box& box, FileTypeBox& ftypBox, uint64_t bytesRead);
         void parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead);
         void parseMovieBox(const Box& box, MovieBox& movieBox, uint64_t bytesRead);
-        void parseMovieHeader(const Box& box, MovieHeader& header, uint64_t bytesRead);
+        void parseMovieHeader(const Box& box, MovieBox::MovieHeader& header, uint64_t bytesRead);
+
         void parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead);
+        void parseTrackHeaderBox(const Box& box, TrackBox::TrackHeaderBox& header, uint64_t bytesRead);
+        void parseEditBox(const Box& box, TrackBox::EditBox& edit, uint64_t bytesRead);
+        void parseEditListBox(const Box& box, TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead);
 
 
         QPath               m_path;

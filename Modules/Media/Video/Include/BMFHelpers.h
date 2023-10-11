@@ -43,6 +43,10 @@
 #define BMF_BOX_prfl BMF_CHAR_TO_UINT32("prfl")
 #define BMF_BOX_mvhd BMF_CHAR_TO_UINT32("mvhd")
 #define BMF_BOX_trak BMF_CHAR_TO_UINT32("trak")
+#define BMF_BOX_tkhd BMF_CHAR_TO_UINT32("tkhd")
+#define BMF_BOX_edts BMF_CHAR_TO_UINT32("edts")
+#define BMF_BOX_elst BMF_CHAR_TO_UINT32("elst")
+#define BMF_BOX_mdia BMF_CHAR_TO_UINT32("mdia")
 
 /*Brands*/
 #define BMF_BRAND_QT BMF_CHAR_TO_UINT32("qt  ") // qt followed by 2 spaces
