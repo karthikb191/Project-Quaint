@@ -40,19 +40,26 @@ namespace Quaint {namespace Media{
     private:
 
         void startParsing();
-        BoxParseRes<Box> parseBox();
-        BoxParseRes<FullBox> parseFullBox(const Box& box);
+        uint64_t parseBox(Box& box);
+        uint64_t parseFullBox(FullBox& fullBox, uint64_t bytesRead);
 
-        void parseFileTypeBox(const Box& box, FileTypeBox& ftypBox, uint64_t bytesRead);
-        void parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead);
-        void parseMovieBox(const Box& box, MovieBox& movieBox, uint64_t bytesRead);
-        void parseMovieHeader(const Box& box, MovieBox::MovieHeader& header, uint64_t bytesRead);
+        void parseFileTypeBox(FileTypeBox& ftypBox, uint64_t bytesRead);
+        void parseMediaDataBox(MediaDataBox& mediaDataBox, uint64_t bytesRead);
+        void parseMovieBox(MovieBox& movieBox, uint64_t bytesRead);
+        void parseMovieHeader(MovieBox::MovieHeader& header, uint64_t bytesRead);
 
-        void parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead);
-        void parseTrackHeaderBox(const Box& box, TrackBox::TrackHeaderBox& header, uint64_t bytesRead);
-        void parseEditBox(const Box& box, TrackBox::EditBox& edit, uint64_t bytesRead);
-        void parseEditListBox(const Box& box, TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead);
+        void parseTrackBox(TrackBox& trackBox, uint64_t bytesRead);
+        void parseTrackHeaderBox(TrackBox::TrackHeaderBox& header, uint64_t bytesRead);
+        void parseEditBox(TrackBox::EditBox& edit, uint64_t bytesRead);
+        void parseEditListBox(TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead);
 
+        void parseMediaBox(TrackBox::MediaBox& mediaBox, uint64_t bytesRead);
+        void parseMediaHeaderBox(TrackBox::MediaBox::MediaHeaderBox& headerBox, uint64_t bytesRead);
+        void parseMediaHandlerReferenceBox(HandlerReferenceBox& handlerBox, uint64_t bytesRead);
+        void parseVideoMediaInformationBox(MediaInformationBox& videoMinf, uint64_t bytesRead);
+        void parseVideoMediaInformationHeaderBox(MediaInformationBox::VideoMediaInformationHeaderBox& vMinfHeader, uint64_t bytesRead);
+        void parseDataInformationBox(DataInformationBox& dataInformation, uint64_t bytesRead);
+        void parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead);
 
         QPath               m_path;
         std::fstream        m_handle;

@@ -41,19 +41,21 @@ namespace Quaint {namespace Media{
     {
         while(m_handle.peek() != EOF)
         {
-            BoxParseRes<Box> res = parseBox();
-            Box& box = res.box;
-            uint64_t bytesRead = res.bytesParsed;
+            Box box;
+            uint64_t bytesRead = parseBox(box);
             switch (box.m_hdr.m_ty)
             {
             case BMF_BOX_ftyp:
-                parseFileTypeBox(box, m_fileTypeBox, bytesRead);
+                m_fileTypeBox.setBox(box);
+                parseFileTypeBox(m_fileTypeBox, bytesRead);
                 break;
             case BMF_BOX_mdat:
-                parseMediaDataBox(box, m_mediDataBox, bytesRead);
+                m_mediDataBox.setBox(box);
+                parseMediaDataBox(m_mediDataBox, bytesRead);
                 break;
             case BMF_BOX_moov:
-                parseMovieBox(box, m_movieBox, bytesRead);
+                m_movieBox.setBox(box);
+                parseMovieBox(m_movieBox, bytesRead);
                 break;
             default:
                 break;
@@ -61,7 +63,7 @@ namespace Quaint {namespace Media{
         }
     }
 
-    BoxParseRes<Box> BMF::parseBox()
+    uint64_t BMF::parseBox(Box& box)
     {
         //Get the size and type of box and move to a more specific parsing function
         uint64_t bytesRead = 0;
@@ -72,7 +74,7 @@ namespace Quaint {namespace Media{
         m_handle.read(buf, 4);
         bytesRead += 8;
 
-        Box box(size, buf);
+        box = Box(size, buf);
 
         //Read Extended size
         if(size == 1)
@@ -82,13 +84,12 @@ namespace Quaint {namespace Media{
             box.m_hdr.m_lSz = extSize;
             bytesRead += 8;
         }
-        return {box, bytesRead};
+        return bytesRead;
     }
 
-    void BMF::parseFileTypeBox(const Box& box, FileTypeBox& ftypBox, uint64_t bytesRead)
+    void BMF::parseFileTypeBox(FileTypeBox& ftypBox, uint64_t bytesRead)
     {
         char buf[8];
-        ftypBox = FileTypeBox(box);
         m_handle.read(buf, 4);
         ftypBox.m_majorBrand = BMF_CHAR_TO_UINT32(buf);
         m_handle.read(buf, 4);
@@ -101,7 +102,7 @@ namespace Quaint {namespace Media{
         
         bytesRead += 8;
 
-        uint32_t remainingBytes = box.m_hdr.m_sz - (uint32_t)bytesRead;
+        uint32_t remainingBytes = ftypBox.m_hdr.m_sz - (uint32_t)bytesRead;
         assert(remainingBytes % 4 == 0 && "Parse failed");
         uint32_t numCompatiblBrands = remainingBytes / 4;
         for (uint32_t i = 0; i < numCompatiblBrands; i++)
@@ -115,72 +116,72 @@ namespace Quaint {namespace Media{
         //}
     }
 
-    void BMF::parseMediaDataBox(const Box& box, MediaDataBox& mediaDataBox, uint64_t bytesRead)
+    void BMF::parseMediaDataBox(MediaDataBox& mediaDataBox, uint64_t bytesRead)
     {
-        mediaDataBox = MediaDataBox(box);
-        
         //Skipping media box for now
-        if(box.m_hdr.m_sz != 1)
+        if(mediaDataBox.m_hdr.m_sz != 1)
         {
-            m_handle.seekg(box.m_hdr.m_sz - bytesRead, std::ios::cur);
+            m_handle.seekg(mediaDataBox.m_hdr.m_sz - bytesRead, std::ios::cur);
         }
         else
         {
-            m_handle.seekg(box.m_hdr.m_lSz - bytesRead, std::ios::cur);
+            m_handle.seekg(mediaDataBox.m_hdr.m_lSz - bytesRead, std::ios::cur);
         }
     }
 
     /*This is the most important box that contains all the info needed to sample videos*/
-    void BMF::parseMovieBox(const Box& box, MovieBox& movieBox, uint64_t bytesRead)
+    void BMF::parseMovieBox(MovieBox& movieBox, uint64_t bytesRead)
     {
-        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");
+        assert(movieBox.m_hdr.m_sz > 1 && "Extended sizes must be handled");
         
-        while(bytesRead < box.m_hdr.m_sz)
+        while(bytesRead < movieBox.m_hdr.m_sz)
         {
-            BoxParseRes<Box> res = parseBox();
-            Box& box = res.box;
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
             switch (box.m_hdr.m_ty)
             {
             case BMF_BOX_mvhd:
-                parseMovieHeader(box, movieBox.m_movieHeader, res.bytesParsed);
+                movieBox.m_movieHeader.setBox(box);
+                parseMovieHeader(movieBox.m_movieHeader, bytesParsed);
                 bytesRead += box.m_hdr.m_sz;
                 break;
 
             case BMF_BOX_trak:
             {
                 TrackBox tb(VideoModule::get().getVideoMemoryContext());
-                movieBox.m_tracks.pushBack(TrackBox(VideoModule::get().getVideoMemoryContext()));
-                parseTrackBox(box, movieBox.m_tracks[movieBox.m_tracks.getSize() - 1], bytesRead);
+                tb.setBox(box);
+                movieBox.m_tracks.pushBack(tb);
+                parseTrackBox(movieBox.m_tracks[movieBox.m_tracks.getSize() - 1], bytesParsed);
+                bytesRead += box.m_hdr.m_sz;
                 break;
             }
             
             default:
                 //Box of unknown type encountered. Skip it.
                 QLOG_W(BMF, "Encountered box of unkonwn type when parsing Movie box. Skipping it!")
-                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
                 bytesRead += box.m_hdr.m_sz;
                 break;
             }
         }
     }
 
-    BoxParseRes<FullBox> BMF::parseFullBox(const Box& box)
+    uint64_t BMF::parseFullBox(FullBox& fullBox, uint64_t bytesRead)
     {
-        BoxParseRes<FullBox> res;
-        res.box = Box(box);
+        //BoxParseRes<FullBox> res;
+        //res.box = Box(box);
         char buf[4] = "\0";
 
-        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, res.box.m_fHdr.m_ver);
-        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, res.box.m_fHdr.m_flags.uiFlags);
-        res.bytesParsed += 4;
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, fullBox.m_fHdr.m_ver);
+        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, fullBox.m_fHdr.m_flags.uiFlags);
 
-        return res;
+        return bytesRead;
     }
 
-    void BMF::parseMovieHeader(const Box& box, MovieBox::MovieHeader& header, uint64_t bytesRead)
+    void BMF::parseMovieHeader(MovieBox::MovieHeader& header, uint64_t bytesRead)
     {
-        BoxParseRes<FullBox> res = parseFullBox(box);
-        bytesRead += res.bytesParsed;
+        uint64_t bytesParsed = parseFullBox(header, bytesRead);
+        bytesRead = bytesParsed;
         char buf[36] = "\0";
 
         //TODO: if Version = 1, the format of a few params will change
@@ -217,12 +218,12 @@ namespace Quaint {namespace Media{
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_nextTrackID)
     }
 
-    void BMF::parseTrackHeaderBox(const Box& box, TrackBox::TrackHeaderBox& header, uint64_t bytesRead)
+    void BMF::parseTrackHeaderBox(TrackBox::TrackHeaderBox& header, uint64_t bytesRead)
     {
-        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");
+        assert(header.m_hdr.m_sz > 1 && "Extended sizes must be handled");
 
-        BoxParseRes<FullBox> res = parseFullBox(box);
-        bytesRead += res.bytesParsed;
+        uint64_t bytesParsed = parseFullBox(header, bytesRead);
+        bytesRead = bytesParsed;
         char buf[36] = "\0";
 
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
@@ -255,29 +256,31 @@ namespace Quaint {namespace Media{
 
     }
 
-    void BMF::parseEditBox(const Box& box, TrackBox::EditBox& edit, uint64_t bytesRead)
+    void BMF::parseEditBox(TrackBox::EditBox& edit, uint64_t bytesRead)
     {
-        while(bytesRead < box.m_hdr.m_sz)
+        while(bytesRead < edit.m_hdr.m_sz)
         {
-            BoxParseRes<Box> res = parseBox();
-            Box& box = res.box;
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
             if(box.m_hdr.m_ty == BMF_BOX_elst)
             {
-                edit.m_editLists.pushBack(TrackBox::EditBox::EditListBox(VideoModule::get().getVideoMemoryContext()));
-                parseEditListBox(box, edit.m_editLists[edit.m_editLists.getSize() - 1], res.bytesParsed);
+                TrackBox::EditBox::EditListBox ed = TrackBox::EditBox::EditListBox(VideoModule::get().getVideoMemoryContext());
+                ed.setBox(box); 
+                edit.m_editLists.pushBack(ed);
+                parseEditListBox(edit.m_editLists[edit.m_editLists.getSize() - 1], bytesParsed);
             }
             else
             {
-                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
             }
             bytesRead += box.m_hdr.m_sz;
         }
     }
 
-    void BMF::parseEditListBox(const Box& box, TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead)
+    void BMF::parseEditListBox(TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead)
     {
-        BoxParseRes<FullBox> res = parseFullBox(box);
-        bytesRead += res.bytesParsed;
+        uint64_t bytesParsed = parseFullBox(editList, bytesRead);
+        bytesRead = bytesParsed;
         char buf[8] = {'\0'};
 
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, editList.m_numEntries);
@@ -292,33 +295,160 @@ namespace Quaint {namespace Media{
         }
     }
 
-    void BMF::parseTrackBox(const Box& box, TrackBox& trackBox, uint64_t bytesRead)
+    void BMF::parseTrackBox(TrackBox& trackBox, uint64_t bytesRead)
     {
-        assert(box.m_hdr.m_sz > 1 && "Extended sizes must be handled");   
+        assert(trackBox.m_hdr.m_sz > 1 && "Extended sizes must be handled");   
         
-        while(bytesRead < box.m_hdr.m_sz)
+        while(bytesRead < trackBox.m_hdr.m_sz)
         {
-            BoxParseRes<Box> res = parseBox();
-            Box& box = res.box;
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
             switch (box.m_hdr.m_ty)
             {
             case BMF_BOX_tkhd:
-                parseTrackHeaderBox(box, trackBox.m_trackHeader, res.bytesParsed);
+                trackBox.m_trackHeader.setBox(box);
+                parseTrackHeaderBox(trackBox.m_trackHeader, bytesParsed);
                 break;
 
             case BMF_BOX_edts:
-                parseEditBox(box, trackBox.m_edit, res.bytesParsed);
+                trackBox.m_edit.setBox(box);
+                parseEditBox(trackBox.m_edit, bytesParsed);
+                break;
+            
+            case BMF_BOX_mdia:
+                trackBox.m_media.setBox(box);
+                parseMediaBox(trackBox.m_media, bytesParsed);
                 break;
             
             default:
                 //Box of unknown type encountered. Skip it.
                 QLOG_W(BMF, "Encountered box of unkonwn type when parsing Track box. Skipping it!")
-                parseTillEndOfBox(box, res.bytesParsed, nullptr, m_handle, true);
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
                 
                 break;
             }
             bytesRead += box.m_hdr.m_sz;
         }
+
+    }
+
+    void BMF::parseMediaBox(TrackBox::MediaBox& mediaBox, uint64_t bytesRead)
+    {
+        while(bytesRead < mediaBox.m_hdr.m_sz)
+        {
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
+            switch(box.m_hdr.m_ty)
+            {
+            case BMF_BOX_mdhd:
+                mediaBox.m_movieHeader.setBox(box);
+                parseMediaHeaderBox(mediaBox.m_movieHeader, bytesParsed);
+                break;
+            
+            case BMF_BOX_hdlr:
+                mediaBox.m_handler.setBox(box);
+                parseMediaHandlerReferenceBox(mediaBox.m_handler, bytesParsed);
+                break;
+
+            case BMF_BOX_minf:
+                //TODO: Add a condition to check if we are parsing a video track
+                mediaBox.m_mediaInfo.setBox(box);
+                parseVideoMediaInformationBox(mediaBox.m_mediaInfo, bytesParsed);
+                break;
+
+            default:
+                QLOG_W(BMF, "Encountered box of unkonwn type when parsing Media box. Skipping it!")
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
+                break;
+            }
+            bytesRead += box.m_hdr.m_sz;
+        }
+    }
+
+    void BMF::parseMediaHeaderBox(TrackBox::MediaBox::MediaHeaderBox& headerBox, uint64_t bytesRead)
+    {
+        uint64_t bytesParsed = parseFullBox(headerBox, bytesRead);
+        bytesRead = bytesParsed;
+        assert(headerBox.m_fHdr.m_ver == 0 && "Version other than 0 is not yet supported");
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, headerBox.m_creationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, headerBox.m_modificationTime);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, headerBox.m_timeScale);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, headerBox.m_duration);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, headerBox.m_language);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, headerBox.m_quality);
+    }
+
+    void BMF::parseMediaHandlerReferenceBox(HandlerReferenceBox& handlerBox, uint64_t bytesRead)
+    {
+        uint64_t bytesParsed = parseFullBox(handlerBox, bytesRead);
+        bytesRead = bytesParsed;
+        assert(handlerBox.m_fHdr.m_ver == 0 && "Version other than 0 is not yet supported");
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, handlerBox.m_componentType.m_val);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, handlerBox.m_componentSubType.m_val);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, handlerBox.m_manufacturer);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, handlerBox.m_flags);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, handlerBox.m_flagsMask);
+        
+        uint64_t remainingBytes = handlerBox.m_hdr.m_sz - bytesRead;
+        assert(remainingBytes < handlerBox.m_name.availableSize() && "Handler name is unexpectedly large");
+        BMF_READ(handlerBox.m_name.getBuffer_NonConst(), remainingBytes, m_handle);
+
+        int i = 100;
+        i -= 10;
+    }
+
+    void BMF::parseVideoMediaInformationBox(MediaInformationBox& videoMinf, uint64_t bytesRead)
+    {
+        while(bytesRead < videoMinf.m_hdr.m_sz)
+        {
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
+            switch(box.m_hdr.m_ty)
+            {
+            case BMF_BOX_vmhd:
+                videoMinf.m_vMinfHeader.setBox(box);
+                parseVideoMediaInformationHeaderBox(videoMinf.m_vMinfHeader, bytesParsed);
+                break;
+
+            case BMF_BOX_hdlr:
+                videoMinf.m_handler.setBox(box);
+                parseMediaHandlerReferenceBox(videoMinf.m_handler, bytesParsed);
+                break;
+            
+            case BMF_BOX_dinf:
+                videoMinf.m_dataInformation.setBox(box);
+                parseDataInformationBox(videoMinf.m_dataInformation, bytesParsed);
+                break;
+
+            case BMF_BOX_stbl:
+                videoMinf.m_sampleTable.setBox(box);
+                parseSampleTableBox(videoMinf.m_sampleTable, bytesParsed);
+                break;
+
+            default:
+                QLOG_W(BMF, "Encountered box of unkonwn type when parsing Video Media Information box. Skipping it!")
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
+                break;
+            }
+            bytesRead += box.m_hdr.m_sz;
+        }
+    }
+
+    void BMF::parseVideoMediaInformationHeaderBox(MediaInformationBox::VideoMediaInformationHeaderBox& vMinfHeader, uint64_t bytesRead)
+    {
+
+    }
+
+    void BMF::parseDataInformationBox(DataInformationBox& dataInformation, uint64_t bytesRead)
+    {
+
+    }
+    void BMF::parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead)
+    {
 
     }
     
@@ -338,7 +468,7 @@ namespace Quaint {namespace Media{
 
         if(remaining != 0)
         {
-            handle.seekg(std::ios::cur + remaining - 1);
+            handle.seekg(remaining, std::ios::cur);
             //*buffer = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), (size_t)remaining);
             //handle.read(*buffer, remaining);
         }

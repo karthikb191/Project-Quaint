@@ -26,6 +26,7 @@ public:
     }
 
     const char* getBuffer() const { return m_rawData; }
+    char* getBuffer_NonConst() { return m_rawData; }
     size_t length() const { return strlen(m_rawData); }
     size_t availableSize() const { return N - length(); }
 

@@ -6,11 +6,21 @@
 #include <Interface/IMemoryContext.h> 
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
+#include <Types/QStaticString.h>
 
 namespace Quaint { namespace Media
 {
     constexpr uint32_t UUID = 'u' << 24 | 'u' << 16 | 'i' << 8 | 'd';
     
+    struct NameCode
+    {
+        union
+        {
+            uint32_t    m_val;
+            char        m_c[4];
+        };
+    };
+
     struct alignas(8) BoxHeader
     {
         BoxHeader(){}
@@ -49,7 +59,16 @@ namespace Quaint { namespace Media
     {
         Box() {}
         Box(const uint32_t pSz, char pTyp[4]) : m_hdr(pSz, pTyp){}
-
+        Box(const Box& box) = default;
+        Box& operator=(const Box& other)
+        {
+            m_hdr = other.m_hdr;
+            return *this;
+        }
+        void setBox(const Box& other)
+        {
+            m_hdr = other.m_hdr;
+        }
         BoxHeader       m_hdr;
     };
     struct alignas(8) FullBox : public Box
@@ -57,6 +76,12 @@ namespace Quaint { namespace Media
         FullBox() {}
         FullBox(const Box& box) : Box(box){}
         FullBoxHeader   m_fHdr;
+
+        void setFullBox(const FullBox& other)
+        {
+            m_hdr = other.m_hdr;
+            m_fHdr = other.m_fHdr;
+        }
     };
 
 
@@ -85,9 +110,59 @@ namespace Quaint { namespace Media
 
     };
 
+    /*Declares the process by which media data in the stream may be presented and thus, nature of media in the stream*/
+    struct HandlerReferenceBox : public FullBox
+    {
+        //WARN! Some of these params may be specific to MOV format.
+        NameCode            m_componentType;
+        NameCode            m_componentSubType;
+        uint32_t            m_manufacturer; /*Reserved. Set to 0*/
+        uint32_t            m_flags; /*Reserved. Set to 0*/
+        uint32_t            m_flagsMask; /*Reserved. Set to 0*/
+        Quaint::QName       m_name;
+    };
+
+    /*Contains other boxes that define specific characteristics of video media data*/
+    struct MediaInformationBox : public Box
+    {
+        struct VideoMediaInformationHeaderBox : public FullBox
+        {
+            uint16_t        m_graphicsMode;
+            struct OpCode
+            {
+                uint16_t    m_r;
+                uint16_t    m_g;
+                uint16_t    m_b;
+            };
+            
+        };
+
+        VideoMediaInformationHeaderBox      m_vMinfHeader;
+        HandlerReferenceBox                 m_handler;
+        DataInformationBox                  m_dataInformation;
+        SampleTableBox                      m_sampleTable;
+    };
+
+    struct DataReferenceBox : public FullBox
+    {
+        uint32_t        m_numEntries;
+        void*           m_data;     //TODO: Not sure how to handle this yet
+    };
+
+    struct DataInformationBox : public Box
+    {
+        DataReferenceBox    m_dataRef;
+    };
+
+    struct SampleTableBox : public Box
+    {
+
+    };
 
 //------------- Track Related Boxes -------------------------------
     
+
+
     struct alignas(16) TrackBox : public Box
     {
         struct TrackProfile : public Box
@@ -139,11 +214,17 @@ namespace Quaint { namespace Media
         {
 
         };
+        /*Edit Box is used to define protions of media that are used to build tracks of movies.
+          Edits themselves are contained in EditTable, which contains Offset and durration of each segment.
+          In absense of Edit Box, presentation starts immediately.
+          Empty Edit is used to offset the start time of track*/
         struct EditBox : public Box
         {
             EditBox(IMemoryContext* context)
             : m_editLists(context, context)
             {}
+
+            /*EditList entries maps from time in movie to time in media, and ultimately to media data */
             struct EditListBox : public FullBox
             {
                 EditListBox(IMemoryContext* context)
@@ -154,8 +235,11 @@ namespace Quaint { namespace Media
 
                 struct Entry
                 {
+                    /*Specified duration of this edit segment in terms of movie's timeScale*/
                     uint32_t    m_duration;
+                    /*Contains starting time within the media of this edit segment*/
                     uint32_t    m_mediaTime;
+                    /*Relative rate at which to play the media corresponsding to the edit segment*/
                     float       m_mediaRate;
                 };
 
@@ -181,9 +265,36 @@ namespace Quaint { namespace Media
         {
 
         };
+
+    /* Media Boxes contain following information:
+        - MediaType, such as Video, audio or timed metadata
+        - Media handler component used to interpret sample data
+        - Media timescale and track duration
+        - Media and track specific information, such as volume and graphics mode
+        - Media data references, which typically specify the files where sample data is stored
+        - Sample table Boxes, which, for each media sample, specify sample description, duration and byte offset from data reference
+    */
         struct MediaBox : public Box
         {
+            /*Specifies characteristics of media, including timescale and duration*/
+            struct MediaHeaderBox : public FullBox
+            {
+                uint32_t        m_creationTime;
+                uint32_t        m_modificationTime;
+                uint32_t        m_timeScale;    /*Coordinate space measured in 1/timeScale of second (or) No of time units that pass per second*/
+                uint32_t        m_duration;
+                int16_t         m_language;
+                uint16_t        m_quality;  /*Predefined according to standard*/
+            };
+            
+            struct UserDataBox : public Box
+            {
 
+            };
+
+            MediaHeaderBox              m_movieHeader;
+            HandlerReferenceBox         m_handler;
+            MediaInformationBox         m_mediaInfo;
         };
         struct UserDefinedDataBox : public Box
         {
@@ -235,10 +346,16 @@ namespace Quaint { namespace Media
         : m_context(context)
         , m_tracks(context, context)
         {}
+
+        uint32_t getTimeScale() { return m_movieHeader.m_timeScale; }
+        uint32_t getDuration() { return m_movieHeader.m_duration; }
+        float getDurationInSec() { return (float)m_movieHeader.m_duration/(float)m_movieHeader.m_timeScale; }
+
         MovieHeader                                                 m_movieHeader;
         IMemoryContext*                                             m_context;
-        Quaint::QArray<TrackBox>                   m_tracks;
+        Quaint::QArray<TrackBox>                                    m_tracks;
     };
+
 }}
 
 #endif //_H_BMF_STRUCTURES

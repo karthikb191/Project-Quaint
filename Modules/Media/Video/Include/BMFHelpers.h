@@ -24,16 +24,18 @@
 #define BMF_CHAR_TO_FP16(c, x, y) ((float)(BMF_CHAR_TO_INT16(c)) / (float)(1 << y))
 
 #define BMF_READ(BUFFER, LENGTH, FILE_HANDLE)\
-        FILE_HANDLE.read(BUFFER, LENGTH);
+        FILE_HANDLE.read(BUFFER, LENGTH);\
+        bytesRead += LENGTH;
 
 #define BMF_READ_VAR(BUFFER, LENGTH, FILE_HANDLE, TYPE_OR_CONV_MACRO, VARIABLE) \
         FILE_HANDLE.read(BUFFER, LENGTH);\
-        VARIABLE = TYPE_OR_CONV_MACRO(BUFFER);
+        VARIABLE = TYPE_OR_CONV_MACRO(BUFFER);\
+        bytesRead += LENGTH;
 
 #define BMF_READ_FIXED_POINT(BUFFER, LENGTH, FILE_HANDLE, TYPE_OR_CONV_MACRO, VARIABLE, x, y) \
         FILE_HANDLE.read(BUFFER, LENGTH);\
         VARIABLE = TYPE_OR_CONV_MACRO(BUFFER, x, y);\
-
+        bytesRead += LENGTH;
 
 
 #define BMF_BOX_ftyp BMF_CHAR_TO_UINT32("ftyp")
@@ -47,6 +49,12 @@
 #define BMF_BOX_edts BMF_CHAR_TO_UINT32("edts")
 #define BMF_BOX_elst BMF_CHAR_TO_UINT32("elst")
 #define BMF_BOX_mdia BMF_CHAR_TO_UINT32("mdia")
+#define BMF_BOX_mdhd BMF_CHAR_TO_UINT32("mdhd")
+#define BMF_BOX_hdlr BMF_CHAR_TO_UINT32("hdlr")
+#define BMF_BOX_minf BMF_CHAR_TO_UINT32("minf")
+#define BMF_BOX_vmhd BMF_CHAR_TO_UINT32("vmhd")
+#define BMF_BOX_dinf BMF_CHAR_TO_UINT32("dinf")
+#define BMF_BOX_stbl BMF_CHAR_TO_UINT32("stbl")
 
 /*Brands*/
 #define BMF_BRAND_QT BMF_CHAR_TO_UINT32("qt  ") // qt followed by 2 spaces
