@@ -55,6 +55,7 @@
 #define BMF_BOX_vmhd BMF_CHAR_TO_UINT32("vmhd")
 #define BMF_BOX_dinf BMF_CHAR_TO_UINT32("dinf")
 #define BMF_BOX_stbl BMF_CHAR_TO_UINT32("stbl")
+#define BMF_BOX_stsd BMF_CHAR_TO_UINT32("stsd")
 
 /*Brands*/
 #define BMF_BRAND_QT BMF_CHAR_TO_UINT32("qt  ") // qt followed by 2 spaces

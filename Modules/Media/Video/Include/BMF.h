@@ -41,7 +41,7 @@ namespace Quaint {namespace Media{
 
         void startParsing();
         uint64_t parseBox(Box& box);
-        uint64_t parseFullBox(FullBox& fullBox, uint64_t bytesRead);
+        uint64_t parseFullBox(FullBox& fullBox);
 
         void parseFileTypeBox(FileTypeBox& ftypBox, uint64_t bytesRead);
         void parseMediaDataBox(MediaDataBox& mediaDataBox, uint64_t bytesRead);
@@ -59,7 +59,10 @@ namespace Quaint {namespace Media{
         void parseVideoMediaInformationBox(MediaInformationBox& videoMinf, uint64_t bytesRead);
         void parseVideoMediaInformationHeaderBox(MediaInformationBox::VideoMediaInformationHeaderBox& vMinfHeader, uint64_t bytesRead);
         void parseDataInformationBox(DataInformationBox& dataInformation, uint64_t bytesRead);
+        
         void parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead);
+        void parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox description, uint64_t bytesRead);
+
 
         QPath               m_path;
         std::fstream        m_handle;

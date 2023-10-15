@@ -10,6 +10,7 @@ namespace Quaint {namespace Media{
 
     /*Forward Declares*/
     void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle, bool skip = false);
+    void skip(uint64_t numBytesToSkip, std::fstream& handle);
     
     BMF::BMF()
     : m_movieBox(VideoModule::get().getVideoMemoryContext())
@@ -166,10 +167,11 @@ namespace Quaint {namespace Media{
         }
     }
 
-    uint64_t BMF::parseFullBox(FullBox& fullBox, uint64_t bytesRead)
+    uint64_t BMF::parseFullBox(FullBox& fullBox)
     {
         //BoxParseRes<FullBox> res;
         //res.box = Box(box);
+        uint64_t bytesRead = 0;
         char buf[4] = "\0";
 
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, fullBox.m_fHdr.m_ver);
@@ -180,8 +182,8 @@ namespace Quaint {namespace Media{
 
     void BMF::parseMovieHeader(MovieBox::MovieHeader& header, uint64_t bytesRead)
     {
-        uint64_t bytesParsed = parseFullBox(header, bytesRead);
-        bytesRead = bytesParsed;
+        uint64_t bytesParsed = parseFullBox(header);
+        bytesRead += bytesParsed;
         char buf[36] = "\0";
 
         //TODO: if Version = 1, the format of a few params will change
@@ -222,8 +224,8 @@ namespace Quaint {namespace Media{
     {
         assert(header.m_hdr.m_sz > 1 && "Extended sizes must be handled");
 
-        uint64_t bytesParsed = parseFullBox(header, bytesRead);
-        bytesRead = bytesParsed;
+        uint64_t bytesParsed = parseFullBox(header);
+        bytesRead += bytesParsed;
         char buf[36] = "\0";
 
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, header.m_creationTime);
@@ -279,8 +281,8 @@ namespace Quaint {namespace Media{
 
     void BMF::parseEditListBox(TrackBox::EditBox::EditListBox& editList, uint64_t bytesRead)
     {
-        uint64_t bytesParsed = parseFullBox(editList, bytesRead);
-        bytesRead = bytesParsed;
+        uint64_t bytesParsed = parseFullBox(editList);
+        bytesRead += bytesParsed;
         char buf[8] = {'\0'};
 
         BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, editList.m_numEntries);
@@ -367,8 +369,8 @@ namespace Quaint {namespace Media{
 
     void BMF::parseMediaHeaderBox(TrackBox::MediaBox::MediaHeaderBox& headerBox, uint64_t bytesRead)
     {
-        uint64_t bytesParsed = parseFullBox(headerBox, bytesRead);
-        bytesRead = bytesParsed;
+        uint64_t bytesParsed = parseFullBox(headerBox);
+        bytesRead += bytesParsed;
         assert(headerBox.m_fHdr.m_ver == 0 && "Version other than 0 is not yet supported");
         char buf[8] = {'\0'};
 
@@ -382,8 +384,8 @@ namespace Quaint {namespace Media{
 
     void BMF::parseMediaHandlerReferenceBox(HandlerReferenceBox& handlerBox, uint64_t bytesRead)
     {
-        uint64_t bytesParsed = parseFullBox(handlerBox, bytesRead);
-        bytesRead = bytesParsed;
+        uint64_t bytesParsed = parseFullBox(handlerBox);
+        bytesRead += bytesParsed;
         assert(handlerBox.m_fHdr.m_ver == 0 && "Version other than 0 is not yet supported");
         char buf[8] = {'\0'};
 
@@ -396,9 +398,6 @@ namespace Quaint {namespace Media{
         uint64_t remainingBytes = handlerBox.m_hdr.m_sz - bytesRead;
         assert(remainingBytes < handlerBox.m_name.availableSize() && "Handler name is unexpectedly large");
         BMF_READ(handlerBox.m_name.getBuffer_NonConst(), remainingBytes, m_handle);
-
-        int i = 100;
-        i -= 10;
     }
 
     void BMF::parseVideoMediaInformationBox(MediaInformationBox& videoMinf, uint64_t bytesRead)
@@ -440,20 +439,127 @@ namespace Quaint {namespace Media{
 
     void BMF::parseVideoMediaInformationHeaderBox(MediaInformationBox::VideoMediaInformationHeaderBox& vMinfHeader, uint64_t bytesRead)
     {
+        uint64_t bytesParsed = parseFullBox(vMinfHeader);
+        bytesRead += bytesParsed;
+        assert(vMinfHeader.m_fHdr.m_ver == 0 && "Version other than 0 is not yet supported");
+        char buf[8] = {'\0'};
 
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, vMinfHeader.m_graphicsMode);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, vMinfHeader.m_opCode.m_r);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, vMinfHeader.m_opCode.m_g);
+        BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, vMinfHeader.m_opCode.m_b);
     }
 
     void BMF::parseDataInformationBox(DataInformationBox& dataInformation, uint64_t bytesRead)
     {
+        //Parsing Data Reference box
+        Box box;
+        bytesRead += parseBox(box);
+        dataInformation.m_dataRef.setBox(box);
+        bytesRead += parseFullBox(dataInformation.m_dataRef);
+        
+        char buf[8] = {'\0'};
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT64, dataInformation.m_dataRef.m_numEntries);
+        
+        assert(dataInformation.m_dataRef.m_numEntries == 0 && "Valid Data Reference entries is not handled yet!");
+
+        for(uint32_t i = 0; i < dataInformation.m_dataRef.m_numEntries; ++i)
+        {
+            DataReferenceEntry entry;
+            uint64_t currentEntryBytes = 0;
+            currentEntryBytes += parseBox(entry);
+            currentEntryBytes += parseFullBox(entry);
+
+            uint64_t remaining = entry.m_hdr.m_sz - currentEntryBytes;
+
+            skip(remaining, m_handle);
+
+            bytesRead += entry.m_hdr.m_sz;
+        }
 
     }
+
     void BMF::parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead)
     {
+        while(bytesRead < sampleTable.m_hdr.m_sz)
+        {
+            Box box;
+            uint64_t bytesParsed = parseBox(box);
+            switch(box.m_hdr.m_ty)
+            {
+            case BMF_BOX_stsd:
+                sampleTable.m_description.setBox(box);
+                parseSampleDescriptionBox(sampleTable.m_description, bytesParsed);
+                break;
 
+            default:
+                QLOG_W(BMF, "Encountered box of unkonwn type when parsing Video Media Information box. Skipping it!")
+                parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
+                break;
+            }
+            bytesRead += box.m_hdr.m_sz;
+        }
+    }
+
+    void BMF::parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox description, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(description);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, description.m_numEntries);
+        for(uint32_t i = 0; i < description.m_numEntries; ++i)
+        {
+            VideoSampleDescription sample;
+
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_sampleDescriptionSize);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_dataFormat.m_val);
+            BMF_READ(sample.m_reserved1, 6, m_handle);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_dataRefIndex);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_version);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_revisionLevel);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_vendor.m_val);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_temporalQuality);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_spatialQuality);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_width);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_height);
+            BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_UFP32, sample.m_horRes, 16, 16);
+            BMF_READ_FIXED_POINT(buf, 4, m_handle, BMF_CHAR_TO_UFP32, sample.m_vertRes, 16, 16);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_dataSize);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_frameCount);
+            BMF_READ(sample.m_compressorName.getBuffer_NonConst(), 32, m_handle);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_pixelDepth);
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_colorTableId);
+            //uint32_t            m_sampleDescriptionSize;
+            //NameCode            m_dataFormat;
+            //char                m_reserved1[6];
+            //uint16_t            m_dataRefIndex;
+            //uint16_t            m_version;
+            //uint16_t            m_revisionLevel;
+            //NameCode            m_vendor;
+            //uint32_t            m_temporalQuality;
+            //uint32_t            m_spatialQuality;
+            //uint16_t            m_width;
+            //uint16_t            m_height;
+            //float               m_horRes;
+            //float               m_vertRes;
+            //uint32_t            m_dataSize;
+            //uint16_t            m_frameSize;
+            //uint16_t            m_pixelDepth;
+            //uint16_t            m_colorTableId;
+
+            description.m_samples.pushBack(sample);
+        }
     }
     
 
     /*Helpers*/
+    void skip(uint64_t numBytesToSkip, std::fstream& handle)
+    {
+        if(numBytesToSkip <= 0) return;
+
+        handle.seekg(numBytesToSkip, std::ios::cur);
+    }
     void parseTillEndOfBox(const Box& box, const uint64_t bytesRead, char** buffer, std::fstream& handle, bool skip)
     {        
         uint64_t remaining = 0;

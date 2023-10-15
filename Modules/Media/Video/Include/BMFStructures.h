@@ -17,7 +17,7 @@ namespace Quaint { namespace Media
         union
         {
             uint32_t    m_val;
-            char        m_c[4];
+            char        m_c[4]; /*This will appear in reverse in little endian machines. Dont panic*/
         };
     };
 
@@ -122,12 +122,73 @@ namespace Quaint { namespace Media
         Quaint::QName       m_name;
     };
 
+    struct DataReferenceEntry : public FullBox
+    {
+        void*   m_data;
+    };
+    
+    struct DataReferenceBox : public FullBox
+    {
+        DataReferenceBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+        uint32_t                            m_numEntries;
+        Quaint::QArray<DataReferenceEntry>  m_entries;
+    };
+
+    struct DataInformationBox : public Box
+    {
+        DataInformationBox(IMemoryContext* context)
+        : m_dataRef(context)
+        {}
+        DataReferenceBox    m_dataRef;
+    };
+
+    struct VideoSampleDescription
+    {
+        uint32_t            m_sampleDescriptionSize;
+        NameCode            m_dataFormat;
+        char                m_reserved1[6];
+        uint16_t            m_dataRefIndex;
+        uint16_t            m_version;
+        uint16_t            m_revisionLevel;
+        NameCode            m_vendor;
+        uint32_t            m_temporalQuality;
+        uint32_t            m_spatialQuality;
+        uint16_t            m_width;
+        uint16_t            m_height;
+        float               m_horRes;
+        float               m_vertRes;
+        uint32_t            m_dataSize;
+        uint16_t            m_frameCount;
+        QName               m_compressorName;
+        uint16_t            m_pixelDepth;
+        uint16_t            m_colorTableId;
+    };
+
+    struct SampleTableBox : public Box
+    {
+        struct SampleDescriptionBox : public FullBox
+        {
+            SampleDescriptionBox(IMemoryContext* context)
+            : m_samples(context)
+            {}
+            uint32_t                        m_numEntries;
+            QArray<VideoSampleDescription>  m_samples;
+        };
+        
+        SampleTableBox(IMemoryContext* context)
+        : m_description(context)
+        {}
+
+        SampleDescriptionBox    m_description;
+    };
+
     /*Contains other boxes that define specific characteristics of video media data*/
     struct MediaInformationBox : public Box
     {
         struct VideoMediaInformationHeaderBox : public FullBox
         {
-            uint16_t        m_graphicsMode;
             struct OpCode
             {
                 uint16_t    m_r;
@@ -135,28 +196,19 @@ namespace Quaint { namespace Media
                 uint16_t    m_b;
             };
             
+            uint16_t        m_graphicsMode;
+            OpCode          m_opCode;
         };
+
+        MediaInformationBox(IMemoryContext* context)
+        : m_dataInformation(context)
+        , m_sampleTable(context)
+        {}
 
         VideoMediaInformationHeaderBox      m_vMinfHeader;
         HandlerReferenceBox                 m_handler;
         DataInformationBox                  m_dataInformation;
         SampleTableBox                      m_sampleTable;
-    };
-
-    struct DataReferenceBox : public FullBox
-    {
-        uint32_t        m_numEntries;
-        void*           m_data;     //TODO: Not sure how to handle this yet
-    };
-
-    struct DataInformationBox : public Box
-    {
-        DataReferenceBox    m_dataRef;
-    };
-
-    struct SampleTableBox : public Box
-    {
-
     };
 
 //------------- Track Related Boxes -------------------------------
@@ -292,6 +344,10 @@ namespace Quaint { namespace Media
 
             };
 
+            MediaBox(IMemoryContext* context)
+            : m_mediaInfo(context)
+            {}
+
             MediaHeaderBox              m_movieHeader;
             HandlerReferenceBox         m_handler;
             MediaInformationBox         m_mediaInfo;
@@ -303,6 +359,7 @@ namespace Quaint { namespace Media
 
         TrackBox(IMemoryContext* context)
         : m_edit(context)
+        , m_media(context)
         {}
         
         TrackProfile                        m_trackProfile;
