@@ -1,4 +1,6 @@
 /*All conversions here respect Big-Endianness*/
+#ifndef _H_BMF_HELPERS
+#define _H_BMF_HELPERS
 
 #define TO_U16(c) uint16_t((uint8_t)c)
 #define TO_I16(c) int16_t((uint8_t)c)
@@ -38,6 +40,20 @@
         bytesRead += LENGTH;
 
 
+inline uint32_t parseExpGolombCode(uint32_t val)
+{
+        int leadingZeroBits = -1;
+        for(uint32_t b = 0; !b; leadingZeroBits++ )
+        {       
+                b = val & 0x80000000;
+                val <<= 1;
+        }
+        uint32_t suffixRes = val >> (32 - leadingZeroBits);
+        return (uint32_t)(pow(2.f, (float)leadingZeroBits)) - 1 + suffixRes;
+}
+
+
+
 #define BMF_BOX_ftyp BMF_CHAR_TO_UINT32("ftyp")
 #define BMF_BOX_etyp BMF_CHAR_TO_UINT32("etyp")
 #define BMF_BOX_mdat BMF_CHAR_TO_UINT32("mdat")
@@ -57,5 +73,9 @@
 #define BMF_BOX_stbl BMF_CHAR_TO_UINT32("stbl")
 #define BMF_BOX_stsd BMF_CHAR_TO_UINT32("stsd")
 
+#define BMF_BOX_avcc BMF_CHAR_TO_UINT32("avcC")
+
 /*Brands*/
 #define BMF_BRAND_QT BMF_CHAR_TO_UINT32("qt  ") // qt followed by 2 spaces
+
+#endif

@@ -61,8 +61,9 @@ namespace Quaint {namespace Media{
         void parseDataInformationBox(DataInformationBox& dataInformation, uint64_t bytesRead);
         
         void parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead);
-        void parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox description, uint64_t bytesRead);
+        void parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox& description, uint64_t bytesRead);
 
+        void parseAVCCBox(AVCConfigurationBox& avcConfigBox, uint64_t bytesRead);
 
         QPath               m_path;
         std::fstream        m_handle;

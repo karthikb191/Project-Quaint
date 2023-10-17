@@ -28,10 +28,13 @@ using namespace Quaint;
 
 #include <BMF.h>
 #include <BMFParser.h>
-
+#include <AVCCodex.h>
 int main()
 {
     std::cout << "Hello Video module\n";
+
+    uint32_t val = 0b00010100000000000000000000000000;
+    uint32_t res = parseExpGolombCode(val);
 
     Media::BMF bmf("D:\\Works\\Project-Quaint\\Data\\Media\\Sample\\EarthRotation.mov");
     if(!bmf.isOpen())

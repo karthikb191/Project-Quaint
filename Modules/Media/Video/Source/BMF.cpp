@@ -491,6 +491,11 @@ namespace Quaint {namespace Media{
                 sampleTable.m_description.setBox(box);
                 parseSampleDescriptionBox(sampleTable.m_description, bytesParsed);
                 break;
+            
+            case BMF_BOX_avcc:
+                sampleTable.m_avcConfig.setBox(box);
+                parseAVCCBox(sampleTable.m_avcConfig, bytesParsed);
+                break;
 
             default:
                 QLOG_W(BMF, "Encountered box of unkonwn type when parsing Video Media Information box. Skipping it!")
@@ -501,7 +506,7 @@ namespace Quaint {namespace Media{
         }
     }
 
-    void BMF::parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox description, uint64_t bytesRead)
+    void BMF::parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox& description, uint64_t bytesRead)
     {
         bytesRead += parseFullBox(description);
         
@@ -530,25 +535,60 @@ namespace Quaint {namespace Media{
             BMF_READ(sample.m_compressorName.getBuffer_NonConst(), 32, m_handle);
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_pixelDepth);
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_colorTableId);
-            //uint32_t            m_sampleDescriptionSize;
-            //NameCode            m_dataFormat;
-            //char                m_reserved1[6];
-            //uint16_t            m_dataRefIndex;
-            //uint16_t            m_version;
-            //uint16_t            m_revisionLevel;
-            //NameCode            m_vendor;
-            //uint32_t            m_temporalQuality;
-            //uint32_t            m_spatialQuality;
-            //uint16_t            m_width;
-            //uint16_t            m_height;
-            //float               m_horRes;
-            //float               m_vertRes;
-            //uint32_t            m_dataSize;
-            //uint16_t            m_frameSize;
-            //uint16_t            m_pixelDepth;
-            //uint16_t            m_colorTableId;
-
             description.m_samples.pushBack(sample);
+        }
+    }
+
+    void BMF::parseAVCCBox(AVCConfigurationBox& avcConfigBox, uint64_t bytesRead)
+    {
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_version);
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_avcProfileIndication);
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_profileCompatibility);
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_avcLevelIndication);
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_nalUnitLength);
+        avcConfigBox.m_decoderRecord.m_nalUnitLength &= 0b11 + 1;
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numSequenceParamSets);
+        avcConfigBox.m_decoderRecord.m_numSequenceParamSets &= 0b11111;
+        
+        for(int i = 0; i < avcConfigBox.m_decoderRecord.m_numSequenceParamSets; i++)
+        {
+            uint16_t paramSetLength = 0;
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, paramSetLength);
+
+            SequenceParameterSetNALUnit unit(avcConfigBox.m_decoderRecord.m_nalUnitLength);
+            uint64_t bytesReadInUnit = 0;
+            
+            char* nalBuf;
+            nalBuf = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), paramSetLength);
+            BMF_READ(nalBuf, paramSetLength, m_handle);
+
+            unit.dump(nalBuf, paramSetLength);
+
+            //unit.parse(m_handle, bytesReadInUnit);
+
+            QUAINT_DEALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), nalBuf);
+        }
+
+        BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numPictureParamSets);
+
+        for(int i = 0; i < avcConfigBox.m_decoderRecord.m_numPictureParamSets; i++)
+        {
+            uint16_t paramSetLength = 0;
+            BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, paramSetLength);
+
+            SequenceParameterSetNALUnit unit(avcConfigBox.m_decoderRecord.m_nalUnitLength);
+            uint64_t bytesReadInUnit = 0;
+            
+            char* nalBuf;
+            nalBuf = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), paramSetLength);
+            BMF_READ(nalBuf, paramSetLength, m_handle);
+
+            unit.dump(nalBuf, paramSetLength);
+
+            //unit.parse(m_handle, bytesReadInUnit);
+            QUAINT_DEALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), nalBuf);
         }
     }
     
