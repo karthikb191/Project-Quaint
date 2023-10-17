@@ -39,19 +39,7 @@
         VARIABLE = TYPE_OR_CONV_MACRO(BUFFER, x, y);\
         bytesRead += LENGTH;
 
-
-inline uint32_t parseExpGolombCode(uint32_t val)
-{
-        int leadingZeroBits = -1;
-        for(uint32_t b = 0; !b; leadingZeroBits++ )
-        {       
-                b = val & 0x80000000;
-                val <<= 1;
-        }
-        uint32_t suffixRes = val >> (32 - leadingZeroBits);
-        return (uint32_t)(pow(2.f, (float)leadingZeroBits)) - 1 + suffixRes;
-}
-
+//#define BMF_READ_U(BITPARSER, N)
 
 
 #define BMF_BOX_ftyp BMF_CHAR_TO_UINT32("ftyp")
@@ -72,6 +60,7 @@ inline uint32_t parseExpGolombCode(uint32_t val)
 #define BMF_BOX_dinf BMF_CHAR_TO_UINT32("dinf")
 #define BMF_BOX_stbl BMF_CHAR_TO_UINT32("stbl")
 #define BMF_BOX_stsd BMF_CHAR_TO_UINT32("stsd")
+#define BMF_BOX_stts BMF_CHAR_TO_UINT32("stts")
 
 #define BMF_BOX_avcc BMF_CHAR_TO_UINT32("avcC")
 

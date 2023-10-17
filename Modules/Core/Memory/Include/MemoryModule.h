@@ -4,6 +4,8 @@
 #include <MemoryDefinitions.h>
 #include <Module.h>
 #include <string>
+#include <MemCore/GlobalMemoryOverrides.h>
+
 namespace Quaint
 {
     //TODO: Extend from module class
