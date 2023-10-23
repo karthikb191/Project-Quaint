@@ -2,6 +2,7 @@
 #include <VideoModule.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <QuaintLogger.h>
+#include <BMFParsers.h>
 #include <iostream>
 
 namespace Quaint {namespace Media{
@@ -557,18 +558,13 @@ namespace Quaint {namespace Media{
             uint16_t paramSetLength = 0;
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, paramSetLength);
 
-            SequenceParameterSetNALUnit unit(avcConfigBox.m_decoderRecord.m_nalUnitLength);
-            uint64_t bytesReadInUnit = 0;
+            SequenceParameterSetNALUnit unit(VideoModule::get().getVideoMemoryContext(), avcConfigBox.m_decoderRecord.m_nalUnitLength);
             
-            char* nalBuf;
-            nalBuf = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), paramSetLength);
-            BMF_READ(nalBuf, paramSetLength, m_handle);
+            BitParser parser(VideoModule::get().getVideoMemoryContext(), paramSetLength);
+            BMF_READ(parser.getBuffer_NonConst(), paramSetLength, m_handle);
 
-            unit.dump(nalBuf, paramSetLength);
-
-            //unit.parse(m_handle, bytesReadInUnit);
-
-            QUAINT_DEALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), nalBuf);
+            unit.dump(parser.getBuffer_NonConst(), paramSetLength);
+            unit.parse(parser);
         }
 
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numPictureParamSets);
@@ -578,17 +574,13 @@ namespace Quaint {namespace Media{
             uint16_t paramSetLength = 0;
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, paramSetLength);
 
-            SequenceParameterSetNALUnit unit(avcConfigBox.m_decoderRecord.m_nalUnitLength);
-            uint64_t bytesReadInUnit = 0;
+            PictureParameterSetNALUnit unit(VideoModule::get().getVideoMemoryContext(), avcConfigBox.m_decoderRecord.m_nalUnitLength);
             
-            char* nalBuf;
-            nalBuf = (char*)QUAINT_ALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), paramSetLength);
-            BMF_READ(nalBuf, paramSetLength, m_handle);
+            BitParser parser(VideoModule::get().getVideoMemoryContext(), paramSetLength);
+            BMF_READ(parser.getBuffer_NonConst(), paramSetLength, m_handle);
 
-            unit.dump(nalBuf, paramSetLength);
-
-            //unit.parse(m_handle, bytesReadInUnit);
-            QUAINT_DEALLOC_MEMORY(VideoModule::get().getVideoMemoryContext(), nalBuf);
+            unit.dump(parser.getBuffer_NonConst(), paramSetLength);
+            unit.parse(parser);
         }
     }
     
