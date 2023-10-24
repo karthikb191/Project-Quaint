@@ -563,8 +563,13 @@ namespace Quaint {namespace Media{
             BitParser parser(VideoModule::get().getVideoMemoryContext(), paramSetLength);
             BMF_READ(parser.getBuffer_NonConst(), paramSetLength, m_handle);
 
+            //TODO: PERF IMPROVEMENT
             unit.dump(parser.getBuffer_NonConst(), paramSetLength);
-            unit.parse(parser);
+            avcConfigBox.m_decoderRecord.m_sequenceParamSets.pushBack(unit);
+            uint32_t index = avcConfigBox.m_decoderRecord.m_sequenceParamSets.getSize() - 1;
+            SequenceParameterSetNALUnit& uu = avcConfigBox.m_decoderRecord.m_sequenceParamSets[index];
+            uu.parse(parser, &avcConfigBox.m_decoderRecord);
+            //avcConfigBox.m_decoderRecord.m_sequenceParamSets[index].parse(parser, &avcConfigBox.m_decoderRecord);
         }
 
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numPictureParamSets);
@@ -578,9 +583,11 @@ namespace Quaint {namespace Media{
             
             BitParser parser(VideoModule::get().getVideoMemoryContext(), paramSetLength);
             BMF_READ(parser.getBuffer_NonConst(), paramSetLength, m_handle);
-
+            
             unit.dump(parser.getBuffer_NonConst(), paramSetLength);
-            unit.parse(parser);
+            //TODO: PERF IMPROVEMENT
+            avcConfigBox.m_decoderRecord.m_pictureParamSets.pushBack(unit);
+            avcConfigBox.m_decoderRecord.m_pictureParamSets[avcConfigBox.m_decoderRecord.m_pictureParamSets.getSize() - 1].parse(parser, &avcConfigBox.m_decoderRecord);
         }
     }
     

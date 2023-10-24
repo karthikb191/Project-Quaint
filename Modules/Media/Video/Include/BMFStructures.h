@@ -206,6 +206,8 @@ namespace Quaint { namespace Media
             EditBox(IMemoryContext* context)
             : m_editLists(context, context)
             {}
+            EditBox(const EditBox&) = default;
+            EditBox& operator=(const EditBox&) = default;
 
             /*EditList entries maps from time in movie to time in media, and ultimately to media data */
             struct EditListBox : public FullBox

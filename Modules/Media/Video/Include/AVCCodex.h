@@ -12,6 +12,8 @@
 
 namespace Quaint { namespace Media
 {
+    struct AVCDecoderConfigurationRecord;
+
     struct NALUnit
     {
         NALUnit(int8_t numBytes)
@@ -22,7 +24,7 @@ namespace Quaint { namespace Media
         uint8_t getNALRefIDC() { return m_nalRedIdc; }
         uint8_t getNALUnitType() { return m_nalUnitType; }
 
-        virtual void parse(BitParser& parser);
+        virtual void parse(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord);
 
         void dump(const char* byteBuffer, uint16_t length)
         {
@@ -71,7 +73,7 @@ namespace Quaint { namespace Media
         : m_nal_hrd_params(context)
         , m_vcl_hrd_params(context)
         {}
-        void parse(BitParser& parser);
+        void parse(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord);
 
         bool        m_aspect_ratio_info_present_flag;
         uint8_t     m_aspect_ratio_idc;
@@ -134,29 +136,7 @@ namespace Quaint { namespace Media
             , m_use_default_scaling_matrix_8X8_flag(context)
             {}
 
-            void parse(BitParser& parser);
-
-private:
-            template<int32_t SZ>
-            void parseScalingLists(BitParser& parser, 
-            QFastArray<int32_t, SZ> scalingList, uint32_t sizeOfScalingList, 
-            bool& useDefaultScalingMatrixFlag)
-            {
-                assert(SZ == 16 || SZ == 64 && "Invalid scaling list passed");
-                int32_t lastScale = 8;
-                int32_t nextScale = 8;
-                for(uint32_t j = 0; j < sizeOfScalingList; j++ )
-                { 
-                    if( nextScale != 0 ) 
-                    { 
-                        int32_t delta_scale = parser.se();
-                        nextScale = ( lastScale + delta_scale + 256 ) % 256;
-                        useDefaultScalingMatrixFlag = ( j == 0 && nextScale == 0 ); 
-                    } 
-                    scalingList[j] = ( nextScale == 0 ) ? lastScale : nextScale;
-                    lastScale = scalingList[j]; 
-                }
-            }
+            void parse(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord);
 
 public:
             uint32_t            m_chroma_format_idc;
@@ -186,7 +166,8 @@ public:
         , m_vuiParameters(context)
         {}
 
-        virtual void parse(BitParser& parser) override;
+        virtual void parse(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord);
+        //void parsee(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord);
 
         uint8_t                     m_profileIDC;
         bool                        m_constraintSet_0_flag;
@@ -230,23 +211,65 @@ public:
     struct PictureParameterSetNALUnit : public NALUnit
     {
         PictureParameterSetNALUnit(IMemoryContext* context)
-        : NALUnit(0)
+        : PictureParameterSetNALUnit(context, 0)
         {}
         PictureParameterSetNALUnit(IMemoryContext* context, int8_t nalUnitBytes)
         : NALUnit(nalUnitBytes)
+        , m_run_length_minus1(context)
+        , m_top_left(context)
+        , m_bottom_right(context)
+        , m_sice_group_id(context)
+        , m_pic_scaling_list_present_flags(context)
+        , m_scalingLists_4X4(context)
+        , m_use_default_scaling_matrix_4X4_flag(context)
+        , m_scalingLists_8X8(context)
+        , m_use_default_scaling_matrix_8X8_flag(context)
         {}
 
-        virtual void parse(BitParser& parser) override;
+        virtual void parse(BitParser& parser, const AVCDecoderConfigurationRecord* decoderRecord) override;
 
-        uint8_t                     m_pic_parameter_set_id;
-        uint8_t                     m_seq_parameter_set_id;
-        bool                        m_entropy_coding_mode_flag;
+        uint32_t                        m_pic_parameter_set_id;
+        uint32_t                        m_seq_parameter_set_id;
+        bool                            m_entropy_coding_mode_flag;
+        bool                            m_bottom_field_pic_order_in_frame_present_flag;
+        uint32_t                        m_num_slice_groups_minus1;
+        uint32_t                        m_slice_group_map_type;
+
+        QArray<uint32_t>                m_run_length_minus1;
+        QArray<uint32_t>                m_top_left;
+        QArray<uint32_t>                m_bottom_right;
+
+        bool                            m_slice_group_change_direction_flag;
+        uint32_t                        m_slice_group_change_rate_minus1;
+        uint32_t                        m_pic_size_in_map_units_minus1;
+        QArray<uint32_t>                m_sice_group_id;
+
+        uint32_t                        m_num_ref_idx_l0_default_active_minus1;
+        uint32_t                        m_num_ref_idx_l1_default_active_minus1;
+        bool                            m_weighted_pred_flag;
+        uint8_t                         m_weighted_bipred_idc;
+        int32_t                         m_pic_init_qp_minus26;
+        int32_t                         m_pic_init_qs_minus26;
+        int32_t                         m_chroma_qp_index_offset;
+        bool                            m_deblocking_filter_control_present_flag;
+        bool                            m_constrained_intra_pred_flag;
+        bool                            m_redundant_pic_cnt_present_flag;
+
+        bool                            m_transform_8x8_mode_flag;
+        bool                            m_pic_scaling_matrix_present_flag;
+        QArray<bool>                    m_pic_scaling_list_present_flags;
+        QArray<QFastArray<int32_t, 16>> m_scalingLists_4X4;
+        QArray<bool>                    m_use_default_scaling_matrix_4X4_flag;
+        QArray<QFastArray<int32_t, 64>> m_scalingLists_8X8;
+        QArray<bool>                    m_use_default_scaling_matrix_8X8_flag;
+        int32_t                         m_second_chroma_qp_index_offset;
     };
 
     struct AVCDecoderConfigurationRecord
     {
         AVCDecoderConfigurationRecord(IMemoryContext* context)
         : m_sequenceParamSets(context, context)
+        , m_pictureParamSets(context, context)
         {}
 
         uint8_t                                 m_version;
@@ -256,6 +279,7 @@ public:
         uint8_t                                 m_nalUnitLength; /*Modifying this to actually hold the correct value of NAL unit when parsing. Actual val is 2 bits*/
         uint8_t                                 m_numSequenceParamSets; /*Modifying this to actually hold the correct value of NAL unit when parsing. Actual val is 5 bits*/
         QArray<SequenceParameterSetNALUnit>     m_sequenceParamSets;
+        QArray<PictureParameterSetNALUnit>      m_pictureParamSets;
         uint8_t                                 m_numPictureParamSets;
 
     };

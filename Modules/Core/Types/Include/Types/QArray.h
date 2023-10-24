@@ -155,7 +155,8 @@ namespace Quaint
                 reserve(INC_RESERVE_FROM(m_size));
             }
 
-            *(m_rawData + m_size) = t;
+            //memcpy((m_rawData + m_size), &t, TYPE_SIZE);
+            new(m_rawData + m_size)T(t);
             ++m_size;
         }
         //TODO: insert range; insert other array
@@ -177,6 +178,9 @@ namespace Quaint
 
             size_t numElemsToInsert = (last - start) + 1;
 
+            // TODO: This might not work. Elements must be properly constructed to perform right type of copy.
+            // If data is copied this way, and object has any arrays within it, they refer to the same raw memory location.
+            // If one array in object is destroyed, other would dangle
             memmove(m_rawData + index + numElemsToInsert, m_rawData + index, (m_size - index) * TYPE_SIZE);
             memcpy(m_rawData + index, start, numElemsToInsert * TYPE_SIZE);
 
@@ -191,7 +195,10 @@ namespace Quaint
             {
                 reserve(((m_size + SZ + 8) / 4) * 4);
             }
-
+            
+            // TODO: This might not work. Elements must be properly constructed to perform right type of copy.
+            // If data is copied this way, and object has any arrays within it, they refer to the same raw memory location.
+            // If one array in object is destroyed, other would dangle
             memmove(m_rawData + index + SZ, m_rawData + index, (m_size - index) * TYPE_SIZE);
             memcpy(m_rawData + index, list, SZ * TYPE_SIZE);
 
@@ -231,19 +238,21 @@ namespace Quaint
             m_size -= n;
         }
 
+        const T& get(size_t index) const
+        {
+            return operator[](index);
+        }
         T& at(size_t index)
         {
             return operator[](index);
         }
         T& operator[](size_t index)
         {
-            if(index < 0 || index >= m_size)
-            {
-                int i = 100;
-                i -= 10;
-                i += 10;
-                index = 0;
-            }
+            assert((index >= 0 && index < m_size) && "Trying to access invalid element");
+            return *(m_rawData + index);
+        }
+        const T& operator[](size_t index) const
+        {
             assert((index >= 0 && index < m_size) && "Trying to access invalid element");
             return *(m_rawData + index);
         }

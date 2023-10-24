@@ -21,10 +21,12 @@ public:
 	void populateBufferFromHandle(std::fstream& handle);
 	/*Reads next bits without incrementing pointer*/
 	uint32_t nextBits(uint8_t n);
+	uint8_t getBitVal(uint32_t n);
 	uint32_t readBits(uint8_t n);
 	uint32_t readBits_exp(uint8_t n);
 
 	void alignToByte();
+	bool moreRBSPDataExists();
 
 	/*Exp-Golomb-cod parse*/
 	uint32_t ue();

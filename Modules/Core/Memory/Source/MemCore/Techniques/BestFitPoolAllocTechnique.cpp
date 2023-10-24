@@ -3,7 +3,7 @@
 
 namespace Quaint
 {
-#define GET_MULTIPLE_OF_ALIGNMENT(ALIGNMENT, DATA) ALIGNMENT * ((DATA + ALIGNMENT + ALIGNMENT - 1) / ALIGNMENT)
+#define GET_MULTIPLE_OF_ALIGNMENT(ALIGNMENT, DATA) ALIGNMENT * ((DATA + ALIGNMENT - 1) / ALIGNMENT)
 #define GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(ALIGNMENT, DATA) GET_MULTIPLE_OF_ALIGNMENT(ALIGNMENT, DATA + PADDING_INFO_SIZE)
 
     namespace RBTree
@@ -522,10 +522,10 @@ namespace Quaint
 
         // Retrieved block should fit padding info (4 bytes) and alignment padding 
         // Also, block should have a minimum size of RBTree::RBNode. If this is violated, tree node data might get stomped when merging free chunks
-        size_t totalSize = GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, allocSize);// alignment * ((allocSize + PADDING_INFO_SIZE + alignment + alignment - 1) / alignment);
+        size_t totalSize = GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, (allocSize + alignment));// alignment * ((allocSize + PADDING_INFO_SIZE + alignment + alignment - 1) / alignment);
         totalSize = totalSize >= sizeof(RBTree::RBNode) ? 
-        totalSize : GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, sizeof(RBTree::RBNode));
-        
+        totalSize : GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(alignment, sizeof(RBTree::RBNode) + alignment);
+
         RBTree::RBNode* bestFit = getBestFit(totalSize);
         if(bestFit == nullptr)
         {
@@ -546,11 +546,13 @@ namespace Quaint
             if(PADDING_INFO_SIZE > alignment)
             {
                 additional = GET_MULTIPLE_OF_ALIGNMENT(alignment, PADDING_INFO_SIZE);// alignment * ((PADDING_INFO_SIZE + alignment - 1) / alignment);
-            } 
+            }
             startAddress = (char*)startAddress + additional;
         }
         PADDING_TYPE* padding = (PADDING_TYPE*)startAddress - 1;
         *padding = (size_t)startAddress - (size_t)bestFit;
+
+        assert(*padding < 256 && "Excessive Padding");
 
         MemoryChunk* chunk = (MemoryChunk*)((char*)bestFit - sizeof(MemoryChunk));
         chunk->m_dataSize = allocSize;
@@ -565,6 +567,20 @@ namespace Quaint
         {
             sizeDiff = (size_t)chunk->m_right - (size_t)chunkEndAddr;
         }
+
+        
+        //if(alignment == 1)
+        //{
+        //    int i = 100;
+        //    i -= 10;
+        //    std::cout << "!!!!!Padding: " << padding << std::hex << " Best Fit: " << bestFit << " Start: " 
+        //    << startAddress << " end: " << chunkEndAddr << "\n";
+        //}
+        //else
+        //{
+        //    std::cout << "Padding: " << padding << std::hex << " Best Fit: " << bestFit << " Start: " 
+        //    << startAddress << " end: " << chunkEndAddr << "\n";
+        //}
 
         //TODO: Make this a constant
         //If size diff is greater than a certain threshold, split the node 
@@ -618,6 +634,8 @@ namespace Quaint
     {
         size_t freeChunkSize = 0;
         size_t padding = *((PADDING_TYPE*)mem - 1);
+
+        //std::cout << "Padding Free Addr: " << std::hex << (PADDING_TYPE*)mem - 1 << "\n";
 
         void* freeChunkAddress = (char*)mem - padding;
         MemoryChunk* chunk = (MemoryChunk*)((char*)mem - padding - sizeof(MemoryChunk));
