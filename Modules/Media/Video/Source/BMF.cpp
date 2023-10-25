@@ -136,6 +136,9 @@ namespace Quaint {namespace Media{
     {
         assert(movieBox.m_hdr.m_sz > 1 && "Extended sizes must be handled");
         
+        //TODO: Hack to only parse movie track for now. Remove this later
+        bool parsedVideoTrack = false;
+
         while(bytesRead < movieBox.m_hdr.m_sz)
         {
             Box box;
@@ -145,16 +148,21 @@ namespace Quaint {namespace Media{
             case BMF_BOX_mvhd:
                 movieBox.m_movieHeader.setBox(box);
                 parseMovieHeader(movieBox.m_movieHeader, bytesParsed);
-                bytesRead += box.m_hdr.m_sz;
                 break;
 
             case BMF_BOX_trak:
             {
+                if(parsedVideoTrack)
+                {
+                    parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
+                    break;
+                }
+
                 TrackBox tb(VideoModule::get().getVideoMemoryContext());
                 tb.setBox(box);
                 movieBox.m_tracks.pushBack(tb);
                 parseTrackBox(movieBox.m_tracks[movieBox.m_tracks.getSize() - 1], bytesParsed);
-                bytesRead += box.m_hdr.m_sz;
+                parsedVideoTrack = true;
                 break;
             }
             
@@ -162,9 +170,9 @@ namespace Quaint {namespace Media{
                 //Box of unknown type encountered. Skip it.
                 QLOG_W(BMF, "Encountered box of unkonwn type when parsing Movie box. Skipping it!")
                 parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
-                bytesRead += box.m_hdr.m_sz;
                 break;
             }
+            bytesRead += box.m_hdr.m_sz;
         }
     }
 
@@ -498,6 +506,36 @@ namespace Quaint {namespace Media{
                 parseAVCCBox(sampleTable.m_avcConfig, bytesParsed);
                 break;
 
+            case BMF_BOX_stts:
+                sampleTable.m_sampleToTime.setBox(box);
+                parseSampleToTimeBox(sampleTable.m_sampleToTime, bytesParsed);
+                break;
+            
+            case BMF_BOX_stss:
+                sampleTable.m_syncSample.setBox(box);
+                parseSyncSampleBox(sampleTable.m_syncSample, bytesParsed);
+                break;
+            
+            case BMF_BOX_ctts:
+                sampleTable.m_compOffset.setBox(box);
+                parseCompositionOffsetBox(sampleTable.m_compOffset, bytesParsed);
+                break;
+                
+            case BMF_BOX_stsc:
+                sampleTable.m_sampleToChunk.setBox(box);
+                parseSampleToChunkBox(sampleTable.m_sampleToChunk, bytesParsed);
+                break;
+
+            case BMF_BOX_stsz:
+                sampleTable.m_sampleSize.setBox(box);
+                parseSampleSizeBox(sampleTable.m_sampleSize, bytesParsed);
+                break;
+            
+            case BMF_BOX_stco:
+                sampleTable.m_chunkOffset.setBox(box);
+                parseChunkOffsetBox(sampleTable.m_chunkOffset, bytesParsed);
+                break;
+
             default:
                 QLOG_W(BMF, "Encountered box of unkonwn type when parsing Video Media Information box. Skipping it!")
                 parseTillEndOfBox(box, bytesParsed, nullptr, m_handle, true);
@@ -519,6 +557,8 @@ namespace Quaint {namespace Media{
             VideoSampleDescription sample;
 
             BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_sampleDescriptionSize);
+
+            //AVC1 is being registered here. TODO: Remove this comment. The sample type in data might depend on this. Investigate
             BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sample.m_dataFormat.m_val);
             BMF_READ(sample.m_reserved1, 6, m_handle);
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_dataRefIndex);
@@ -538,6 +578,113 @@ namespace Quaint {namespace Media{
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, sample.m_colorTableId);
             description.m_samples.pushBack(sample);
         }
+    }
+
+    void BMF::parseSampleToTimeBox(SampleToTimeBox& sampleToTime, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(sampleToTime);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sampleToTime.m_numEntries);
+        for(uint32_t i = 0; i < sampleToTime.m_numEntries; i++)
+        {
+            SampleToTimeBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleCount);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleDuration);
+            sampleToTime.m_entries.pushBack(entry);
+        }
+
+        assert(sampleToTime.m_hdr.m_sz == bytesRead && "Invalid parse");
+    }
+
+    void BMF::parseSyncSampleBox(SyncSampleBox& syncSample, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(syncSample);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, syncSample.m_numEntries);
+        for(uint32_t i = 0; i < syncSample.m_numEntries; i++)
+        {
+            SyncSampleBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleNum);
+            syncSample.m_entries.pushBack(entry);
+        }
+
+        assert(syncSample.m_hdr.m_sz == bytesRead && "Invalid parse");
+    }
+
+    void BMF::parseCompositionOffsetBox(CompositionOffsetBox& compOffset, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(compOffset);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, compOffset.m_numEntries);
+        for(uint32_t i = 0; i < compOffset.m_numEntries; i++)
+        {
+            CompositionOffsetBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleCount);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_compOffset);
+            compOffset.m_entries.pushBack(entry);
+        }
+
+        assert(compOffset.m_hdr.m_sz == bytesRead && "Invalid parse");
+    }
+
+    void BMF::parseSampleToChunkBox(SampleToChunkBox& sampleToChunk, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(sampleToChunk);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sampleToChunk.m_numEntries);
+        for(uint32_t i = 0; i < sampleToChunk.m_numEntries; i++)
+        {
+            SampleToChunkBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_firstChunk);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_samplesPerChunk);
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleDescriptionId);
+            sampleToChunk.m_entries.pushBack(entry);
+        }
+
+        assert(sampleToChunk.m_hdr.m_sz == bytesRead && "Invalid parse");
+    }
+
+    void BMF::parseSampleSizeBox(SampleSizeBox& sampleSize, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(sampleSize);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sampleSize.m_sampleSize);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, sampleSize.m_numEntries);
+        for(uint32_t i = 0; i < sampleSize.m_numEntries; i++)
+        {
+            SampleSizeBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_sampleSize);
+            sampleSize.m_entries.pushBack(entry);
+        }
+
+        assert(sampleSize.m_hdr.m_sz == bytesRead && "Invalid parse");
+    }
+    
+    void BMF::parseChunkOffsetBox(ChunkOffsetBox& chunkOffset, uint64_t bytesRead)
+    {
+        bytesRead += parseFullBox(chunkOffset);
+        
+        char buf[8] = {'\0'};
+
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, chunkOffset.m_numEntries);
+        for(uint32_t i = 0; i < chunkOffset.m_numEntries; i++)
+        {
+            ChunkOffsetBox::Entry entry;
+            BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, entry.m_chunkOffset);
+            chunkOffset.m_entries.pushBack(entry);
+        }
+
+        assert(chunkOffset.m_hdr.m_sz == bytesRead && "Invalid parse");
     }
 
     void BMF::parseAVCCBox(AVCConfigurationBox& avcConfigBox, uint64_t bytesRead)
@@ -589,6 +736,31 @@ namespace Quaint {namespace Media{
             avcConfigBox.m_decoderRecord.m_pictureParamSets.pushBack(unit);
             avcConfigBox.m_decoderRecord.m_pictureParamSets[avcConfigBox.m_decoderRecord.m_pictureParamSets.getSize() - 1].parse(parser, &avcConfigBox.m_decoderRecord);
         }
+
+        if(bytesRead == avcConfigBox.m_hdr.m_sz) return;
+        
+        uint32_t profile_idc = avcConfigBox.m_decoderRecord.m_avcProfileIndication;
+        if( profile_idc == 100 || profile_idc == 110 ||
+            profile_idc == 122 || profile_idc == 144 )
+        {
+            BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_chroma_format)
+            BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_bit_depth_luma)
+            BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_bit_depth_chroma)
+            BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numSequenceParamSetExt)
+            
+            avcConfigBox.m_decoderRecord.m_chroma_format = avcConfigBox.m_decoderRecord.m_chroma_format & 0b11;
+            avcConfigBox.m_decoderRecord.m_bit_depth_luma = (avcConfigBox.m_decoderRecord.m_bit_depth_luma & 0b111) + 8;
+            avcConfigBox.m_decoderRecord.m_bit_depth_chroma = (avcConfigBox.m_decoderRecord.m_bit_depth_chroma & 0b111) + 8;
+
+            assert(avcConfigBox.m_decoderRecord.m_numSequenceParamSetExt == 1 && "No support for EXT param sets yet");
+            // for (uint32_t i=0; i < avcConfigBox.m_decoderRecord.m_numSequenceParamSetExt; i++) 
+            // {
+            //     unsigned int(16) sequenceParameterSetExtLength;
+            //     bit(8*sequenceParameterSetExtLength) sequenceParameterSetExtNALUnit;
+            // }
+        }
+
+        assert(avcConfigBox.m_hdr.m_sz == bytesRead && "Invalid parse");
     }
     
 

@@ -95,6 +95,100 @@ namespace Quaint { namespace Media
         uint16_t            m_colorTableId;
     };
 
+    struct SampleToTimeBox : public FullBox
+    {
+        struct Entry
+        {
+            uint32_t    m_sampleCount;
+            uint32_t    m_sampleDuration;
+        };
+
+        SampleToTimeBox(IMemoryContext* context)
+        : m_entries(context)
+        , m_numEntries(0)
+        {}
+
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
+    struct SyncSampleBox : public FullBox
+    {
+        /** Table of sample numbers. Each sample number corresponds to a keyframe*/
+        struct Entry
+        {
+            uint32_t    m_sampleNum;
+        };
+
+        SyncSampleBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
+    struct CompositionOffsetBox : public FullBox
+    {
+        struct Entry
+        {
+            uint32_t        m_sampleCount;
+            uint32_t        m_compOffset;
+        };
+
+        CompositionOffsetBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
+    struct SampleToChunkBox : public FullBox
+    {
+        struct Entry
+        {
+            uint32_t        m_firstChunk;
+            uint32_t        m_samplesPerChunk;
+            uint32_t        m_sampleDescriptionId;
+        };
+
+        SampleToChunkBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
+    struct SampleSizeBox : public FullBox
+    {
+        struct Entry
+        {
+            uint32_t        m_sampleSize;
+        };
+        SampleSizeBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+
+        uint32_t            m_sampleSize;
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
+    struct ChunkOffsetBox : public FullBox
+    {
+        /** Represents chunk offset for each chunk entry. Table is indexed by chink number*/
+        struct Entry
+        {
+            uint32_t        m_chunkOffset;
+        };
+
+        ChunkOffsetBox(IMemoryContext* context)
+        : m_entries(context)
+        {}
+
+        uint32_t            m_numEntries;
+        QArray<Entry>       m_entries;
+    };
+
     struct SampleTableBox : public Box
     {
         struct SampleDescriptionBox : public FullBox
@@ -109,10 +203,22 @@ namespace Quaint { namespace Media
         SampleTableBox(IMemoryContext* context)
         : m_description(context)
         , m_avcConfig(context)
+        , m_sampleToTime(context)
+        , m_syncSample(context)
+        , m_compOffset(context)
+        , m_sampleToChunk(context)
+        , m_sampleSize(context)
+        , m_chunkOffset(context)
         {}
 
         SampleDescriptionBox    m_description;
         AVCConfigurationBox     m_avcConfig;
+        SampleToTimeBox         m_sampleToTime;
+        SyncSampleBox           m_syncSample;
+        CompositionOffsetBox    m_compOffset;
+        SampleToChunkBox        m_sampleToChunk;
+        SampleSizeBox           m_sampleSize;
+        ChunkOffsetBox          m_chunkOffset;
     };
 
     /*Contains other boxes that define specific characteristics of video media data*/

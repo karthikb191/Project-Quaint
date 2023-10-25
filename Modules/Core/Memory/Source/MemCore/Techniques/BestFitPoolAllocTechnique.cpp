@@ -555,7 +555,7 @@ namespace Quaint
         assert(*padding < 256 && "Excessive Padding");
 
         MemoryChunk* chunk = (MemoryChunk*)((char*)bestFit - sizeof(MemoryChunk));
-        chunk->m_dataSize = allocSize;
+        chunk->m_dataSize = totalSize;
         void* chunkEndAddr = ((char*)chunk + sizeof(MemoryChunk) + totalSize);
 
         size_t sizeDiff = 0;

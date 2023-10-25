@@ -270,6 +270,7 @@ public:
         AVCDecoderConfigurationRecord(IMemoryContext* context)
         : m_sequenceParamSets(context, context)
         , m_pictureParamSets(context, context)
+        //, m_sequenceParamSetsExt
         {}
 
         uint8_t                                 m_version;
@@ -282,6 +283,12 @@ public:
         QArray<PictureParameterSetNALUnit>      m_pictureParamSets;
         uint8_t                                 m_numPictureParamSets;
 
+        uint8_t                                 m_chroma_format;
+        uint8_t                                 m_bit_depth_luma;
+        uint8_t                                 m_bit_depth_chroma;
+        uint8_t                                 m_numSequenceParamSetExt;
+        //TODO: Add support if necessary
+        //QArray<SequenceParameterSetNALUnit>      m_sequenceParamSetsExt;
     };
 
     struct AVCConfigurationBox : public Box

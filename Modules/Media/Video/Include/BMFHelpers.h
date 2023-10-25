@@ -61,6 +61,11 @@
 #define BMF_BOX_stbl BMF_CHAR_TO_UINT32("stbl")
 #define BMF_BOX_stsd BMF_CHAR_TO_UINT32("stsd")
 #define BMF_BOX_stts BMF_CHAR_TO_UINT32("stts")
+#define BMF_BOX_stss BMF_CHAR_TO_UINT32("stss")
+#define BMF_BOX_ctts BMF_CHAR_TO_UINT32("ctts")
+#define BMF_BOX_stsc BMF_CHAR_TO_UINT32("stsc")
+#define BMF_BOX_stsz BMF_CHAR_TO_UINT32("stsz")
+#define BMF_BOX_stco BMF_CHAR_TO_UINT32("stco")
 
 #define BMF_BOX_avcc BMF_CHAR_TO_UINT32("avcC")
 

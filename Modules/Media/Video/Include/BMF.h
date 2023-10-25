@@ -62,6 +62,12 @@ namespace Quaint {namespace Media{
         
         void parseSampleTableBox(SampleTableBox& sampleTable, uint64_t bytesRead);
         void parseSampleDescriptionBox(SampleTableBox::SampleDescriptionBox& description, uint64_t bytesRead);
+        void parseSampleToTimeBox(SampleToTimeBox& sampleToTime, uint64_t bytesRead);
+        void parseSyncSampleBox(SyncSampleBox& syncSample, uint64_t bytesRead);
+        void parseCompositionOffsetBox(CompositionOffsetBox& compOffset, uint64_t bytesRead);
+        void parseSampleToChunkBox(SampleToChunkBox& sampleToChunk, uint64_t bytesRead);
+        void parseSampleSizeBox(SampleSizeBox& sampleSize, uint64_t bytesRead);
+        void parseChunkOffsetBox(ChunkOffsetBox& chunkOffset, uint64_t bytesRead);
 
         void parseAVCCBox(AVCConfigurationBox& avcConfigBox, uint64_t bytesRead);
 
