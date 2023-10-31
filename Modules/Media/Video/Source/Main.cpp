@@ -59,5 +59,7 @@ int main()
 
     bmf.parse();
 
+    bmf.seek(1.5f);
+
     return 0;
 }

@@ -10,6 +10,7 @@
 #define BMF_CHAR_TO_UINT8(c) (uint8_t)c[0]
 #define BMF_CHAR_TO_UINT16(c) (TO_U16(c[0] << 8) | TO_U16(c[1]))
 #define BMF_CHAR_TO_INT16(c) (TO_I16(c[0] << 8) | TO_I16(c[1]))
+#define BMF_CHAR_TO_UINT24(c) (TO_U32(c[0]) << 16 | TO_U32(c[1]) << 8 | TO_U32(c[2]))
 #define BMF_CHAR_TO_UINT32(c) (TO_U32(c[0]) << 24 | TO_U32(c[1]) << 16 | TO_U32(c[2]) << 8 | TO_U32(c[3]))
 #define BMF_CHAR_TO_INT32(c) (TO_I32(c[0]) << 24 | TO_I32(c[1]) << 16 | TO_I32(c[2]) << 8 | TO_I32(c[3]))
 #define BMF_UINT32_TO_CHAR(c, ui) c[0] = (ui >> 24 & 0xFF);\
@@ -71,5 +72,9 @@
 
 /*Brands*/
 #define BMF_BRAND_QT BMF_CHAR_TO_UINT32("qt  ") // qt followed by 2 spaces
+
+/*Handler Types*/
+#define BMF_HANDLER_vide BMF_CHAR_TO_UINT32("vide")
+
 
 #endif

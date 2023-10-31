@@ -44,7 +44,7 @@ namespace Quaint { namespace Media{
                 uint8_t         m_ver : 8;
                 union 
                 {
-                    uint32_t    uiFlags : 24;
+                    uint32_t    uiFlags : 32;
                     char        cFlags[4];
                 }m_flags;
             };

@@ -37,6 +37,9 @@ namespace Quaint {namespace Media{
 
         void parse();
 
+        /** Time in seconds*/
+        void seek(float time);
+
     private:
 
         void startParsing();

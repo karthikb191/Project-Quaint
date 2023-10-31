@@ -37,6 +37,149 @@ namespace Quaint {namespace Media{
         startParsing();
 
         QLOG_I(BMF, "Finished Parsing");
+
+        //TODO: Print parsed file info
+        //char Info[256];
+        //sprintf(Info, "\nParsed File Info: ")
+        //QLOG_V(BMF, Info);
+    }
+
+    void BMF::seek(float time)
+    {
+        //Convert time to timescale of movie header
+        uint32_t movieTimeScale = m_movieBox.m_movieHeader.m_timeScale;
+        uint32_t scaledTime = (uint32_t)(time * movieTimeScale);
+        uint32_t scaledMediaTime = 0;
+
+        //Check if the time you have is in the edit lists
+        uint32_t trackIndex = -1;
+        uint32_t EditBoxIndex = -1;
+        uint32_t EditListIndex = -1;
+        for(uint32_t i = 0; i < m_movieBox.m_tracks.getSize(); i++)
+        {
+            TrackBox& trackBox = m_movieBox.m_tracks[i];
+            if(trackBox.m_media.m_handler.m_componentSubType.m_val == BMF_HANDLER_vide)
+            {
+                uint32_t mediaTimeScale = trackBox.m_media.m_movieHeader.m_timeScale;
+                //Check if any of the track's edit lists contain the necessary timeslot
+                for(uint32_t j = 0; j < trackBox.m_edit.m_editLists.getSize(); j++)
+                {
+                    TrackBox::EditBox::EditListBox& editList = trackBox.m_edit.m_editLists[j]; 
+                    
+                    for(uint32_t k = 0; k < editList.m_entries.getSize(); k++)
+                    {
+                        TrackBox::EditBox::EditListBox::Entry& entry = editList.m_entries[k];
+                        uint32_t startTimeMovieScaled = (uint32_t)(((float)entry.m_mediaTime / mediaTimeScale) * movieTimeScale);
+                        uint32_t durationIntoEdit = scaledTime - startTimeMovieScaled;
+                        if(durationIntoEdit <= entry.m_duration)
+                        {
+                            scaledMediaTime = (uint32_t)(((float)(durationIntoEdit) / (float)movieTimeScale) * mediaTimeScale);
+                            scaledMediaTime += entry.m_mediaTime;
+                            trackIndex = i; EditBoxIndex = j; EditListIndex = k;
+                        } 
+                    }
+                }
+
+            }
+        }
+
+        assert((trackIndex != -1 && EditBoxIndex != -1 && EditListIndex != -1) && "Could not retrieve a valid Edit slot from edit lists");
+
+        SampleTableBox& sampleTable = m_movieBox.m_tracks[trackIndex].m_media.m_mediaInfo.m_sampleTable;
+
+        //We now retrieve first sample prior to time in "scaledMediaTime"
+        SampleToTimeBox& stt = sampleTable.m_sampleToTime;
+        uint32_t targetSampleIndex = 0;
+        uint32_t curDuration = 0, prevDuration = 0, curSampleIndex = 0, prevSampleIndex = 0;
+        for(uint32_t i = 0; i < stt.m_entries.getSize(); i++)
+        {
+            uint32_t sampleEndDuration = stt.m_entries[i].m_sampleCount * stt.m_entries[i].m_sampleDuration;
+            if(scaledMediaTime < sampleEndDuration)
+            {
+                /*We are inside the valid TimeToSample entry*/
+                if(scaledMediaTime > curDuration)
+                {
+                    uint32_t offset = (scaledMediaTime - curDuration) / stt.m_entries[i].m_sampleDuration;
+                    targetSampleIndex = curSampleIndex + offset - 1;
+                }
+                else
+                {
+                    curDuration += sampleEndDuration;
+                    curSampleIndex += stt.m_entries[i].m_sampleCount;
+                    continue;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        //uint32_t weight = (scaledMediaTime - prevDuration) / (curDuration - prevDuration);
+        //targetSampleIndex = prevSampleIndex + weight / (curSampleIndex - prevSampleIndex); 
+
+        // Sample Retrieved above may not be the keyframe. Consult Sync-To-Sample table
+        // We locate sync sample prior to specified time
+        SyncSampleBox& sync = sampleTable.m_syncSample;
+        uint32_t keyFrameSampleIndex = 0;
+        for(uint32_t i = 0; i < sync.m_entries.getSize(); i++)
+        {
+            SyncSampleBox::Entry& entry = sync.m_entries[i];
+            if(entry.m_sampleNum < targetSampleIndex)
+            {
+                keyFrameSampleIndex = entry.m_sampleNum - 1;
+            }
+        }
+
+        // We now have the keyframe Sample. Find in which chunk it contains
+        uint32_t chunkIndex = 0;
+        uint32_t sampleOffsetInChunk = 0;
+        uint32_t startSampleIndex = 0;
+        SampleToChunkBox& stc = sampleTable.m_sampleToChunk;
+        uint32_t numSamplesProcessed = 0;
+        for(uint32_t i = 0;  i < stc.m_entries.getSize(); i++)
+        {
+            assert(keyFrameSampleIndex >= numSamplesProcessed && "Invalid seek");
+            SampleToChunkBox::Entry& entry = stc.m_entries[i];
+            startSampleIndex = numSamplesProcessed;
+            if(i == stc.m_entries.getSize() - 1)
+            {
+                uint32_t diff = keyFrameSampleIndex - numSamplesProcessed;
+                sampleOffsetInChunk = diff % entry.m_samplesPerChunk;
+                chunkIndex = entry.m_firstChunk + (diff / entry.m_samplesPerChunk) - 1;
+                break;
+            }
+
+            SampleToChunkBox::Entry& nextEntry = stc.m_entries[i];
+            uint32_t numChunks = nextEntry.m_firstChunk - entry.m_firstChunk;
+
+            if(numSamplesProcessed + (entry.m_samplesPerChunk * numChunks) < keyFrameSampleIndex)
+            {
+                numSamplesProcessed += entry.m_samplesPerChunk;
+                continue;
+            }
+
+            //One of the chunks has the sample we are looking for
+            uint32_t diff = keyFrameSampleIndex - numSamplesProcessed;
+            sampleOffsetInChunk = diff % entry.m_samplesPerChunk;
+            chunkIndex = entry.m_firstChunk + (diff / entry.m_samplesPerChunk) - 1;
+            break;
+        }
+
+        SampleSizeBox& sz = sampleTable.m_sampleSize;
+        uint32_t offsetToSample = 0;
+        for(uint32_t i = 0; i < sampleOffsetInChunk; i++)
+        {
+            uint32_t sampleIndex = startSampleIndex + i; 
+            offsetToSample += sz.m_entries[sampleIndex].m_sampleSize;
+        }
+
+        //We now have the chunk. We need to get the chunk offset atom to figure out where the chunk begins
+        ChunkOffsetBox& co = sampleTable.m_chunkOffset;
+        uint32_t chunkOffset = co.m_entries[chunkIndex].m_chunkOffset;
+
+        //offsetToSample is our final required field
+        offsetToSample += chunkOffset;
     }
 
     void BMF::startParsing()
@@ -120,15 +263,33 @@ namespace Quaint {namespace Media{
 
     void BMF::parseMediaDataBox(MediaDataBox& mediaDataBox, uint64_t bytesRead)
     {
+        /* NOTE: 
+        * When reading NAL units, first 4 bytes correspond to the entire length of the NAL unit. eg: 0 0 2 9f
+        * Depending on the AVC Decoder config, the next bytes represent the contents NAL unit(4 bytes for)
+        * Eg: 6 5 ff ff. Initial 6 represents 'forbidden zero', 'nal_ref_idc=0' and 'nal_unit_type=6'
+        * From next byte, we get into the rbsp payload of NAL unit
+        */
+
+       mediaDataBox.m_dataPos = m_handle.tellg();
+       assert(m_handle.good() && "Could not retrieve valid stream pos for media data");
         //Skipping media box for now
         if(mediaDataBox.m_hdr.m_sz != 1)
         {
+            std::cout << "\n";
+            uint64_t length = mediaDataBox.m_hdr.m_sz - bytesRead;
+            //for(int i = 0; i < length; i++)
+            //{
+                //char buf[1] = {'\0'};
+                //BMF_READ(buf, 1, m_handle);
+                //std::cout << std::hex << (uint32_t)((uint8_t)buf[0]) <<" ";
+            //}
             m_handle.seekg(mediaDataBox.m_hdr.m_sz - bytesRead, std::ios::cur);
         }
         else
         {
             m_handle.seekg(mediaDataBox.m_hdr.m_lSz - bytesRead, std::ios::cur);
         }
+        //std::cout << "\n";
     }
 
     /*This is the most important box that contains all the info needed to sample videos*/
@@ -184,7 +345,7 @@ namespace Quaint {namespace Media{
         char buf[4] = "\0";
 
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, fullBox.m_fHdr.m_ver);
-        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT32, fullBox.m_fHdr.m_flags.uiFlags);
+        BMF_READ_VAR(buf, 3, m_handle, BMF_CHAR_TO_UINT24, fullBox.m_fHdr.m_flags.uiFlags);
 
         return bytesRead;
     }
@@ -464,26 +625,34 @@ namespace Quaint {namespace Media{
         //Parsing Data Reference box
         Box box;
         bytesRead += parseBox(box);
+
         dataInformation.m_dataRef.setBox(box);
         bytesRead += parseFullBox(dataInformation.m_dataRef);
         
         char buf[8] = {'\0'};
-        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT64, dataInformation.m_dataRef.m_numEntries);
+        BMF_READ_VAR(buf, 4, m_handle, BMF_CHAR_TO_UINT32, dataInformation.m_dataRef.m_numEntries);
         
-        assert(dataInformation.m_dataRef.m_numEntries == 0 && "Valid Data Reference entries is not handled yet!");
-
         for(uint32_t i = 0; i < dataInformation.m_dataRef.m_numEntries; ++i)
         {
             DataReferenceEntry entry;
             uint64_t currentEntryBytes = 0;
             currentEntryBytes += parseBox(entry);
             currentEntryBytes += parseFullBox(entry);
+            bytesRead += currentEntryBytes;
 
             uint64_t remaining = entry.m_hdr.m_sz - currentEntryBytes;
 
-            skip(remaining, m_handle);
+            char buf_int[64] = {'\0'};
+            assert(remaining < 64 && "Retrieved more than we can handle");
+            BMF_READ(buf_int, remaining, m_handle);
 
-            bytesRead += entry.m_hdr.m_sz;
+            int j = 100;
+            i -= 10;
+            j++;
+            //TODO: Don't skip this!!!
+            //skip(remaining, m_handle);
+
+            //bytesRead += entry.m_hdr.m_sz;
         }
 
     }
@@ -695,8 +864,10 @@ namespace Quaint {namespace Media{
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_avcProfileIndication);
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_profileCompatibility);
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_avcLevelIndication);
+
+        /** This is the NAL unit length(in bytes) of the associated Video Samples. For the squence parameters, it seems to be only 1 byte long*/
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_nalUnitLength);
-        avcConfigBox.m_decoderRecord.m_nalUnitLength &= 0b11 + 1;
+        avcConfigBox.m_decoderRecord.m_nalUnitLength = (avcConfigBox.m_decoderRecord.m_nalUnitLength & 0b11) + 1;
         BMF_READ_VAR(buf, 1, m_handle, BMF_CHAR_TO_UINT8, avcConfigBox.m_decoderRecord.m_numSequenceParamSets);
         avcConfigBox.m_decoderRecord.m_numSequenceParamSets &= 0b11111;
         
@@ -705,7 +876,7 @@ namespace Quaint {namespace Media{
             uint16_t paramSetLength = 0;
             BMF_READ_VAR(buf, 2, m_handle, BMF_CHAR_TO_UINT16, paramSetLength);
 
-            SequenceParameterSetNALUnit unit(VideoModule::get().getVideoMemoryContext(), avcConfigBox.m_decoderRecord.m_nalUnitLength);
+            SequenceParameterSetNALUnit unit(VideoModule::get().getVideoMemoryContext(), 1);
             
             BitParser parser(VideoModule::get().getVideoMemoryContext(), paramSetLength);
             BMF_READ(parser.getBuffer_NonConst(), paramSetLength, m_handle);

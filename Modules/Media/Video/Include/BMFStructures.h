@@ -30,7 +30,9 @@ namespace Quaint { namespace Media
     {
         MediaDataBox(){};
         MediaDataBox(const uint32_t pSz) : Box(pSz, "mdat"){};
-        MediaDataBox(const Box& box) : Box(box){}        
+        MediaDataBox(const Box& box) : Box(box){}
+
+        std::streampos    m_dataPos;      
     };
 
     //TODO
@@ -97,6 +99,7 @@ namespace Quaint { namespace Media
 
     struct SampleToTimeBox : public FullBox
     {
+        /*Each entry in the table gives the number of consecutive samples with the same time delta, and the delta of those samples*/
         struct Entry
         {
             uint32_t    m_sampleCount;
@@ -304,7 +307,7 @@ namespace Quaint { namespace Media
 
         };
         /*Edit Box is used to define protions of media that are used to build tracks of movies.
-          Edits themselves are contained in EditTable, which contains Offset and durration of each segment.
+          Edits themselves are contained in EditTable, which contains Offset and duration of each segment.
           In absense of Edit Box, presentation starts immediately.
           Empty Edit is used to offset the start time of track*/
         struct EditBox : public Box
@@ -424,7 +427,7 @@ namespace Quaint { namespace Media
             uint32_t            m_creationTime;
             uint32_t            m_modificationTime;
             uint32_t            m_timeScale;
-            uint32_t            m_duration;
+            uint32_t            m_duration; // Duration is in timescale
             float               m_preferredRate;
             float               m_preferredVolume;
             char                m_reserved[10]; //10 Bytes reserved for Apple. This might change across file formats 
