@@ -7,11 +7,9 @@ TokenDictionary = {
     "DEBUG_BUILD" : 1
 }
 
-def IdentifyParamTypeAndCleanup(Param : str, Index) -> tuple[str, str] | None:
+def IdentifyParamType(Param : str, Index) -> str | None:
     if (Param is None) or (len(Param) == 0):
         return (None, "")
-    
-    Index = GetNextValidCharacterIndex(Param, Index)
 
     Type = ""
     assert (Index < len(Param)), "Invalid Index retrieved"
@@ -21,12 +19,18 @@ def IdentifyParamTypeAndCleanup(Param : str, Index) -> tuple[str, str] | None:
         Type = "Dictionary"
     elif c == '[' or c == '(':
         Type = "List"
+    elif c == '#':
+        Type = "Preprocessor"
     elif ord(c) >= 48 and ord(c) <= 57:
         Type = "Number"
-    else:
+    elif c == "\"" or c == "\'":
         Type = "String"
+    elif c == ",":
+        Type = "Comma"
+    else:
+        assert False, "Invalid Type Encountered"
 
-    return (Type, Index, Param)
+    return Type
 
 def EvaluateBooleanExpression(Tokens : list, Index) -> tuple[bool, int]:
     assert(Index < len(Tokens)), "Invalid Conditional Expression Encountered"
@@ -57,7 +61,6 @@ def EvaluateBooleanExpression(Tokens : list, Index) -> tuple[bool, int]:
         elif Tokens[Index] == "not":
             assert(Index + 1 < len(Tokens)), "No Token Specified after 'and' statement"
             (Res, Index) = EvaluateBooleanExpression(Tokens, Index + 1)
-            Res = False
             ExprRes &= ~Res
 
         elif Tokens[Index] == '(':
@@ -72,11 +75,10 @@ def EvaluateBooleanExpression(Tokens : list, Index) -> tuple[bool, int]:
             ExprRes &= TokenDictionary.get(Tokens[Index]) != None
             Index += 1
 
-
-
     return (ExprRes, Index)
 
 def GetPreProcessorToken(Param, Index) -> tuple[str, int]:
+    Index = GetNextValidCharacterIndex(Param, Index)
     PreProcessorToken = ""
     while(Index < len(Param)) and (Param[Index] != ' ' and Param[Index] != '\n' and Param[Index] != '\r'):
         PreProcessorToken += Param[Index]
@@ -84,12 +86,7 @@ def GetPreProcessorToken(Param, Index) -> tuple[str, int]:
     return (PreProcessorToken, Index)
 
 def PrasePreprocessorBlock(Param, Index, PreProcessorToken) -> tuple[str, int]:
-    #assert(Param[Index] == '#'), "Invalid PreProcessor Symbol Encountered"
-    #Index = GetNextValidCharacterIndex(Param, Index)
-
-    #assert len(Param) > Index and ord(Param[Index]) >= 97 and ord(Param[Index]) <= 122
     #(PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
-    
     assert PreProcessorToken == "if" or \
             PreProcessorToken == "elif" or \
             PreProcessorToken == "else" or \
@@ -111,21 +108,26 @@ def PrasePreprocessorBlock(Param, Index, PreProcessorToken) -> tuple[str, int]:
         if BoolRes:
             return (Param, Index)        
         else:
-            #If condition is false, jump the control to #else or #endif
+            # Parent if is false. Skip any nested ifs and jump the control to #else or #endif
             IfStack = []
             while Param[Index] != '#' or len(IfStack) != 0:
                 Index = GetNextValidCharacterIndex(Param, Index)
                 if(Param[Index] == '#'):
-                    Index = GetNextValidCharacterIndex(Param, Index)
                     (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
                     if(PreProcessorToken == "if"):
                         IfStack.append(PreProcessorToken)
                     elif (PreProcessorToken == "endif") and len(IfStack) != 0:
                         IfStack.pop()
+                    elif (PreProcessorToken == "else" or PreProcessorToken == "elif"):
+                        if len(IfStack) == 0:
+                            break
                     elif len(IfStack) == 0:
                         break
+                    else:
+                        assert False, "Entered Invalid State when parsing Preprocessor block"
 
-            if PreProcessorToken == "elif" or PreProcessorToken == "else":
+            #We would've skipped all the nested ifs. If there's an elif, process that
+            if PreProcessorToken == "elif":
                 return PrasePreprocessorBlock(Param, Index, "elif")
             else:
                 return(Param, Index)
@@ -139,7 +141,6 @@ def PrasePreprocessorBlock(Param, Index, PreProcessorToken) -> tuple[str, int]:
                 assert(Index != len(Param)), "#endif not encountered"
             
             assert Param[Index] == '#', "Invalid Preprocessor block"
-            Index = GetNextValidCharacterIndex(Param, Index)
             (PreProcessorToken, Index) = GetPreProcessorToken(Param, Index)
             
             if(PreProcessorToken == "if"):
@@ -221,7 +222,6 @@ def ParseList(Param, Index) -> tuple[list, int]:
             ListRes.append(Res)
         
         elif Param[Index] == '#':
-            Index = GetNextValidCharacterIndex(Param, Index)
             (Token, Index) = GetPreProcessorToken(Param, Index)
             (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
             Index = GetNextValidCharacterIndex(Param, Index)
@@ -245,7 +245,6 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
     while Param[Index] != '}':
 
         if Param[Index] == '#':
-            Index = GetNextValidCharacterIndex(Param, Index)
             (Token, Index) = GetPreProcessorToken(Param, Index)
             (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
             Index = GetNextValidCharacterIndex(Param, Index)
@@ -273,10 +272,9 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
             DictRes[Key] = Value
             
         elif Param[Index] == '#':
-            Index = GetNextValidCharacterIndex(Param, Index)
             (Token, Index) = GetPreProcessorToken(Param, Index)
             (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-            (Param, Index) = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextValidCharacterIndex(Param, Index)
             continue
         
         else:
@@ -290,21 +288,53 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
     return(DictRes, Index)
 
 
-def ProcessParam(Param, Index) -> dict | list | str | None:
-    (Type, Index, ResParam) = IdentifyParamTypeAndCleanup(Param, Index)
+def ProcessParam(Param, Index) -> tuple[dict | list | str | None, int]:
+    #Index = GetNextValidCharacterIndex(Param, Index)
+    Type = IdentifyParamType(Param, Index)
     Res = {}
     if Type == "Dictionary":
-        (Res, Index) = ParseDictionary(ResParam, Index)
+        (Res, Index) = ParseDictionary(Param, Index)
     elif Type == "List":
-        (Res, Index) = ParseList(ResParam, Index)
+        (Res, Index) = ParseList(Param, Index)
     elif Type == "Number":
-        (Res, Index) = ParseNumber(ResParam, Index)
+        (Res, Index) = ParseNumber(Param, Index)
     elif Type == "String":
-        (Res, Index) = ParseString(ResParam, Index)
+        (Res, Index) = ParseString(Param, Index)
+    elif Type == "Preprocessor":
+        (Token, Index) = GetPreProcessorToken(Param, Index)
+        (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
+        Index = GetNextValidCharacterIndex(Param, Index)
     else:
         assert False, "Trying to parse invalid type"
 
-    return Res
+    return (Res, Index)
+
+def ParseBlock(Param, Index) -> dict:
+    #Supports Assignments if line starts with a string
+    ParamDictionary = {}
+    Index = GetNextValidCharacterIndex(Param, Index)
+    while(Index < len(Param)):
+        Type = IdentifyParamType(Param, Index)
+        if(Type == "Preprocessor"):
+            (Token, Index) = GetPreProcessorToken(Param, Index)
+            (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
+
+        elif(Type == "String"):
+            (KeyEntry, Index) = ParseString(Param, Index)
+            Index = GetNextValidCharacterIndex(Param, Index)
+            assert Param[Index] == '=', "Not a valid entry"
+            Index = GetNextValidCharacterIndex(Param, Index)
+            (ParamDictionary[KeyEntry], Index) = ProcessParam(Param, Index)
+        elif(Type == "Comma"):
+            pass
+        else:
+            assert False, "Invalid Character encountered when parsing block"
+
+        Index = GetNextValidCharacterIndex(Param, Index)
+
+    
+    return ParamDictionary
+        
 
 def ReadTemplateFile(TemplateFilePath):
     if not os.path.isfile(TemplateFilePath):
@@ -323,26 +353,7 @@ def ReadTemplateFile(TemplateFilePath):
     ParamDictionary = {}
     for Params in ModuleParamItr:
         CleanedStr = re.sub("(@:)|(:@)", "", Params.group())
-        Index = GetNextValidCharacterIndex(CleanedStr, -1)
-        while(Index < len(CleanedStr) and CleanedStr[Index] == '#'):
-            Index = GetNextValidCharacterIndex(CleanedStr, Index)
-            (Token, Index) = GetPreProcessorToken(CleanedStr, Index)
-            (CleanedStr, Index) = PrasePreprocessorBlock(CleanedStr, Index, Token)
-            Index = GetNextValidCharacterIndex(CleanedStr, Index)
-        
-        if(Index >= len(CleanedStr)):
-            print(f"No settings retrieved from Build Template file at:{TemplateFilePath}. Check your defines")
-            return ParamDictionary
-
-        #CleanedStr = re.sub("(@:)|(:@)|[\n\r\s]", "", Params.group())
-        #Remove New line and carriage return characters
-        #CleanedStr = re.sub("(@:)|(:@)|[\n\r]", "", Params.group())
-        #MyList = CleanedStr.split("=")
-        (CleanedKey, Index) = ParseString(CleanedStr, Index)
-        Index = GetNextValidCharacterIndex(CleanedStr, Index)
-        assert CleanedStr[Index] == '=', "Not a valid entry"
-        
-        ParamDictionary[CleanedKey] = ProcessParam(CleanedStr, Index)
-        #print(MyList)
+        ResDict = ParseBlock(CleanedStr, -1)
+        ParamDictionary.update(ResDict)
         
     return ParamDictionary
