@@ -175,6 +175,24 @@ def GetNextValidCharacterIndex(Param, Index) -> int:
         continue
     return Index
 
+def GetNextIndex(Param, Index) -> int:
+    Index = GetNextValidCharacterIndex(Param, Index)
+    if(Index == len(Param)): return Index
+
+    if(Param[Index] == "#"):
+        (Token, Index) = GetPreProcessorToken(Param, Index)
+        (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
+        Index = GetNextValidCharacterIndex(Param, Index)
+    elif(Param[Index] == '/'):
+        Index+=1
+        assert(Index <= len(Param)), "Terminated unexpectedly"
+        if(Param[Index] == '/'):
+            while(Index < len(Param)) and (Param[Index] !=  '\n' or Param[Index] ==  '\r'):
+                Index += 1
+                continue
+            Index = GetNextIndex(Param, Index)
+    return Index
+
 def ParseNumber(Param, Index) -> tuple[int | float, int]:
     assert ord(Param[Index]) >= 48 and ord(Param[Index]) <= 57
 
@@ -203,36 +221,15 @@ def ParseList(Param, Index) -> tuple[list, int]:
     assert Param[Index] == '['
     
     ListRes = []
-    Index = GetNextValidCharacterIndex(Param, Index)
+    Index = GetNextIndex(Param, Index)
     while Param[Index] != ']':
-        if Param[Index] == '\"' or Param[Index] == '\'':
-            (Res, Index) = ParseString(Param, Index)
-            ListRes.append(Res)
-        
-        elif Param[Index] == '[' or Param[Index] == '(':
-            (Res, Index) = ParseList(Param, Index)
-            ListRes.append(Res)
-        
-        elif Param[Index] == '{':
-            (Res, Index) = ParseDictionary(Param, Index)
-            ListRes.append(Res)
-        
-        elif ord(Param[Index]) >= 48 and ord(Param[Index]) <= 57:
-            (Res, Index) = ParseNumber(Param, Index)
-            ListRes.append(Res)
-        
-        elif Param[Index] == '#':
-            (Token, Index) = GetPreProcessorToken(Param, Index)
-            (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-            Index = GetNextValidCharacterIndex(Param, Index)
-            continue
-        else:
-            assert False, "Invalid Symbol Encountered when Parsing List"
+        (Res, Index) = ProcessParam(Param, Index)
+        ListRes.append(Res)
 
-        Index = GetNextValidCharacterIndex(Param, Index)
-        assert Param[Index] == ',' or Param[Index] == ']' or Param[Index] == '#'
+        Index = GetNextIndex(Param, Index)
+        assert Param[Index] == ',' or Param[Index] == ']'
         if Param[Index] == ',':
-            Index = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextIndex(Param, Index)
         pass
 
     return (ListRes, Index)
@@ -241,49 +238,25 @@ def ParseDictionary(Param, Index) -> tuple[dict, int]:
     assert Param[Index] == '{'
     
     DictRes = {}
-    Index = GetNextValidCharacterIndex(Param, Index)
+    Index = GetNextIndex(Param, Index)
     while Param[Index] != '}':
 
-        if Param[Index] == '#':
-            (Token, Index) = GetPreProcessorToken(Param, Index)
-            (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-            Index = GetNextValidCharacterIndex(Param, Index)
-            continue
-
         Key = ""
+        assert (Param[Index] == '\"' or Param[Index] == '\''), "Invalid Syntax. Key missing!"
         if Param[Index] == '\"' or Param[Index] == '\'':
             (Key, Index) = ParseString(Param, Index)
             pass
 
-        Index = GetNextValidCharacterIndex(Param, Index)
-        assert Param[Index] == ':'
-        Index = GetNextValidCharacterIndex(Param, Index)
+        Index = GetNextIndex(Param, Index)
+        assert Param[Index] == ':', "Invalid Syntax. No ':' after Key"
+        Index = GetNextIndex(Param, Index)
 
-        if Param[Index] == '\"' or Param[Index] == '\'':
-            (Value, Index) = ParseString(Param, Index)
-            DictRes[Key] = Value
-            
-        elif Param[Index] == '[' or Param[Index] == '(':
-            (Value, Index) = ParseList(Param, Index)
-            DictRes[Key] = Value
-            
-        elif Param[Index] == '{':
-            (Value, Index) = ParseDictionary(Param, Index)
-            DictRes[Key] = Value
-            
-        elif Param[Index] == '#':
-            (Token, Index) = GetPreProcessorToken(Param, Index)
-            (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-            Index = GetNextValidCharacterIndex(Param, Index)
-            continue
-        
-        else:
-            assert False, "Invalid Symbol Encountered when Parsing dictionary"
+        (DictRes[Key], Index) = ProcessParam(Param, Index)
 
-        Index = GetNextValidCharacterIndex(Param, Index)
-        assert Param[Index] == ',' or Param[Index] == '}' or Param[Index] == '#'
+        Index = GetNextIndex(Param, Index)
+        assert Param[Index] == ',' or Param[Index] == '}'
         if Param[Index] == ',':
-            Index = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextIndex(Param, Index)
 
     return(DictRes, Index)
 
@@ -300,10 +273,6 @@ def ProcessParam(Param, Index) -> tuple[dict | list | str | None, int]:
         (Res, Index) = ParseNumber(Param, Index)
     elif Type == "String":
         (Res, Index) = ParseString(Param, Index)
-    elif Type == "Preprocessor":
-        (Token, Index) = GetPreProcessorToken(Param, Index)
-        (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-        Index = GetNextValidCharacterIndex(Param, Index)
     else:
         assert False, "Trying to parse invalid type"
 
@@ -312,25 +281,21 @@ def ProcessParam(Param, Index) -> tuple[dict | list | str | None, int]:
 def ParseBlock(Param, Index) -> dict:
     #Supports Assignments if line starts with a string
     ParamDictionary = {}
-    Index = GetNextValidCharacterIndex(Param, Index)
+    Index = GetNextIndex(Param, Index)
     while(Index < len(Param)):
         Type = IdentifyParamType(Param, Index)
-        if(Type == "Preprocessor"):
-            (Token, Index) = GetPreProcessorToken(Param, Index)
-            (Param, Index) = PrasePreprocessorBlock(Param, Index, Token)
-
-        elif(Type == "String"):
+        if(Type == "String"):
             (KeyEntry, Index) = ParseString(Param, Index)
-            Index = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextIndex(Param, Index)
             assert Param[Index] == '=', "Not a valid entry"
-            Index = GetNextValidCharacterIndex(Param, Index)
+            Index = GetNextIndex(Param, Index)
             (ParamDictionary[KeyEntry], Index) = ProcessParam(Param, Index)
         elif(Type == "Comma"):
             pass
         else:
             assert False, "Invalid Character encountered when parsing block"
 
-        Index = GetNextValidCharacterIndex(Param, Index)
+        Index = GetNextIndex(Param, Index)
 
     
     return ParamDictionary
@@ -345,13 +310,13 @@ def ReadTemplateFile(TemplateFilePath):
     contents = stream.read()
     stream.close()
 
-    ModuleParamItr = re.finditer("(@:)(.*(\n|\r|\r\n))+?(.*:@)", contents)
+    Blocks = re.finditer("(@:)(.*(\n|\r|\r\n))+?(.*:@)", contents)
 
-    if(ModuleParamItr == None):
-        print("No Module params found for this Module. This will skip CMakeLists generation")
+    if(Blocks == None):
+        print("No Module params found for this Module. This will skip Parsing Template")
     
     ParamDictionary = {}
-    for Params in ModuleParamItr:
+    for Params in Blocks:
         CleanedStr = re.sub("(@:)|(:@)", "", Params.group())
         ResDict = ParseBlock(CleanedStr, -1)
         ParamDictionary.update(ResDict)
