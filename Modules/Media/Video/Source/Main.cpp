@@ -42,6 +42,15 @@ int main()
         0b10111110
     };
 
+    uint8_t kthExpGolombBuff[] = 
+    {
+        0b00010000,
+        0b10000000
+    };
+    Quaint::Media::BitParser expGolombTestParser(Quaint::Media::VideoModule::get().getVideoMemoryContext(), kthExpGolombBuff, 2);
+
+    std::cout << expGolombTestParser.ue_k(2) << "\n";
+
     Quaint::Media::BitParser parser(Quaint::Media::VideoModule::get().getVideoMemoryContext(), bitBuffer, 2);
     uint32_t res = parser.readBits(1);
     res = parser.readBits(2);

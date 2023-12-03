@@ -141,6 +141,12 @@ namespace Quaint{ namespace Media {
         uint32_t suffixRes = readBits(leadingZeroBits);
         return uint32_t(pow(2, leadingZeroBits)) - 1 + suffixRes;
     }
+    //Kth Order Exp_Golomb Code(Unsigned)
+    uint32_t BitParser::ue_k(uint8_t k)
+    {
+        uint32_t x = ue() * uint32_t(pow(2, k));
+        return x + (uint32_t)readBits(k);
+    }
 	int32_t BitParser::se()
     {
         float ueInput = (float)ue();
