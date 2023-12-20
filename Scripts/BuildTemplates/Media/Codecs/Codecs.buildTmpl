@@ -1,0 +1,22 @@
+@:
+"Settings"={
+    "Name" : "Codecs",
+    "Path" : "Modules/Media/Codecs",
+    "Type" : "BUILD_INTERFACE"
+}:@
+
+@:
+"HeaderPaths"=[
+    "./"
+]
+:@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Core",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
+    }
+]
+:@

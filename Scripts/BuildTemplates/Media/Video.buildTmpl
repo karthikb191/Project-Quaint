@@ -23,6 +23,11 @@
         "Name" : "Core",
         "Type" : "MODULE",
         "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"
+    },
+    {
+        "Name" : "Codecs",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Media/Codecs/Codecs.buildTmpl"
     }
 ]
 :@

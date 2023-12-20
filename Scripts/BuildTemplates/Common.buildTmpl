@@ -6,12 +6,12 @@
 #endif
 :@
 
-
+//Any comments between blocks are simply ignored. Doesn't have to start with '//'
 @:
-    "PreProcessorDefines" = [
+    "PreProcessorDefines"=[
 
 #if defined DEBUG_BUILD
-        "DEBUG_BUILD",   
+        "DEBUG_BUILD", // makes DEBUG_BUILD accessible as macro in C++   
 #endif
 
         "QUAINT_PLATFORM_${BUILD_PLATFORM}"

@@ -1,5 +1,6 @@
 import re
 import os
+from enum import Enum
 
 TokenDictionary = {
     "UNKNOWN_PLATFORM" : 0,
@@ -7,26 +8,35 @@ TokenDictionary = {
     "DEBUG_BUILD" : 1
 }
 
-def IdentifyParamType(Param : str, Index) -> str | None:
-    if (Param is None) or (len(Param) == 0):
-        return (None, "")
+class ParamType(Enum):
+    EDictionary = 0
+    EList = 1
+    EMacro = 2
+    ENumber = 3
+    EString = 4
+    EComma = 5
+    EInvalid = 6
 
-    Type = ""
+def IdentifyParamType(Param : str, Index) -> ParamType | None:
+    if (Param is None) or (len(Param) == 0):
+        return ParamType.EInvalid
+
+    Type = ParamType.EInvalid
     assert (Index < len(Param)), "Invalid Index retrieved"
 
     c = Param[Index]
     if c == '{' : 
-        Type = "Dictionary"
+        Type = ParamType.EDictionary
     elif c == '[' or c == '(':
-        Type = "List"
+        Type = ParamType.EList
     elif c == '#':
-        Type = "Preprocessor"
+        Type = ParamType.EMacro
     elif ord(c) >= 48 and ord(c) <= 57:
-        Type = "Number"
+        Type = ParamType.ENumber
     elif c == "\"" or c == "\'":
-        Type = "String"
+        Type = ParamType.EString
     elif c == ",":
-        Type = "Comma"
+        Type = ParamType.EComma
     else:
         assert False, "Invalid Type Encountered"
 
@@ -265,13 +275,13 @@ def ProcessParam(Param, Index) -> tuple[dict | list | str | None, int]:
     #Index = GetNextValidCharacterIndex(Param, Index)
     Type = IdentifyParamType(Param, Index)
     Res = {}
-    if Type == "Dictionary":
+    if Type == ParamType.EDictionary:
         (Res, Index) = ParseDictionary(Param, Index)
-    elif Type == "List":
+    elif Type == ParamType.EList:
         (Res, Index) = ParseList(Param, Index)
-    elif Type == "Number":
+    elif Type == ParamType.ENumber:
         (Res, Index) = ParseNumber(Param, Index)
-    elif Type == "String":
+    elif Type == ParamType.EString:
         (Res, Index) = ParseString(Param, Index)
     else:
         assert False, "Trying to parse invalid type"
@@ -284,13 +294,13 @@ def ParseBlock(Param, Index) -> dict:
     Index = GetNextIndex(Param, Index)
     while(Index < len(Param)):
         Type = IdentifyParamType(Param, Index)
-        if(Type == "String"):
+        if(Type == ParamType.EString):
             (KeyEntry, Index) = ParseString(Param, Index)
             Index = GetNextIndex(Param, Index)
             assert Param[Index] == '=', "Not a valid entry"
             Index = GetNextIndex(Param, Index)
             (ParamDictionary[KeyEntry], Index) = ProcessParam(Param, Index)
-        elif(Type == "Comma"):
+        elif(Type == ParamType.EComma):
             pass
         else:
             assert False, "Invalid Character encountered when parsing block"
