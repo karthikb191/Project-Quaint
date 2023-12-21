@@ -6,8 +6,9 @@ class ModuleType(Enum):
     DYNAMIC = 2
     BUILD_STATIC = 3
     BUILD_DYNAMIC = 4
-    MODULE = 5
-    EXECUTABLE = 6
+    BUILD_INTERFACE = 5
+    MODULE = 6
+    EXECUTABLE = 7
 
 class BuildSystem(Enum):
     CMAKE = 1
