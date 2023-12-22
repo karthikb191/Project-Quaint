@@ -6,7 +6,7 @@ namespace qcodec
 {
     /*This is mainly cuz we don't want to go beyond 5 bits precision*/
     #define MAX_SYMBOLS 257
-    static uint32_t CUMULATIVE_FREQ[MAX_SYMBOLS] = {0};
+    static uint32_t CUMULATIVE_FREQ[MAX_SYMBOLS + 1] = {0};
     static uint32_t ARITH_DANGER_ZONE = (0xFFFFFFFF / 4 - 1);
     static uint32_t MAX_CUMULATIVE_FREQ = ARITH_DANGER_ZONE / 2;
     static uint32_t ARITH_TOP = MAX_CUMULATIVE_FREQ * 2;
@@ -30,6 +30,34 @@ namespace qcodec
         assert(byteIdx < length && "Reached the end of buffer given");
         ++byteIdx;
         return (uint8_t) ((char*)inBuf)[byteIdx];
+    }
+
+    //TODO: This should handle actual bit retrieval even if out current parse location isn't aligned to a byte
+    inline uint32_t get32BitsAndAdvance(const void* inBuf, const uint32_t length, uint32_t& byteIdx)
+    {
+        uint32_t res = 0;
+        switch(length)
+        {
+        case 1:
+            res = (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 24;
+            break;
+        case 2:
+            res = (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 24
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 16;
+            break;
+        case 3:
+            res = (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 24
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 16
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 8;
+            break;
+        default:
+            res = (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 24
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 16
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx) << 8
+                | (uint32_t)getByteAndAdvance(inBuf, length, byteIdx);
+            break;
+        }
+        return res;
     }
 
     /* Advances the given byte and bit position */
@@ -58,6 +86,13 @@ namespace qcodec
         }
     }
 
+    void writeByteAndAdvance(void* outBuf, const uint32_t length, const uint8_t val, uint32_t& byteIdx)
+    {
+        assert(byteIdx < length && "Overflow on buffer bounds");
+        ((char*)outBuf)[byteIdx] = val;
+        ++byteIdx;
+    }
+
     inline void buildFrequencyTableFromData(const void* inbuf, const uint32_t length, uint32_t* frequencies)
     {
         if(length == 0) return;
@@ -80,7 +115,7 @@ namespace qcodec
         //if(cp != nullptr) cp[0] = 1.0 / (double)length;
         CUMULATIVE_FREQ[0] = 0;
         uint32_t maxCF = 0;
-        for(int i = 1; i < 257; ++i)
+        for(int i = 1; i <= MAX_SYMBOLS; ++i)
         {
             //TODO: This might not be correct
             // if(cp != nullptr)

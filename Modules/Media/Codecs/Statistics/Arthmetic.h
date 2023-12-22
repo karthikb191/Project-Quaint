@@ -3,13 +3,17 @@
 
 namespace qcodec
 {
+    //Move these after having proper structure to read/write data to
+    uint32_t encodedBufferLength = 0;
+
     inline void encode_Arithmetic(const void* inBuf, const uint32_t inBufLength, void* outBuf, const uint32_t outBufLength)
     {
         assert((outBuf != nullptr && inBufLength != 0) && "Invalid out buffer provided");
+        
         uint32_t curInIdx = 0;
         uint32_t curOutByteIdx = 0;
         uint8_t curOutBitIdx = 0;
-
+    
         uint32_t frequencies[257] = {0};
         frequencies[0] = 1; //EOF
         buildFrequencyTableFromData(inBuf, inBufLength, frequencies);
@@ -22,7 +26,7 @@ namespace qcodec
         
         while(curInIdx < inBufLength)
         {
-            uint8_t val = (inBuf, inBufLength, curInIdx);
+            uint16_t val = getByteAndAdvance(inBuf, inBufLength, curInIdx);
             if(val == '\0')
             {
                 std::cout << "Encounted EOF\n";
@@ -32,6 +36,8 @@ namespace qcodec
             range = high - low + 1;
             low = low + (range * CUMULATIVE_FREQ[val]) / MAX_CUMULATIVE_FREQ;
             high = low + ((range * CUMULATIVE_FREQ[val + 1]) / MAX_CUMULATIVE_FREQ) - 1;
+            
+            assert(high > low && "WE HAVE A PROBLEM! Invalid Decode state");
 
             uint8_t bitVal = 0;
             bool writeBit = false;
@@ -109,6 +115,71 @@ namespace qcodec
                     --bitCounter;
                 }
         }
+        encodedBufferLength = outBufLength;
+    }
+
+    inline void decode_Arithmetic(const void* inBuf, void* outBuf)
+    {
+        assert((inBuf != nullptr && outBuf != nullptr) && "Invalid buffers passed");
+        uint64_t range = ARITH_TOP;
+        uint64_t low = 0;
+        uint64_t high = low + range - 1;
+        uint32_t bitCounter = 0;
+
+        uint32_t curInByteIdx = 0;
+        uint32_t curInBitIdx = 0;
+        uint64_t curValue = get32BitsAndAdvance(inBuf, encodedBufferLength, curInBitIdx);
+        
+        do
+        {
+            range = (high - low) + 1;
+            uint64_t symbolCFreq = (MAX_CUMULATIVE_FREQ * curValue) / range;
+            uint16_t symbol = 0;
+            
+            // Loop till we hit a cumulative frequency greater than the current symbol's. Required symbol is the one before
+            for(symbol = 1; symbolCFreq > CUMULATIVE_FREQ[symbol]; ++symbol);
+            symbol -= 1;
+
+            low = low + (range * CUMULATIVE_FREQ[symbol]) / MAX_CUMULATIVE_FREQ;
+            high = low + ((range * CUMULATIVE_FREQ[symbol + 1]) / MAX_CUMULATIVE_FREQ) - 1;
+
+            assert(high > low && "WE HAVE A PROBLEM! Invalid Decode state");
+            //This part happens in lock step with the encoding logic
+            if(high < ARITH_HALF)
+            {
+                // Low and high are to the left of half
+                // MSB of low and high will be 0 and not change anymore
+                low <<= 1;
+                high <<= 1;
+                curValue <<= 1;
+            }
+            else if(low >= ARITH_HALF)
+            {
+                // Low and high are to the right of half
+                // MSB of low and high will be 1 and never change
+                // Need to shift the current value by the same amount too
+                low -= ARITH_HALF;
+                high -= ARITH_HALF;
+                curValue -= ARITH_HALF;
+            }
+            else if((high - low) <= ARITH_QUARTER)
+            {
+                /* 
+                Similar to logic in encoder. Here it's simpler because we are working with the actual value in the encoded buffer.
+                When just need to shift the value by the same amount as low and high
+                */
+                low -= ARITH_HALF;
+                high -= ARITH_HALF;
+                curValue -= ARITH_HALF;
+            }
+            else
+            {
+                //Do Nothing
+            }
+
+            //TODO: Write Symbol to out buffer
+
+        } while(curInBitIdx != encodedBufferLength);
     }
 
     /*Do NOT call directly*/
@@ -117,10 +188,6 @@ namespace qcodec
 
     }
     
-    inline void decode_Arithmetic(const void* inBuf, void* outBuf)
-    {
-
-    }
 
     inline void encode_ArithmeticBinary(const void* inBuf, const uint32_t length, void* outBuf)
     {
