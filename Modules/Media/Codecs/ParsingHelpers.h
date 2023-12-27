@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <math.h>
 
-namespace qcodec
+namespace codec
 {
     /*This is mainly cuz we don't want to go beyond 5 bits precision*/
     #define MAX_SYMBOLS 257

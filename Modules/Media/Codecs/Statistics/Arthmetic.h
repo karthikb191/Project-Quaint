@@ -1,7 +1,7 @@
 #include "../ParsingHelpers.h"
 #include <Types/QMap.h>
 
-namespace qcodec
+namespace codec
 {
     //Move these after having proper structure to read/write data to
     uint32_t encodedBufferLength = 0;

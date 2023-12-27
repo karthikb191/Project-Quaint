@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <math.h>
 
-namespace qcodec
+namespace codec
 {
 #define PROCESS_BIT_GOLADAP(data, pos, mask)\
     if(((uint8_t*)data)[pos] & mask == 0){ \

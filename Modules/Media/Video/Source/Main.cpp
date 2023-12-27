@@ -5,6 +5,9 @@
 #include <MemoryModule.h>
 #include <VideoModule.h>
 
+#include <Statistics/Arthmetic.h>
+#include <Types/QHeap.h>
+
 namespace Quaint
 {
     CREATE_MODULE(LoggerModule);
@@ -35,6 +38,35 @@ int main()
 
     //uint32_t val = 0b00010100000000000000000000000000;
     //uint32_t res = parseExpGolombCode(val);
+
+    /*Heap Tests*/
+    Quaint::QHeap<int, _HeapType::EMAX> testMinHeap(Quaint::Media::VideoModule::get().getVideoMemoryContext());
+    testMinHeap.insert(10);
+    testMinHeap.insert(1);
+    testMinHeap.insert(0);
+    testMinHeap.insert(48);
+    testMinHeap.insert(18);
+    testMinHeap.insert(60);
+    testMinHeap.insert(40);
+    testMinHeap.insert(60);
+    testMinHeap.insert(190);
+
+    testMinHeap.print();
+    std::cout << "\n\n\n";
+
+    testMinHeap.top();
+    testMinHeap.top();
+    testMinHeap.top();
+    testMinHeap.top();
+    testMinHeap.top();
+
+    testMinHeap.print();
+
+    /*Arthmetic coding Tests*/
+    const char arithCodingInput[] = "Hello! We are now going to encode this piece of string. Hopefully we can retrieve it safely!";
+    constexpr uint32_t codeLength = sizeof(arithCodingInput);
+    char outBuffer[4096] = {'\0'};
+    codec::encode_Arithmetic(arithCodingInput, codeLength, outBuffer, 4096);
 
     uint8_t bitBuffer[] = 
     {

@@ -165,7 +165,7 @@ namespace Quaint{ namespace Media {
     {
         if(m_overflow || m_complete) return false;
 
-        uint32_t currentPos = m_numBits - 1;
+        uint64_t currentPos = m_numBits - 1;
         while(!getBitVal(currentPos))
         {
             --currentPos;
