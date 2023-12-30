@@ -7,6 +7,7 @@
 
 #include <Statistics/Arthmetic.h>
 #include <Types/QHeap.h>
+#include <H264/CabacCommon.h>
 
 namespace Quaint
 {
