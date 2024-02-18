@@ -2,6 +2,7 @@
 #define _H_H264_CABAC_DECODER
 #include <cstdint>
 #include <H264/CabacCommon.h>
+#include <BMFParsers.h>
 
 namespace Quaint { namespace Media{
     enum ECabacError
@@ -31,25 +32,6 @@ namespace Quaint { namespace Media{
         uint8_t     stateIdx;
         uint8_t     valMPS;
     }sCtxVar, *pCtxVar;
-
-    struct SyntaxElement
-    {
-        /*Input is the SE to be parsed and previously parsed SEs*/
-        void parseSE(const SyntaxElement& se);
-
-    };
-
-
-    class CabacContext
-    {
-        //======== ???Parsing of elements are based on their contexts??? ============
-    public:
-
-        /*Self Contained functions*/
-        void decodeBin();
-        void decodeBypass();
-        void decodeTerminate();
-    };
     
     class CabacDecoderEngine
     {
@@ -57,12 +39,23 @@ namespace Quaint { namespace Media{
     public:
         /*Should be called for first SE in slice*/
         void initContextVariables(uint8_t eSliceType, uint8_t uiCabac_init_idc);
-        void initDecodeEngine();
+        
+        /*
+            Parser should point to the right location here.
+            TODO: Instead of parser, pass in a blob of data that's stored in heap to work with
+        */
+        void initDecodeEngine(BitParser& parser);
+        
+        uint8_t decodeBin(uint16_t ctxIdx, bool bypass = false);
+        uint8_t decodeBypass(uint16_t ctxIdx);
+        uint8_t decodeTerminate(uint16_t ctxIdx);
         
         /*This is populated during initialization of context variables*/
         EContextInitState       m_eCtxInitState = EContextInitState::E_CABAC_INIT_INVALID;
         ContextVar              m_ctx[52][1024];
 
+        uint16_t                m_uiCodIRange;
+        uint16_t                m_uiCodIOffset;
     };
 
 }}

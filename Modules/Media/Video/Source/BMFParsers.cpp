@@ -153,10 +153,10 @@ namespace Quaint{ namespace Media {
         return (int32_t)(pow(-1, ueInput + 1)) * (int32_t)(ceil(ueInput/2.0f));
     }
 
-    uint8_t BitParser::getBitVal(uint32_t n)
+    uint8_t BitParser::getBitVal(uint64_t n)
     {
         assert(n < m_numBits && "Trying to read beyond valid bit buffer");
-        uint32_t byteIndex = n >> 3;
+        uint64_t byteIndex = n >> 3;
         uint8_t mask = getMaskForBit(n % 8);
         return m_buffer[byteIndex] & mask ? 1 : 0;
     }

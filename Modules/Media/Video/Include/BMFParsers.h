@@ -3,7 +3,10 @@
 
 #include <fstream>
 
-class Quaint::IMemoryContext;
+namespace Quaint
+{
+	class IMemoryContext;
+}
 
 namespace Quaint { namespace Media{
 
@@ -22,7 +25,7 @@ public:
 	void populateBufferFromHandle(std::fstream& handle);
 	/*Reads next bits without incrementing pointer*/
 	uint32_t nextBits(uint8_t n);
-	uint8_t getBitVal(uint32_t n);
+	uint8_t getBitVal(uint64_t n);
 	uint32_t readBits(uint8_t n);
 	uint32_t readBits_exp(uint8_t n);
 
