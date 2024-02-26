@@ -67,7 +67,7 @@ void CabacDecoderEngine::initContextVariables(uint8_t eSliceType, uint8_t uiCaba
             else
             {
                 m_ctx[sliceQp][ctxIdx].stateIdx = preCtxState - 64;
-                m_ctx[sliceQp][ctxIdx].valMPS = 0;
+                m_ctx[sliceQp][ctxIdx].valMPS = 1;
             }
         }
     }
@@ -87,30 +87,104 @@ void CabacDecoderEngine::initDecodeEngine(BitParser& parser)
 
 }
 
-uint8_t CabacDecoderEngine::decodeBin(uint16_t ctxIdx, bool bypass)
+uint8_t CabacDecoderEngine::decodeBin(BitParser& parser, uint16_t ctxIdx, bool bypass)
 {
+    assert(ctxIdx < 1024 && "invalid ctxIdx passed");
+
     if(bypass)
     {
-        return decodeBypass(ctxIdx);
+        return decodeBypass(parser, ctxIdx);
     }
 
     if(ctxIdx == 276)
     {
-        return decodeTerminate(ctxIdx);
+        return decodeTerminate(parser, ctxIdx);
     }
 
     //Decode Decision
-    
+    uint8_t binVal = 0;
+    uint16_t stateIdx = m_ctx[ctxIdx]->stateIdx;
+    uint8_t qCodIRangeIdx = (m_uiCodIRange >> 6) & 3;
+    uint16_t codIRangeLPS = C_range_table_lps[stateIdx][qCodIRangeIdx];
+
+    m_uiCodIRange -= codIRangeLPS;
+
+    //If Offset is more than Range(which now represents range of MPS), it must mean the symbol LPS.
+    // Since we only have 2 values, the possible value is ~valMPS 
+    if(m_uiCodIOffset >= m_uiCodIRange)
+    {
+        binVal = 1 - m_ctx[ctxIdx]->valMPS;
+        m_uiCodIOffset -= m_uiCodIRange;
+        m_uiCodIRange = codIRangeLPS;
+    }
+    else
+    {
+        binVal = m_ctx[ctxIdx]->valMPS;
+    }
+
+    //State Transition
+    if(binVal == m_ctx[ctxIdx]->valMPS)
+    {
+        m_ctx[ctxIdx]->stateIdx = C_state_transition_table[m_ctx[ctxIdx]->stateIdx][1];
+    }
+    else
+    {
+        if(m_ctx[ctxIdx]->stateIdx == 0) m_ctx[ctxIdx]->valMPS = 1 - m_ctx[ctxIdx]->valMPS;
+        m_ctx[ctxIdx]->stateIdx = C_state_transition_table[m_ctx[ctxIdx]->stateIdx][0];
+    }
+
+    //Renormalization
+    renormalize(parser);
+
+    return binVal;
 }
-uint8_t CabacDecoderEngine::decodeBypass(uint16_t ctxIdx);
+
+uint8_t CabacDecoderEngine::decodeBypass(BitParser& parser, uint16_t ctxIdx)
 {
-
+    uint8_t binVal = 0;
+    m_uiCodIOffset <<= 1;
+    m_uiCodIOffset |= parser.readBits(1);
+    if(m_uiCodIOffset >= m_uiCodIRange)
+    {
+        binVal = 1;
+        m_uiCodIOffset -= m_uiCodIRange;
+    }
+    return binVal;
 }
-uint8_t CabacDecoderEngine::decodeTerminate(uint16_t ctxIdx)
+uint8_t CabacDecoderEngine::decodeTerminate(BitParser& parser, uint16_t ctxIdx)
 {
+    uint8_t binVal = 1;
 
+    m_uiCodIOffset -= 2;
+    if(m_uiCodIOffset < m_uiCodIRange)
+    {
+        binVal = 0;
+        renormalize(parser);
+    }
+    return binVal;
 }
 
+void CabacDecoderEngine::renormalize(BitParser& parser)
+{
+    uint8_t failCounter = 0;
+    while(m_uiCodIRange < 256)
+    {
+        assert(failCounter < 250 && "Unnatural Ranges encountered while trying to normalize");
+        m_uiCodIRange <<= 1;
+        m_uiCodIOffset <<= 1;
+        m_uiCodIOffset |= parser.readBits(1);
+
+        ++failCounter;
+    }
+}
+
+/*Types of Binarization Supported:
+1. Unary Binarization
+2. Truncated Unary Binarization
+3. Concatenated Unary / Kth Order EXP-Golomb
+4. Fixed Length (FL) Binarization
+
+*/
 
 //Notes:
 /*  When starting parsing of slice data of slice in clause 7.3.4, the initialization of CABAC process is invoked

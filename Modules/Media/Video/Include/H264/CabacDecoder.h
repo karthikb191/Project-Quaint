@@ -46,10 +46,13 @@ namespace Quaint { namespace Media{
         */
         void initDecodeEngine(BitParser& parser);
         
-        uint8_t decodeBin(uint16_t ctxIdx, bool bypass = false);
-        uint8_t decodeBypass(uint16_t ctxIdx);
-        uint8_t decodeTerminate(uint16_t ctxIdx);
+        uint8_t decodeBin(BitParser& parser, uint16_t ctxIdx, bool bypass = false);
+        uint8_t decodeBypass(BitParser& parser, uint16_t ctxIdx);
+        uint8_t decodeTerminate(BitParser& parser, uint16_t ctxIdx);
         
+    private:
+        void renormalize(BitParser& parser);
+
         /*This is populated during initialization of context variables*/
         EContextInitState       m_eCtxInitState = EContextInitState::E_CABAC_INIT_INVALID;
         ContextVar              m_ctx[52][1024];

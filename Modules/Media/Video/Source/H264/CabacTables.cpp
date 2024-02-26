@@ -1224,7 +1224,8 @@ const uint8_t C_range_table_lps[64][4] = {
   {   8,   9,  11,  13}, {   7,   9,  11,  12}, {   7,   9,  10,  12}, {   7,   8,  10,  11}, {   6,   8,   9,  11}, {   6,   7,   9,  10}, {   6,   7,   8,   9}, {   2,   2,   2,   2}
 };
 
-const uint8_t C_state_transition_table_lps[64][2] = {
+//[pStateIdx][0] for transIdxLPS; [pStateIdx][1] for transIdxMPS
+const uint8_t C_state_transition_table[64][2] = {
 
   {0, 1}, {0, 2}, {1, 3}, {2, 4}, {2, 5}, {4, 6}, {4, 7}, {5, 8}, {6, 9}, {7, 10},
 
