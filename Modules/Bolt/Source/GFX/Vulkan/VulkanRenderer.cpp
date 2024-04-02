@@ -34,10 +34,10 @@ namespace Bolt
 
     auto vertices = Quaint::createFastArray<QVertex>(
     {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},    //vertex 0
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},     //vertex 1
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},    //vertex 2
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}    //vertex 3
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},     //vertex 0
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},      //vertex 1
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},       //vertex 2
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}       //vertex 3
     }
     );
 
@@ -202,8 +202,14 @@ namespace Bolt
         Quaint::IMemoryContext* context = static_cast<Quaint::IMemoryContext*>(pUserData);
         assert(context && "Invalid Context received in realloc function");
 
-        QUAINT_DEALLOC_MEMORY(context, pOriginal);
-        return QUAINT_ALLOC_MEMORY_ALIGNED(context, size, alignment);
+        //There are more cases here that needs to be handled
+        void* memory = QUAINT_ALLOC_MEMORY_ALIGNED(context, size, alignment);
+        if(pOriginal != nullptr)
+        {
+            memcpy(memory, pOriginal, context->GetBlockSize(pOriginal));
+            QUAINT_DEALLOC_MEMORY(context, pOriginal);
+        }
+        return memory;
     }
 
     void VKAPI_PTR VulkanRenderer::internalAllocationFunction(void* pUserData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
@@ -331,7 +337,6 @@ namespace Bolt
         instanceInfo.enabledLayerCount = 0;
         instanceInfo.ppEnabledLayerNames = nullptr;
 #endif
-
         VkResult result = vkCreateInstance(&instanceInfo, m_allocationPtr, &m_instance);
         if(result != VK_SUCCESS)
         {
@@ -1575,7 +1580,7 @@ namespace Bolt
     void VulkanRenderer::createDescriptorSets()
     {
         m_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        Quaint::QArray<VkDescriptorSetLayout> layouts(m_context, MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+        Quaint::QArray<VkDescriptorSetLayout> layouts(m_context, (size_t)MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
