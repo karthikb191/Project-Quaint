@@ -26,12 +26,15 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
-        QArray(IMemoryContext* context) 
+private:
+        QArray() 
         {
-            m_context = context;
+            m_context = nullptr;
             m_size = 0;
-            reserve(4);
         };
+public:
+        static QArray<T> GetInvalidPlaceholder() { return QArray<T>(); }
+
         template<typename ...ARGS>
         QArray(IMemoryContext* context, ARGS... args)
         {

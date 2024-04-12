@@ -8,7 +8,6 @@
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
 #include <GFX/Vulkan/Internal/DeviceManager.h>
-//TODO: Surround with plat-spec macro
 
 #include <vulkan/vulkan.h>
 
