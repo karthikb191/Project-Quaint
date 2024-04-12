@@ -7,9 +7,9 @@
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
+#include <GFX/Vulkan/Internal/DeviceManager.h>
 //TODO: Surround with plat-spec macro
 
-#define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
 #include <QMath.h>
@@ -285,6 +285,8 @@ namespace Bolt
         VkImageView                         m_textureView;
         VkSampler                           m_textureSampler;
         VkDeviceMemory                      m_textureGpuMemory;
+
+        DeviceManager*                      m_deviceManager = nullptr;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

@@ -10,9 +10,6 @@
 #include <fstream>
 #include <chrono>
 
-//TODO: Remove this once there's a custom version available
-#include <set>
-
 namespace Bolt
 {
     #define VULKAN_RENDERER_LOGGER
@@ -72,6 +69,9 @@ namespace Bolt
 
     void VulkanRenderer::init()
     {
+        DeviceManager::Create(m_context);
+        m_deviceManager = DeviceManager::Get();
+
         CameraInitInfo info{};
         info.translation = Quaint::QVec4(0, 0, 3, 1);
         info.rotation = Quaint::QVec3(0, 0, 0);
@@ -282,7 +282,11 @@ namespace Bolt
         appInfo.pEngineName = "Quaint Engine";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+
+        uint32_t apiVersion = 0;
+        vkEnumerateInstanceVersion(&apiVersion);
+        assert(apiVersion >= VK_API_VERSION_1_1 && "Minimum supported Vulkan version is 1.1");
+        appInfo.apiVersion = VK_API_VERSION_1_1; // We want application to use Vulakan 1.3 features
 
         VkInstanceCreateInfo instanceInfo{};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -433,6 +437,13 @@ namespace Bolt
         vkGetPhysicalDeviceFeatures(device, &features);
         vkGetPhysicalDeviceProperties(device, &properties);
 
+        uint32_t apiVersion = 0;
+        vkEnumerateInstanceVersion(&apiVersion);
+        uint32_t variant = VK_API_VERSION_VARIANT(apiVersion);
+        uint32_t major = VK_API_VERSION_MAJOR(apiVersion);
+        uint32_t minor = VK_API_VERSION_MINOR(apiVersion);
+        uint32_t patch = VK_API_VERSION_PATCH(apiVersion);
+
         //Check if device extensions are supported on current device
         uint32_t extensionsCount = 0;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionsCount, nullptr);
@@ -514,7 +525,6 @@ namespace Bolt
         QueueFamilies queueFamilies;
         getQueueFamilies(m_context, m_physicalDevice, m_surface, queueFamilies);
 
-        //TODO: Replace with a custom set
         Quaint::QSet<uint32_t> queueIndices(m_context);
         
         queueIndices = { queueFamilies.graphics.get(), queueFamilies.presentation.get(), queueFamilies.transfer.get() };
@@ -1167,7 +1177,7 @@ namespace Bolt
         info.flags = 0;
 
         VkResult res = vkCreateImage(device, &info, allocPtr, image);
-        assert(res == VK_SUCCESS && "Failed to Image for the sample texture");
+        assert(res == VK_SUCCESS && "Failed to create Image for the sample texture");
 
         VkMemoryRequirements memReq{};
         vkGetImageMemoryRequirements(device, *image, &memReq);
@@ -1196,7 +1206,6 @@ namespace Bolt
         allocInfo.commandBufferCount = 1;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.pNext = nullptr;
-
 
         VkCommandBuffer cmdBuffer;
         VkResult res = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);

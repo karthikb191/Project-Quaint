@@ -26,6 +26,12 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
+        QArray(IMemoryContext* context) 
+        {
+            m_context = context;
+            m_size = 0;
+            reserve(4);
+        };
         template<typename ...ARGS>
         QArray(IMemoryContext* context, ARGS... args)
         {
@@ -41,6 +47,7 @@ namespace Quaint
             reserve(((size + 8) / 4) * 4);
             defConstruct();
         }
+        
         QArray(IMemoryContext* context, size_t size, const T& defVal)
         {
             m_context = context;
@@ -282,16 +289,14 @@ namespace Quaint
             //TODO: Add support for null context
             T* oldData = m_rawData;
             
-            if(m_context != nullptr)
+            m_rawData = (T*)QUAINT_ALLOC_MEMORY_ALIGNED(m_context, m_reservedSize * TYPE_SIZE, alignof(T));
+            
+            if(oldData != nullptr)
             {
-                m_rawData = (T*)QUAINT_ALLOC_MEMORY_ALIGNED(m_context, m_reservedSize * TYPE_SIZE, alignof(T));
-                
-                if(oldData != nullptr)
-                {
-                    memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
-                    QUAINT_DEALLOC_MEMORY(m_context, oldData); //No need to call destructor here
-                }
+                memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
+                QUAINT_DEALLOC_MEMORY(m_context, oldData); //No need to call destructor here
             }
+            
             //else
             //{
             //    m_rawData = new T[m_reservedSize];
@@ -319,6 +324,8 @@ namespace Quaint
         }
         void destroy()
         {
+            assert(m_context != nullptr && "Null Context is not currently supported");
+            
             for(size_t i = 0; i < m_size; i++)
             {
                 (m_rawData + i)->~T();
