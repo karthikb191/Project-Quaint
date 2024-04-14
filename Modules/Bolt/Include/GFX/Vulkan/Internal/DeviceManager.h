@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vulkan/vulkan.h>
 #include <Types/QArray.h>
+#include <Types/QStaticString.h>
 
 namespace Bolt
 {
@@ -23,10 +24,14 @@ namespace Bolt
     };
     struct PhysicalDeviceRequirements
     {
-        QueueRequirements           graphics;
-        QueueRequirements           compute;
-        QueueRequirements           transfer;
+        QueueRequirements                   graphics;
+        QueueRequirements                   compute;
+        QueueRequirements                   transfer;
 
+        //TODO: Remove this ugly piece of code below after adding an allocator
+        Quaint::QArray<Quaint::QString256>  extensions = Quaint::QArray<Quaint::QString256>::GetInvalidPlaceholder();
+
+        bool            requireSwapchainSupport = false;
         //Device should have a queue family that supports all operations above
         bool            strictlyIdealQueueFamilyRequired = false;
     };
@@ -44,10 +49,12 @@ namespace Bolt
         bool supportsTransferOps() const;
         uint32_t getQueueFamily() const;
         
-        EQueueType getTypeFlags() const { return m_queueFlags; }
+        uint32_t getTypeFlags() const { return m_queueFlags; }
     private:
+        friend class DeviceManager;
+
         uint32_t                    m_queueFamily = -1;
-        EQueueType                  m_queueFlags = EQueueType::Invalid;
+        uint32_t                    m_queueFlags = EQueueType::Invalid;
     };
 
     struct DeviceDefinition
@@ -65,16 +72,18 @@ namespace Bolt
         VkDevice getDevice() { return m_device; }
 
     private:
+        friend class DeviceManager;
+
         VkPhysicalDevice                    m_physicalDevice = VK_NULL_HANDLE;
         VkDevice                            m_device = VK_NULL_HANDLE;
+
+        //TODO: Remove this ugly piece of code below after adding an allocator
         Quaint::QArray<QueueDefinition>     m_queueDefinitions = Quaint::QArray<QueueDefinition>::GetInvalidPlaceholder();
     };
 
     class DeviceManager : public Singleton<DeviceManager>
     {
         DECLARE_SINGLETON(Bolt::DeviceManager);
-        friend DeviceDefinition;
-        friend QueueDefinition;
     public:
 
         struct ExternalDependencies
@@ -96,8 +105,10 @@ namespace Bolt
         virtual ~DeviceManager() = default;
         DeviceManager();
 
-        VkPhysicalDevice getBestPhysicalDeviceFor(VkInstance instance, const PhysicalDeviceRequirements& phyDevReq);
-        uint32_t getDeviceSuitabilityScore(VkPhysicalDevice device);
+        VkPhysicalDevice getBestPhysicalDeviceFor(const PhysicalDeviceRequirements& phyDevReq);
+        uint32_t getDeviceSuitabilityScore(VkPhysicalDevice device, const PhysicalDeviceRequirements& phyDevReq);
+        void populateQueueDefinition(const PhysicalDeviceRequirements& phyDevReq);
+        VkDevice createLogicalDevice(const LogicalDeviceRequirements& logDevReq);
 
         //Currently only supporting a single device definition, but this can be extended
         DeviceDefinition            m_deviceDefinition;

@@ -90,6 +90,18 @@ namespace Bolt
         setupDebugMessenger();
 #endif
         createSurface();
+
+        m_deviceManager->injectReferences({m_instance, m_surface});
+        PhysicalDeviceRequirements phyReq;
+        phyReq.graphics = {EQueueType::Graphics, 1};
+        phyReq.compute = {EQueueType::Compute, 1};
+        phyReq.transfer = {EQueueType::Transfer, 1};
+        phyReq.strictlyIdealQueueFamilyRequired = true; //TODO: Update this later and check
+        phyReq.extensions.pushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+        LogicalDeviceRequirements logReq;
+        m_deviceManager->createDevicesAndQueues(phyReq, logReq);
+
         selectPhysicalDevice();
         createLogicalDevice();
         createSwapchain();
@@ -436,13 +448,6 @@ namespace Bolt
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceFeatures(device, &features);
         vkGetPhysicalDeviceProperties(device, &properties);
-
-        uint32_t apiVersion = 0;
-        vkEnumerateInstanceVersion(&apiVersion);
-        uint32_t variant = VK_API_VERSION_VARIANT(apiVersion);
-        uint32_t major = VK_API_VERSION_MAJOR(apiVersion);
-        uint32_t minor = VK_API_VERSION_MINOR(apiVersion);
-        uint32_t patch = VK_API_VERSION_PATCH(apiVersion);
 
         //Check if device extensions are supported on current device
         uint32_t extensionsCount = 0;

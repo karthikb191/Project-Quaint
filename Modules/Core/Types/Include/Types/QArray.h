@@ -126,6 +126,7 @@ public:
             m_size = other.getSize();
 
             other.invalidate();
+            return *this;
         }
         ~QArray()
         {

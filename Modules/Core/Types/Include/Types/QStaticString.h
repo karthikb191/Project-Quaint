@@ -84,5 +84,6 @@ private:
 
 typedef QStaticString<64> QName;
 typedef QStaticString<1024> QPath;
+typedef QStaticString<256> QString256;
 }
 #endif
