@@ -16,8 +16,10 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
 
-    auto validationLayers = Quaint::createFastArray<const char*>(
-        "VK_LAYER_KHRONOS_validation"
+    auto validationLayers = Quaint::createFastArray<Quaint::QString256>(
+        {
+            "VK_LAYER_KHRONOS_validation"
+        }
     );
 
     auto deviceExtensions = Quaint::createFastArray<const char*>(
@@ -91,19 +93,31 @@ namespace Bolt
 #endif
         createSurface();
 
-        m_deviceManager->injectReferences({m_instance, m_surface});
+        m_deviceManager->injectReferences({m_instance, m_surface, m_allocationPtr});
         PhysicalDeviceRequirements phyReq;
         phyReq.graphics = {EQueueType::Graphics, 1};
         phyReq.compute = {EQueueType::Compute, 1};
         phyReq.transfer = {EQueueType::Transfer, 1};
-        phyReq.strictlyIdealQueueFamilyRequired = true; //TODO: Update this later and check
+        phyReq.strictlyIdealQueueFamilyRequired = false; //TODO: Update this later and check
+        phyReq.extensions = Quaint::QArray<Quaint::QString256>(m_context);
         phyReq.extensions.pushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+        phyReq.layers = Quaint::QArray<Quaint::QString256>(m_context);
+        for(const Quaint::QString256& layer : validationLayers)
+        {
+            phyReq.layers.pushBack(layer);
+        }
 
         LogicalDeviceRequirements logReq;
         m_deviceManager->createDevicesAndQueues(phyReq, logReq);
 
-        selectPhysicalDevice();
-        createLogicalDevice();
+        m_physicalDevice = m_deviceManager->getDeviceDefinition().getPhysicalDevice();
+        m_device = m_deviceManager->getDeviceDefinition().getDevice();
+
+        m_graphicsQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
+        m_transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
+        m_presentQueue = m_deviceManager->getDeviceDefinition().getQueueSupportingPresentation().getVulkanQueueHandle();
+
         createSwapchain();
         createImageViews();
         createRenderPass();
@@ -264,12 +278,12 @@ namespace Bolt
         vkEnumerateInstanceLayerProperties(&availableLayers, layerProperties.getBuffer_NonConst());
 
         bool allFound = true;
-        for(const char* layerName : validationLayers)
+        for(const Quaint::QString256& layerName : validationLayers)
         {
             bool found = false;
             for(const auto& property : layerProperties)
             {
-                if(strcmp(layerName, property.layerName) == 0)
+                if(strcmp(layerName.getBuffer(), property.layerName) == 0)
                 {
                     found = true;
                     break;
@@ -348,7 +362,14 @@ namespace Bolt
             return;
         }
         instanceInfo.enabledLayerCount = validationLayers.getSize();
-        instanceInfo.ppEnabledLayerNames = validationLayers.getBuffer();
+
+        Quaint::QArray<const char*> validationLayerptrs(m_context);
+        for(const Quaint::QString256& layer : validationLayers)
+        {
+            validationLayerptrs.pushBack(layer.getBuffer());
+        }
+
+        instanceInfo.ppEnabledLayerNames = validationLayerptrs.getBuffer();
 #else
         instanceInfo.enabledLayerCount = 0;
         instanceInfo.ppEnabledLayerNames = nullptr;
@@ -387,33 +408,14 @@ namespace Bolt
 //Physical and Logical device creation and corresponding queries -------------------------------
     void getQueueFamilies(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface, VulkanRenderer::QueueFamilies& families)
     {
-        uint32_t propCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, nullptr);
+        const DeviceDefinition& def = DeviceManager::Get()->getDeviceDefinition();
 
-        Quaint::QArray<VkQueueFamilyProperties> properties(context, propCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &propCount, properties.getBuffer_NonConst());
-        
-        for(size_t i = 0; i < propCount; i++)
-        {
-            if(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                families.graphics.set(i);
-            }
-            else if(properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
-            {
-                families.transfer.set(i);
-            }
-
-            //Check if a
-            VkBool32 supported = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supported);
-            if(supported)
-            {
-                families.presentation.set(i);
-            }
-
-            if(families.allSet()) break;
-        }
+        assert(def.getQueueOfType(EQueueType::Graphics).isvalid());
+        families.graphics.set(def.getQueueOfType(EQueueType::Graphics).getQueueFamily());
+        assert(def.getQueueOfType(EQueueType::Transfer).isvalid());
+        families.transfer.set(def.getQueueOfType(EQueueType::Transfer).getQueueFamily());
+        assert(def.getQueueSupportingPresentation().isvalid());
+        families.presentation.set(def.getQueueSupportingPresentation().getQueueFamily());
     }
 
     VulkanRenderer::SwapchainSupportInfo querySwapchainSupport(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
@@ -502,82 +504,6 @@ namespace Bolt
         return score;
     }
 
-    void VulkanRenderer::selectPhysicalDevice()
-    {
-        uint32_t numDevices = 0;
-        vkEnumeratePhysicalDevices(m_instance, &numDevices, nullptr);
-        assert(numDevices > 0 && "Vulkan could not retrieve any physical devices");
-
-        Quaint::QArray<VkPhysicalDevice> physicalDevices(m_context, numDevices);
-        vkEnumeratePhysicalDevices(m_instance, &numDevices, physicalDevices.getBuffer_NonConst());
-
-        size_t score = 0;
-        for(const VkPhysicalDevice& device : physicalDevices)
-        {
-            size_t deviceScore = getDeviceSuitability(m_context, device, m_surface);
-            if(deviceScore && deviceScore > score)
-            {
-                score = deviceScore;
-                m_physicalDevice = device;
-            }
-        }
-
-        assert(m_physicalDevice != VK_NULL_HANDLE && "Could not retrieve a valid physical device");
-    }
-
-    void VulkanRenderer::createLogicalDevice()
-    {
-        QueueFamilies queueFamilies;
-        getQueueFamilies(m_context, m_physicalDevice, m_surface, queueFamilies);
-
-        Quaint::QSet<uint32_t> queueIndices(m_context);
-        
-        queueIndices = { queueFamilies.graphics.get(), queueFamilies.presentation.get(), queueFamilies.transfer.get() };
-
-        float priority = 1.0f;
-        Quaint::QArray<VkDeviceQueueCreateInfo> queues(m_context);
-
-        for(uint32_t index : queueIndices)
-        {
-            //Device queue create structure. Describes the number of queues we want for a single queue family        
-            VkDeviceQueueCreateInfo queueInfo{};
-            queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueInfo.queueFamilyIndex = index;
-            queueInfo.queueCount = 1;
-            queueInfo.pQueuePriorities = &priority;
-            
-            queues.pushBack(queueInfo);
-        }
-
-        //TODO: TO Be filled later
-        VkPhysicalDeviceFeatures deviceFeatures{};
-
-
-        VkDeviceCreateInfo deviceInfo{};
-        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.queueCreateInfoCount = queues.getSize();
-        deviceInfo.pQueueCreateInfos = queues.getBuffer();
-        deviceInfo.pEnabledFeatures = &deviceFeatures;
-        //Enables use of swapchain extension on the device
-        deviceInfo.enabledExtensionCount = deviceExtensions.getSize();
-        deviceInfo.ppEnabledExtensionNames = deviceExtensions.getBuffer();
-
-#ifdef DEBUG_BUILD
-        deviceInfo.enabledLayerCount = 1;
-        deviceInfo.ppEnabledLayerNames = validationLayers.getBuffer();
-#else
-        deviceInfo.enabledLayerCount = 0;
-        deviceInfo.ppEnabledLayerNames = nullptr;
-#endif
-
-        VkResult res = vkCreateDevice(m_physicalDevice, &deviceInfo, m_allocationPtr, &m_device);
-        assert(res == VK_SUCCESS && "Logical device creation failed!");
-        
-        //Once Logical device is created, retrieve queues to interface with
-        vkGetDeviceQueue(m_device, queueFamilies.graphics.get(), 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_device, queueFamilies.presentation.get(), 0, &m_presentQueue);
-        vkGetDeviceQueue(m_device, queueFamilies.transfer.get(), 0, &m_transferQueue);
-    }
 //--------------------------------------------------------------------
 
 //----------------------------Swapchain Creation

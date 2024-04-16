@@ -38,11 +38,24 @@ namespace Bolt
     : m_queueDefinitions(context)
     {}
 
-    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueType flags)
+    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueType flags) const
     {
         for(const QueueDefinition& def : m_queueDefinitions)
         {
-            if(def.getTypeFlags() == flags)
+            if((def.getTypeFlags() & flags) == flags)
+            {
+                return def;
+            }
+        }
+
+        return S_INVALID_QUEUE_DEFINITION;
+    }
+
+    const QueueDefinition& DeviceDefinition::getQueueSupportingPresentation() const
+    {
+        for(const QueueDefinition& def : m_queueDefinitions)
+        {
+            if(def.supportsPresentation())
             {
                 return def;
             }
@@ -62,9 +75,13 @@ namespace Bolt
 
     VkResult DeviceManager::createDevicesAndQueues(const PhysicalDeviceRequirements& phyDevReq, const LogicalDeviceRequirements& logDevReq)
     {
+        //TODO: Add test cases
         assert(m_dependencies.instance != VK_NULL_HANDLE);
+
         m_deviceDefinition.m_physicalDevice = getBestPhysicalDeviceFor(phyDevReq);
-        assert(m_deviceDefinition.m_physicalDevice != VK_NULL_HANDLE && "Could not find appropriate physical device for given requirements");
+        populateQueueDefinition(phyDevReq);
+        m_deviceDefinition.m_device = createLogicalDevice(phyDevReq, logDevReq);
+        createQueueHandles();
 
         return VK_SUCCESS;
     }
@@ -91,6 +108,8 @@ namespace Bolt
                 bestDevice = device;
             }
         }
+        
+        assert(bestDevice != VK_NULL_HANDLE && "Could not find appropriate physical device for given requirements");
 
         return bestDevice;
     }
@@ -99,7 +118,11 @@ namespace Bolt
     {
         uint32_t score = 0;
         VkPhysicalDeviceProperties2 properties;
+        properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        properties.pNext = nullptr;
         VkPhysicalDeviceFeatures2 features;
+        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        features.pNext = nullptr;
 
         vkGetPhysicalDeviceProperties2(device, &properties);
         vkGetPhysicalDeviceFeatures2(device, &features);
@@ -136,6 +159,7 @@ namespace Bolt
         Quaint::QArray<VkQueueFamilyProperties> queueFamilyProps(m_context, queueFamilyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilyProps.getBuffer_NonConst());
 
+
         uint32_t reqOpMask = 0;
         reqOpMask |= phyDevReq.graphics.numRequired > 0 ? VK_QUEUE_GRAPHICS_BIT : 0;
         reqOpMask |= phyDevReq.compute.numRequired > 0 ? VK_QUEUE_COMPUTE_BIT : 0;
@@ -143,8 +167,18 @@ namespace Bolt
 
         //Broad check to see if a device has suitable queues
         uint32_t foundOpMask = 0;
-        for(const VkQueueFamilyProperties& property : queueFamilyProps)
+        for(size_t i = 0; i < queueFamilyCount; ++i)
         {
+            const VkQueueFamilyProperties& property = queueFamilyProps[i];
+            
+            //TODO: Revisit this. We might have a separate queues for other operations
+            VkBool32 supported = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_dependencies.surface, &supported);
+            if(!supported)
+            {
+                continue;
+            }
+
             if(phyDevReq.strictlyIdealQueueFamilyRequired)
             {
                 if(property.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT))
@@ -232,13 +266,14 @@ namespace Bolt
                 currentOpMask |= VK_QUEUE_TRANSFER_BIT;
             }
 
-            currentOpMask |= foundOpMask;
+            foundOpMask |= currentOpMask;
 
-            //Queues in current queue family supports all the required operations
+            //Queues in current queue family supports any of the required operations
             if(currentOpMask != 0)
             {
                 queueDefinition.m_queueFamily = i;
                 queueDefinition.m_queueFlags = currentOpMask; //Only register the ops that we are supporting.
+                queueDefinition.m_queueIndex = 0;   //TODO: Currently only supporting a single queue in a queue family
 
                 bool registerQueueDefinition = false;
                 if(phyDevReq.strictlyIdealQueueFamilyRequired)
@@ -251,6 +286,13 @@ namespace Bolt
                 else
                 {
                     registerQueueDefinition = true;
+                }
+
+                VkBool32 supported = false;
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_dependencies.surface, &supported);
+                if(supported)
+                {
+                    queueDefinition.m_supportsPresentation = true;
                 }
 
                 if(registerQueueDefinition)
@@ -269,11 +311,63 @@ namespace Bolt
         assert( (foundOpMask & reqOpMask) == reqOpMask && "All Queues not found");
     }
 
-    VkDevice DeviceManager::createLogicalDevice(const LogicalDeviceRequirements& logDevReq)
+    VkDevice DeviceManager::createLogicalDevice(const PhysicalDeviceRequirements& phyDevReq, const LogicalDeviceRequirements& logDevReq)
     {
-        return VK_NULL_HANDLE;
+        VkDeviceCreateInfo info {};
+        info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+        info.enabledExtensionCount = phyDevReq.extensions.getSize();
+        Quaint::QArray<const char*> extensionPtrs(m_context);
+        for(const Quaint::QString256& extension : phyDevReq.extensions)
+        {
+            extensionPtrs.pushBack(extension.getBuffer());
+        }
+        info.ppEnabledExtensionNames = extensionPtrs.getBuffer();
+
+
+        info.enabledLayerCount = phyDevReq.layers.getSize();
+        Quaint::QArray<const char*> layerPtrs(m_context);
+        for(const Quaint::QString256& layer : phyDevReq.layers)
+        {
+            layerPtrs.pushBack(layer.getBuffer());
+        }
+        info.ppEnabledLayerNames = layerPtrs.getBuffer();
+
+
+        info.queueCreateInfoCount = m_deviceDefinition.m_queueDefinitions.getSize();
+        Quaint::QArray<VkDeviceQueueCreateInfo> queueCreateInfos(m_context);
+        for(const QueueDefinition& def : m_deviceDefinition.m_queueDefinitions)
+        {
+            float priority = 0.5f;
+            VkDeviceQueueCreateInfo qInfo {};
+            qInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            qInfo.flags = 0; //Can specify additional flags here
+            qInfo.pQueuePriorities = &priority; //TODO: Revisit queue priorities later
+            qInfo.queueFamilyIndex = def.m_queueFamily;
+            qInfo.queueCount = 1;
+
+            queueCreateInfos.pushBack(qInfo);
+        }
+        info.pQueueCreateInfos = queueCreateInfos.getBuffer();
+
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        info.pEnabledFeatures = &deviceFeatures;
+
+        VkDevice logicalDevice;
+        VkResult res = vkCreateDevice(m_deviceDefinition.m_physicalDevice, &info,
+         m_dependencies.pAllocator, &logicalDevice);
+        assert(res == VK_SUCCESS && "Logical device creation failed!");
+        return logicalDevice;
     }
 
+    void DeviceManager::createQueueHandles()
+    {
+        for(QueueDefinition& def : m_deviceDefinition.m_queueDefinitions)
+        {
+            vkGetDeviceQueue(m_deviceDefinition.getDevice(), 
+            def.m_queueFamily, def.m_queueIndex, &def.m_queueHandle);
+        }
+    }
 //=============================================================================
 
 }

@@ -28,8 +28,11 @@ namespace Bolt
         QueueRequirements                   compute;
         QueueRequirements                   transfer;
 
+        //TODO: Add supported memory property requirements
+
         //TODO: Remove this ugly piece of code below after adding an allocator
         Quaint::QArray<Quaint::QString256>  extensions = Quaint::QArray<Quaint::QString256>::GetInvalidPlaceholder();
+        Quaint::QArray<Quaint::QString256>  layers = Quaint::QArray<Quaint::QString256>::GetInvalidPlaceholder();
 
         bool            requireSwapchainSupport = false;
         //Device should have a queue family that supports all operations above
@@ -49,12 +52,18 @@ namespace Bolt
         bool supportsTransferOps() const;
         uint32_t getQueueFamily() const;
         
+        bool supportsPresentation() const { return m_supportsPresentation; }
         uint32_t getTypeFlags() const { return m_queueFlags; }
+        bool hasValidVulkanHandle() const { return m_queueHandle != VK_NULL_HANDLE; }
+        VkQueue getVulkanQueueHandle() const { return m_queueHandle; }
     private:
         friend class DeviceManager;
 
         uint32_t                    m_queueFamily = -1;
+        uint8_t                     m_queueIndex = 0; //Index of queue within queue family
+        bool                        m_supportsPresentation = false;
         uint32_t                    m_queueFlags = EQueueType::Invalid;
+        VkQueue                     m_queueHandle = VK_NULL_HANDLE;
     };
 
     struct DeviceDefinition
@@ -66,10 +75,11 @@ namespace Bolt
         DeviceDefinition& operator=(const DeviceDefinition&) = default;
 
         /*Simple Getters and Setters*/
-        const QueueDefinition& getQueueOfType(const EQueueType flags);
+        const QueueDefinition& getQueueOfType(const EQueueType flags) const;
+        const QueueDefinition& getQueueSupportingPresentation() const;
 
-        VkPhysicalDevice getPhysicalDevice() { return m_physicalDevice; }
-        VkDevice getDevice() { return m_device; }
+        VkPhysicalDevice getPhysicalDevice() const { return m_physicalDevice; }
+        VkDevice getDevice() const { return m_device; }
 
     private:
         friend class DeviceManager;
@@ -88,8 +98,9 @@ namespace Bolt
 
         struct ExternalDependencies
         {
-            VkInstance      instance = VK_NULL_HANDLE;
-            VkSurfaceKHR    surface = VK_NULL_HANDLE;   
+            VkInstance                      instance = VK_NULL_HANDLE;
+            VkSurfaceKHR                    surface = VK_NULL_HANDLE;
+            const VkAllocationCallbacks     *pAllocator = nullptr;
         };
 
         void injectReferences(ExternalDependencies dependencies) { m_dependencies = dependencies; }
@@ -99,7 +110,7 @@ namespace Bolt
 
         /*Getters and Setters*/
 
-        const DeviceDefinition& getDeviceDefinition() { return m_deviceDefinition; }
+        const DeviceDefinition& getDeviceDefinition() const { return m_deviceDefinition; }
 
     private:
         virtual ~DeviceManager() = default;
@@ -108,7 +119,8 @@ namespace Bolt
         VkPhysicalDevice getBestPhysicalDeviceFor(const PhysicalDeviceRequirements& phyDevReq);
         uint32_t getDeviceSuitabilityScore(VkPhysicalDevice device, const PhysicalDeviceRequirements& phyDevReq);
         void populateQueueDefinition(const PhysicalDeviceRequirements& phyDevReq);
-        VkDevice createLogicalDevice(const LogicalDeviceRequirements& logDevReq);
+        VkDevice createLogicalDevice(const PhysicalDeviceRequirements& phyDevReq, const LogicalDeviceRequirements& logDevReq);
+        void createQueueHandles();
 
         //Currently only supporting a single device definition, but this can be extended
         DeviceDefinition            m_deviceDefinition;
