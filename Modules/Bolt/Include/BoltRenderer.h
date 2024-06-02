@@ -29,6 +29,7 @@ namespace Bolt
         void shutdown();
 
         const Window& getWindow() { return m_window; }
+        IRenderer* GetRenderer() { return m_renderer_impl; }
     private:
         BoltRenderer();
         ~BoltRenderer();

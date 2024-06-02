@@ -881,8 +881,8 @@ namespace Bolt
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         // Each element of pColorAttachments correspond to output location in the shader
-        // In the simple triangle, this attachmentReference is accessed by fragment shader through "layout(location = 0) out vec3 fragColor"
-
+        // In the simple triangle, this attachmentReference is accessed by fragment shader through "layout(location = 0) out vec3 outColor"
+        // This is the OUTPUT color attachment
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &attachmentRef;
 

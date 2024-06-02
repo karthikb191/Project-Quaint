@@ -1,21 +1,23 @@
 #ifndef _H_VULKAN_RENDERER
 #define _H_VULKAN_RENDERER
 
+#include <vulkan/vulkan.h>
 #include <GFX/Interface/IRenderer.h>
 #include <Interface/IMemoryContext.h>
 #include <QuaintLogger.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
-#include <GFX/Vulkan/Internal/DeviceManager.h>
-
-#include <vulkan/vulkan.h>
 
 #include <QMath.h>
 #include <Core/Camera.h>
 
 //stb
 #include <stb/stb_image.h>
+
+#include "Internal/DeviceManager.h"
+#include "Internal/PipelineManager.h"
+#include "Internal/TextureManager.h"
 
 namespace Bolt
 {
@@ -141,6 +143,9 @@ namespace Bolt
         void init() override;
         void shutdown() override;
         void render() override;
+
+        DeviceManager* getDeviceManager() { return m_deviceManager; }
+        VkAllocationCallbacks* getAllocationCallbacks() { return m_allocationPtr; }
         
     private:
     //------ Static Allocation Functions

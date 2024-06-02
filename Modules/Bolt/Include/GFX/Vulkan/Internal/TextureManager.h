@@ -2,6 +2,7 @@
 #define _H_TEXTURE_MANAGER
 #include <Interface/IMemoryContext.h>
 #include <Singleton.h>
+#include "Texture/VulkanTexture.h"
 
 namespace Bolt
 {
