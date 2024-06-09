@@ -86,6 +86,38 @@ namespace Bolt
         Quaint::QMat4x4     proj;
     };
 
+    // TODO: This might not be a right name
+    class GraphicsContext
+    {
+    public:
+        GraphicsContext();
+        ~GraphicsContext();
+
+        void setup(VulkanRenderer* renderer);
+        void initialize(uint32_t width, uint32_t height, VulkanTexture* texture);
+        void initializeCommandRecordCapability(const EQueueType queueType);
+
+        void begin();
+        void end(VkImage swapChainImage);
+
+        VkSemaphore& getSyncSemaphore() { return m_syncSemaphore; }
+        VulkanTexture* getRenderTexture() { return m_texture; }
+    private:
+        void construct();
+
+        VulkanRenderer*         m_renderer = nullptr;
+        VulkanTexture*          m_texture = nullptr;     
+        VkFramebuffer           m_frameBuffer = VK_NULL_HANDLE;
+        VkRenderPass            m_renderPass = VK_NULL_HANDLE;
+        VkCommandPool           m_commandPool = VK_NULL_HANDLE; //TODO: Pool should ideally come from a different place
+        VkCommandBuffer         m_commandBuffer = VK_NULL_HANDLE;
+        VkQueue                 m_queue = VK_NULL_HANDLE;
+        uint32_t                m_queueIndex = -1;
+
+        VkSemaphore             m_syncSemaphore = VK_NULL_HANDLE;
+        VkFence                 m_internalFence = VK_NULL_HANDLE;
+    };
+
     class alignas(16) VulkanRenderer : public IRenderer
     {
         friend class BoltRenderer;
@@ -146,6 +178,7 @@ namespace Bolt
 
         DeviceManager* getDeviceManager() { return m_deviceManager; }
         VkAllocationCallbacks* getAllocationCallbacks() { return m_allocationPtr; }
+        VkSurfaceKHR getSurface() { return m_surface; }
         
     private:
     //------ Static Allocation Functions

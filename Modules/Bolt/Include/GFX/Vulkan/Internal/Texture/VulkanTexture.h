@@ -11,27 +11,41 @@ namespace Bolt
 
     class VulkanTexture : public BoltTextureBase
     {
+    public:
         /*Default Texure*/
+        VulkanTexture();
         VulkanTexture(const uint32_t width, const uint32_t height);
         VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format);
         VulkanTexture(const VkImageCreateInfo& imageInfo);
 
         /* From must match with the current layout */
-        void createBackingMemory();
+        void create(const uint32_t width, const uint32_t height);
+        void createBackingMemory(VkMemoryPropertyFlags propertyFlags);
+        void createImageView();
         void transitionLayout(const VkImageLayout from, const VkImageLayout to);
         void transferOwnership(const EQueueType from, const EQueueType to);
 
-        static VkImageCreateInfo getDefaultImageCreateInfo();
-        VkImage getImage() { return m_image; }
+        VkImage* getImageRef() { return &m_image; }
+        VkImageView* getImageViewRef() { return &m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
         bool isBacked() { return m_isBacked; }
+        uint32_t getWidth() { return m_imageInfo.extent.width; }
+        uint32_t getHeight() { return m_imageInfo.extent.height; }
+        VkAttachmentDescription buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout,
+                                                            VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
+                                                            VkAttachmentDescriptionFlags flags);
+        
+        static VkImageCreateInfo getDefaultImageCreateInfo();
+
     private:
         //void init();
         void createTexture(const VkImageCreateInfo& imageInfo);
 
-        VkImage                     m_image = VK_NULL_HANDLE;
         VkImageCreateInfo           m_imageInfo;
         bool                        m_isBacked = false;
+        VkImage                     m_image = VK_NULL_HANDLE;
+        VkImageView                 m_imageView = VK_NULL_HANDLE;
+        VkDeviceMemory              m_gpuMemory = VK_NULL_HANDLE;
     };
 
     /* Has an Image-View that can be bound */

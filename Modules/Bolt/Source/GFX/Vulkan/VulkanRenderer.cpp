@@ -9,12 +9,319 @@
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <fstream>
 #include <chrono>
+#include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
 
 namespace Bolt
 {
     #define VULKAN_RENDERER_LOGGER
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
+    
+    #define ASSERT_SUCCESS(res, msg) assert(res == VK_SUCCESS && msg)
+
+    GraphicsContext::GraphicsContext() {}
+    void GraphicsContext::setup(VulkanRenderer* renderer)
+    {
+        m_renderer = renderer;
+
+        VkResult res = VK_SUCCESS;
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreInfo.flags = 0;
+        
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Init fence in signalled state
+
+        res = vkCreateSemaphore(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                            , &semaphoreInfo
+                            , m_renderer->getAllocationCallbacks()
+                            , &m_syncSemaphore);
+
+        ASSERT_SUCCESS(res, "Failed to create semaphore");
+
+        res = vkCreateFence(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                            , &fenceInfo
+                            , m_renderer->getAllocationCallbacks()
+                            , &m_internalFence);
+    }
+
+    GraphicsContext::~GraphicsContext()
+    {
+        if(m_frameBuffer != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_frameBuffer, m_renderer->getAllocationCallbacks());
+        }
+        if(m_renderPass != VK_NULL_HANDLE)
+        {
+            vkDestroyRenderPass(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_renderPass, m_renderer->getAllocationCallbacks());
+        }
+        if(m_commandPool != VK_NULL_HANDLE)
+        {
+            vkDestroyCommandPool(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_commandPool, m_renderer->getAllocationCallbacks());
+        }
+        
+        vkDestroySemaphore(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_syncSemaphore, m_renderer->getAllocationCallbacks());
+        vkDestroyFence(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_internalFence, m_renderer->getAllocationCallbacks());
+    }
+
+    void GraphicsContext::initializeCommandRecordCapability(const EQueueType queueType)
+    {
+        VkResult res = VK_SUCCESS;
+        VkCommandPoolCreateInfo poolInfo {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        const QueueDefinition& definition = m_renderer->getDeviceManager()->getDeviceDefinition().getQueueOfType(queueType);
+        assert(definition.hasValidVulkanHandle() && "No Valid Queue handle available for requested Queue Type");
+        m_queue = definition.getVulkanQueueHandle();
+        m_queueIndex = definition.getQueueFamily();
+        poolInfo.queueFamilyIndex = definition.getQueueFamily();
+
+        res = vkCreateCommandPool(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                            , &poolInfo
+                            , m_renderer->getAllocationCallbacks()
+                            , &m_commandPool);
+        
+        ASSERT_SUCCESS(res, "Failed to create command pool");
+
+
+        VkCommandBufferAllocateInfo allocInfo {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = m_commandPool;
+        allocInfo.commandBufferCount = 1;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        res = vkAllocateCommandBuffers(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+        , &allocInfo
+        , &m_commandBuffer);
+        ASSERT_SUCCESS(res, "Failed to allocate command buffers");
+    }
+
+    //TODO: Currently only supporting a single attachment. 
+    void GraphicsContext::initialize(uint32_t width, uint32_t height, VulkanTexture* texture)
+    {
+        m_texture = texture; //TODO: Do this in a better way
+        VkResult res = VK_SUCCESS;
+
+        //Hardcoded stuff..... Find a way to generalize it
+
+        //This Attachment is used as a destination of transfer operations
+        VkAttachmentReference ref{};
+        ref.attachment = 0;
+        ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription spDesc {};
+        spDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        spDesc.colorAttachmentCount = 1;
+        spDesc.pColorAttachments = &ref;
+
+        VkRenderPassCreateInfo rpInfo {};
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpInfo.attachmentCount = 1;
+
+        //TODO: Some of these flags should be exposed
+        rpInfo.pAttachments = &texture->buildAttachmentDescription(
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            0
+        );
+        
+        //Depends on itself
+        VkSubpassDependency dependency {};
+        dependency.srcSubpass = 0;
+        dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+        
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT ;
+
+        dependency.srcAccessMask = 0;
+        dependency.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+
+        rpInfo.dependencyCount = 1;
+        rpInfo.pDependencies = &dependency;
+        rpInfo.subpassCount = 1;
+        rpInfo.pSubpasses = &spDesc;
+
+        res = vkCreateRenderPass(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                            , &rpInfo
+                            , m_renderer->getAllocationCallbacks()
+                            , &m_renderPass);
+        ASSERT_SUCCESS(res, "Failed to create RenderPass");
+
+        
+        //EXPLORE: What if width and height of framebuffer and attachments doesnt match ?????
+        VkFramebufferCreateInfo fbInfo {};
+        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbInfo.width = width;
+        fbInfo.height = height;
+        fbInfo.layers = 1;
+        fbInfo.attachmentCount = 1;
+        fbInfo.pAttachments = texture->getImageViewRef();
+        fbInfo.renderPass = m_renderPass;
+        fbInfo.flags = 0;
+
+        res = vkCreateFramebuffer(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                        , &fbInfo
+                        , m_renderer->getAllocationCallbacks()
+                        , &m_frameBuffer);
+        ASSERT_SUCCESS(res, "Failed to create frame buffer");
+    }
+
+    void GraphicsContext::begin()
+    {
+        VkCommandBufferBeginInfo beginInfo {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_renderPass;
+        renderPassInfo.framebuffer = m_frameBuffer;
+
+        VkExtent2D extent;
+        extent.width = m_texture->getWidth();
+        extent.height = m_texture->getHeight();
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = extent;
+
+        VkClearValue clearColor = {};
+        clearColor.color.float32[0] = 1.0;
+        clearColor.color.float32[1] = 0.0;
+        clearColor.color.float32[2] = 0.0;
+        clearColor.color.float32[3] = 1.0;
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkWaitForFences(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                    , 1, &m_internalFence, VK_TRUE, UINT64_MAX);
+
+        vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+        vkCmdBeginRenderPass(m_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void GraphicsContext::end(VkImage swapChainImage)
+    {
+        vkCmdEndRenderPass(m_commandBuffer);
+
+        //Barriers can only be used within renderpass if old and new layouts of ImageMemoryBarrier are same
+
+        //TODO: Handle the case when swapchain is owned by a different queue
+        //Transition swapchain from present to dst for copying
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.image = swapChainImage;
+
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+
+        VkPipelineStageFlags src = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        VkPipelineStageFlags dst = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        vkCmdPipelineBarrier(m_commandBuffer,
+        src,
+        dst,
+        0,                      // Dependency flags
+        0, nullptr,             // Memory Barriers
+        0, nullptr,             // Buffer Barriers
+        1, &barrier             // Image Barriers
+        );
+
+        //Perform COPY!!!!
+        VkOffset3D offset;
+        offset.x = 0;
+        offset.y = 0;
+        offset.z = 0;
+
+        VkImageCopy copyDef{};
+        copyDef.srcOffset = offset;
+        copyDef.dstOffset = offset;
+
+        VkExtent3D extent {};
+        extent.depth = 1;
+        extent.width = m_texture->getWidth();
+        extent.height = m_texture->getHeight();
+        copyDef.extent = extent;
+
+        copyDef.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyDef.srcSubresource.baseArrayLayer = 0;
+        copyDef.srcSubresource.mipLevel = 0;
+        copyDef.srcSubresource.layerCount = 1;
+
+        copyDef.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyDef.dstSubresource.baseArrayLayer = 0;
+        copyDef.dstSubresource.mipLevel = 0;
+        copyDef.dstSubresource.layerCount = 1;
+
+        vkCmdCopyImage(m_commandBuffer, *m_texture->getImageRef(),
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        swapChainImage,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        1,
+                        &copyDef);
+
+        //Transition swapchain back to present after copying
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        //TODO: Check this in more detail
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; //This might not be correct
+
+        src = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dst = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        vkCmdPipelineBarrier(m_commandBuffer,
+        src,
+        dst,
+        0,                      // Dependency flags
+        0, nullptr,             // Memory Barriers
+        0, nullptr,             // Buffer Barriers
+        1, &barrier             // Image Barriers
+        );
+
+        //
+
+        vkEndCommandBuffer(m_commandBuffer);
+
+        VkSubmitInfo submitinfo {};
+        submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitinfo.commandBufferCount = 1;
+        submitinfo.pCommandBuffers = &m_commandBuffer;
+
+        submitinfo.signalSemaphoreCount = 1;
+        submitinfo.pSignalSemaphores = &m_syncSemaphore;
+
+        // Internal fence ensures queue is not submitted before the current iteration is done
+        // This might be a very naive way of doing things. Investigate for a better approach 
+        
+        vkResetFences(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
+                    , 1, &m_internalFence);
+        vkQueueSubmit(m_queue, 1, &submitinfo, m_internalFence);
+    }
+
+    GraphicsContext testContext;
+    VulkanTexture testTexture;
+
+
+
 
     auto validationLayers = Quaint::createFastArray<Quaint::QString256>(
         {
@@ -140,6 +447,14 @@ namespace Bolt
 
         createCommandBuffer();
         createSyncObjects();
+
+        testTexture.create(128, 128);
+        testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        testTexture.createImageView();
+        testContext.setup(this);
+        testContext.initializeCommandRecordCapability(EQueueType::Graphics);
+        testContext.initialize(testTexture.getWidth(), testTexture.getHeight(), &testTexture);
+
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
 
         m_running = true;
@@ -510,7 +825,7 @@ namespace Bolt
     VkSurfaceFormatKHR chooseSurfaceFormat(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
     {
         for (const VkSurfaceFormatKHR& availableFormat : supportInfo.surfaceFormat) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB
+            if (availableFormat.format == VK_FORMAT_R8G8B8A8_SRGB
             && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 return availableFormat;
             }
@@ -580,7 +895,7 @@ namespace Bolt
         createInfo.imageExtent = swapExtent;
         createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
         //TODO: Change this later if we are using a memory command to transfer images to swapchain
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
         //Here, we specify how swapchain should be shared across multiple queue families
         QueueFamilies families;
@@ -1608,7 +1923,7 @@ namespace Bolt
 
         //Binder renderpass to a point in the pipeline
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
-
+        
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -1726,24 +2041,35 @@ namespace Bolt
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
+        //TODO: Try a vkCmdBlitImage here
+
         //Wait for image to be available from vkAcquireImage. Then singal renderFinishedSemaphore once render is finished
         res = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFences[m_currentFrame]);
         assert(res == VK_SUCCESS && "Could not submit to queue");
         //assert(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS && "Could not submit to queue");
 
+
+        //Runing Graphics context
+        testContext.begin();
+
+
+        testContext.end(m_swapchainImages[imageIndex]);
+
+        VkSemaphore renderWaitSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame], testContext.getSyncSemaphore()};
+
         //READ ALOT MORE ON THIS PART
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &m_renderFinishedSemaphores[m_currentFrame];
-
+        presentInfo.waitSemaphoreCount = 2;
+        presentInfo.pWaitSemaphores = renderWaitSemaphores;
 
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &imageIndex;
 
         res = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+
         
         if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
         {
