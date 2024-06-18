@@ -25,6 +25,8 @@ namespace Bolt
     
     #define MAX_FRAMES_IN_FLIGHT 2
 
+    #define ASSERT_SUCCESS(res, msg) assert(res == VK_SUCCESS && msg)
+
     //TODO: Move these
     struct QVector2
     {
@@ -179,7 +181,10 @@ namespace Bolt
         DeviceManager* getDeviceManager() { return m_deviceManager; }
         VkAllocationCallbacks* getAllocationCallbacks() { return m_allocationPtr; }
         VkSurfaceKHR getSurface() { return m_surface; }
+        Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         
+        static VulkanRenderer* get() { return s_Instance; }
+    
     private:
     //------ Static Allocation Functions
         static void* VKAPI_PTR allocationFunction(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
@@ -324,6 +329,8 @@ namespace Bolt
         VkDeviceMemory                      m_textureGpuMemory;
 
         DeviceManager*                      m_deviceManager = nullptr;
+
+        static VulkanRenderer*              s_Instance;                     
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

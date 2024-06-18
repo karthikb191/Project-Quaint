@@ -16,8 +16,8 @@ namespace Bolt
     #define VULKAN_RENDERER_LOGGER
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
-    
-    #define ASSERT_SUCCESS(res, msg) assert(res == VK_SUCCESS && msg)
+
+    VulkanRenderer* VulkanRenderer::s_Instance = nullptr;
 
     GraphicsContext::GraphicsContext() {}
     void GraphicsContext::setup(VulkanRenderer* renderer)
@@ -321,8 +321,6 @@ namespace Bolt
     VulkanTexture testTexture;
 
 
-
-
     auto validationLayers = Quaint::createFastArray<Quaint::QString256>(
         {
             "VK_LAYER_KHRONOS_validation"
@@ -374,6 +372,7 @@ namespace Bolt
     , m_mappedUniformBuffers(context)
     , m_descriptorSets(context)
     {
+        s_Instance = this;
     }
 
     void VulkanRenderer::init()
@@ -458,6 +457,7 @@ namespace Bolt
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
 
         m_running = true;
+
     }
 
     void VulkanRenderer::shutdown()
@@ -1943,7 +1943,7 @@ namespace Bolt
         vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
         //vkCmdDraw(commandBuffer, vertices.getSize(), 1, 0, 0);
-
+        
         vkCmdBindDescriptorSets(commandBuffer,
          VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_currentFrame], 0, nullptr);
 
