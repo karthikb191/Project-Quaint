@@ -1,53 +1,14 @@
 #include <GFX/Vulkan/Internal/VulkanShader.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <Types/QArray.h>
+#include <Types/QCTString.h>
 #include <fstream>
 
 namespace Bolt
 {
-    template<int ... ARGS>
-    struct Res
-    {
-        static constexpr int res[sizeof...(ARGS)] = { ARGS... };
-
-        constexpr Res(const char* c)
-        : val { c[ARGS]... }
-        {
-        }
-        const char val[sizeof...(ARGS)];
-    };
-
-    template<int N, int ITR, int ... ARGS>
-    struct Itr
-    {
-        typedef typename Itr<N - 1, ITR + 1, ARGS..., ITR>::res res;
-    };
-
-    template<int ITR, int ... ARGS>
-    struct Itr<0, ITR, ARGS...>
-    {
-        typedef typename Res<ARGS...> res;
-    };
-
-    template<int N>
-    struct GetItr
-    {
-        typedef typename Itr<N, 0>::res res;
-    };
-
-    template<int SZ>
-    constexpr typename GetItr<SZ>::res helper(const char(&str)[SZ])
-    {
-        return GetItr<SZ>::res(str);
-    }
 
     void getShaderCode(const char* path, Quaint::QArray<char>& outCode)
     {
-        //TODO: Remove this from here
-        //constexpr auto tr = helper("hello babyyyyyyyyyyy");
-        //constexpr char c = tr.val[0];
-
-        //std::cout << filePath.getBuffer() << "\n";
         //open file as binary and read from end
         std::ifstream stream(path, std::ios::ate | std::ios::binary);
         assert(stream.is_open() && "Given file could not be opened");

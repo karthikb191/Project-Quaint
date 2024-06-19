@@ -3,6 +3,7 @@
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
 #include <Types/QSet.h>
+#include <Types/QCTString.h>
 #include <QuaintLogger.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
@@ -379,6 +380,9 @@ namespace Bolt
     {
         DeviceManager::Create(m_context);
         m_deviceManager = DeviceManager::Get();
+
+        constexpr auto ctString = Quaint::createCTString("This is a test string. Lets see how this behaves.");
+        std::cout << ctString.getBuffer() << "\n";
 
         CameraInitInfo info{};
         info.translation = Quaint::QVec4(0, 0, 3, 1);

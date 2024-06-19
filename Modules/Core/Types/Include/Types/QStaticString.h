@@ -15,6 +15,11 @@ public:
         static_assert(N > 0, "Expected string of non-zero size");
         memset(m_rawData, '\0', N);
     }
+
+    constexpr QStaticString(const QStaticString<N>& other)
+    {
+        strcpy_s(m_rawData, N, other.getBuffer());
+    }
     
     template<size_t SZ>
     constexpr QStaticString(const char (&str)[SZ])
