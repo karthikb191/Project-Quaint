@@ -117,7 +117,7 @@ class CMakeBuilder:
                 return
 
         if isSubModule:
-            fd.write(f"target_sources(${{PROJECT_NAME}} PUBLIC ${{SOURCES}})")
+            fd.write(f"target_sources(${{PROJECT_NAME}} PRIVATE ${{SOURCES}})")
             self.AddNewLines(fd, 2)
             return
 
@@ -255,7 +255,7 @@ class CMakeBuilder:
             if parentModule.Type == ModuleType.BUILD_INTERFACE:
                 fd.write(f"target_link_libraries(${{PROJECT_NAME}} INTERFACE {BinPath})")
             else:
-                fd.write(f"target_link_libraries(${{PROJECT_NAME}} {BinPath})")
+                fd.write(f"target_link_libraries(${{PROJECT_NAME}} {depModule.Params.Name})")
             
             self.AddNewLines(fd, 2)
         

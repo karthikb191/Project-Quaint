@@ -39,6 +39,20 @@ namespace Quaint
         }
 
         const char* getBuffer() const { return buffer; }
+
+        template<int M>
+        constexpr bool compare(const QCTString<M>& other) const
+        {
+            if(N != M) return false;
+            for(int i = 0; i < N; ++i)
+            {
+                if(buffer[i] != other.buffer[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
     private:
         const char buffer[N] = { '\0' };
     };

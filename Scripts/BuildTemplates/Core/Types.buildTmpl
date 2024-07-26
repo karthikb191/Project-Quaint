@@ -16,3 +16,13 @@
     "Include"
 ]
 :@
+
+@:
+"Dependencies"=[
+    {
+        "Name" : "Memory",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.buildTmpl"
+    }
+]
+:@

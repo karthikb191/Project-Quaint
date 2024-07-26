@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define NOMINMAX
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <Types/QFastArray.h>
 #include <Types/QStaticString.h>
@@ -9,6 +10,7 @@
 #include <BoltRenderer.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <fstream>
+#include <algorithm>
 #include <chrono>
 #include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
 
@@ -547,11 +549,13 @@ namespace Bolt
         Quaint::IMemoryContext* context = static_cast<Quaint::IMemoryContext*>(pUserData);
         assert(context && "Invalid Context received in realloc function");
 
-        //There are more cases here that needs to be handled
+        //TODO: There are more cases here that needs to be handled
         void* memory = QUAINT_ALLOC_MEMORY_ALIGNED(context, size, alignment);
         if(pOriginal != nullptr)
         {
-            memcpy(memory, pOriginal, context->GetBlockSize(pOriginal));
+            size_t copySize = std::min(context->GetBlockSize(pOriginal), size);
+
+            memcpy(memory, pOriginal, copySize);
             QUAINT_DEALLOC_MEMORY(context, pOriginal);
         }
         return memory;
@@ -1994,8 +1998,11 @@ namespace Bolt
         //ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         //glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         
+        uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
+        float x = 5 * (float)std::sin(timeNow * 0.00000005);
+        
         m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
-        Quaint::QVec4(2.0f, 1.0f, 2.0f, 1.0f),
+        Quaint::QVec4(x, 1.0f, 2.0f, 1.0f),
         Quaint::QVec3(0.0f, 1.0f, 0.0f));
         ubo.view = m_camera.getViewMatrix();
         ubo.proj = m_camera.getProjectionMatrix();
