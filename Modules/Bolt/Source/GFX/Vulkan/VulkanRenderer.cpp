@@ -381,7 +381,9 @@ namespace Bolt
     void VulkanRenderer::init()
     {
         DeviceManager::Create(m_context);
+        ShaderManager::Create(m_context);
         m_deviceManager = DeviceManager::Get();
+        m_shaderManager = ShaderManager::Get();
 
         constexpr auto ctString = Quaint::createCTString("This is a test string. Lets see how this behaves.");
         std::cout << ctString.getBuffer() << "\n";
@@ -521,6 +523,9 @@ namespace Bolt
         destroyDebugMessenger();
 #endif
         vkDestroyInstance(m_instance, m_allocationPtr);
+
+        m_shaderManager->Shutdown();
+        m_deviceManager->Shutdown();
     }
 
     void VulkanRenderer::render()

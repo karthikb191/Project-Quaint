@@ -18,6 +18,7 @@
 #include "Internal/DeviceManager.h"
 #include "Internal/PipelineManager.h"
 #include "Internal/TextureManager.h"
+#include "Internal/ShaderManager.h"
 
 namespace Bolt
 {
@@ -184,6 +185,8 @@ namespace Bolt
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         
         static VulkanRenderer* get() { return s_Instance; }
+
+        IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
     
     private:
     //------ Static Allocation Functions
@@ -329,6 +332,7 @@ namespace Bolt
         VkDeviceMemory                      m_textureGpuMemory;
 
         DeviceManager*                      m_deviceManager = nullptr;
+        ShaderManager*                      m_shaderManager = nullptr;
 
         static VulkanRenderer*              s_Instance;                     
 

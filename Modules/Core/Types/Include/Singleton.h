@@ -21,7 +21,7 @@ public:
     }
     static void Shutdown()
     {
-        assert(m_dataPtr != nullptr)
+        assert(m_dataPtr != nullptr);
         m_dataPtr->~T();
         QUAINT_DEALLOC_MEMORY(m_context, m_dataPtr);
         m_dataPtr = nullptr;
