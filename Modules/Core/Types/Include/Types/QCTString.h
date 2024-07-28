@@ -26,6 +26,14 @@ namespace Quaint
         typedef typename IndexExtractor<N, 0>::res res;
     };
 
+    template<int SZ>
+    class QCTString;
+
+    template<int SZ>
+    constexpr const QCTString<SZ> createCTString(const char(&str)[SZ]);
+    template<int SZ>
+    constexpr const QCTString<SZ> createEmptyCTString(const char(&str)[SZ]);
+
     //TODO: Improve upon this
     /* Compile-Time string */
     template<int N>
@@ -33,11 +41,33 @@ namespace Quaint
     {
     public:
         template<int ... ARGS>
-        constexpr QCTString(const char* c, const ArgsPack<ARGS...>)
-        : buffer { c[ARGS]... }
+        constexpr QCTString(const ArgsPack<ARGS...>)
         {
         }
+        template<int ... ARGS>
+        constexpr QCTString(const char* c)
+        //: buffer { c[ARGS]... }
+        {
+            for(int i = 0; i < N; ++i)
+            {
+                buffer[i] = c[i];
+            }
+        }
+        template<int ... ARGS>
+        constexpr QCTString(const int P, const int Q, const char* first, const char* second, const ArgsPack<ARGS...>)
+        //: buffer { '\0' }
+        {
+            for(int i = 0; i < P - 1; ++i)
+            {
+                buffer[i] = first[i];
+            }
+            for(int i = 0; i < Q; ++i)
+            {
+                buffer[P+i-1] = second[i];
+            }
+        }
 
+        const int getSize() const { return N; }
         const char* getBuffer() const { return buffer; }
 
         template<int M>
@@ -53,8 +83,29 @@ namespace Quaint
             }
             return true;
         }
+        template<int M>
+        constexpr bool compare(const char(&other)[M]) const
+        {
+            if(N != M) return false;
+            for(int i = 0; i < N; ++i)
+            {
+                if(buffer[i] != other[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        template<const int M>
+        constexpr QCTString<N+M-1> concat(const QCTString<M>& other) const
+        {
+            assert((M > 0 && N > 0) && "invalid strings given");
+            constexpr int SZ = N + M - 1;
+            return QCTString<SZ>(N, M, buffer, other.buffer, GetIndices<SZ>::res());
+        }
     private:
-        const char buffer[N] = { '\0' };
+        char buffer[N] = { '\0' };
     };
     
     /* Helper to create a compile-time object with given sequence of characters from input const array */
@@ -62,7 +113,13 @@ namespace Quaint
     template<int SZ>
     constexpr const QCTString<SZ> createCTString(const char(&str)[SZ])
     {
-        return QCTString<SZ>(str, GetIndices<SZ>::res());
+        return QCTString<SZ>(str);
+    }
+
+    template<int SZ>
+    constexpr const QCTString<SZ> createEmptyCTString()
+    {
+        return QCTString<SZ>(GetIndices<SZ>::res());
     }
 }
 
