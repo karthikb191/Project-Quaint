@@ -339,6 +339,18 @@ namespace Bolt
         , VK_DYNAMIC_STATE_SCISSOR
     );
 
+    //auto vertices = Quaint::createFastArray<QVertex>(
+    //{
+    //    {{-.5f, .5f}, {1.0f, 0.0f, 0.0f}, {0.f, 0.f}},     //vertex 0
+    //    {{-.5f,-.5f}, {0.0f, 1.0f, 0.0f}, {0.f, 1.0f}},      //vertex 1
+    //    {{.5f, .5f}, {0.0f, 0.0f, 1.0f}, {1.f, 0.f}},       //vertex 2
+    //    {{.5f, -.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}       //vertex 3
+    //}
+    //);
+    //auto indices = Quaint::createFastArray<uint16_t>(
+    //    {0, 1, 2, 2, 1, 3}
+    //);
+    
     auto vertices = Quaint::createFastArray<QVertex>(
     {
         {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},     //vertex 0
@@ -347,7 +359,6 @@ namespace Bolt
         {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}       //vertex 3
     }
     );
-
     auto indices = Quaint::createFastArray<uint16_t>(
         {0, 1, 2, 0, 2, 3}
     );

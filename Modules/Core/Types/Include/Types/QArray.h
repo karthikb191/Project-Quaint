@@ -177,7 +177,7 @@ public:
         }
         void insertRangeAt(size_t index, const QArray& other, Const_Iterator start, Const_Iterator last)
         {
-            assert((index >= 0 && index < m_size) && "Trying to insert at invalid index");
+            assert((index >= 0 && index <= m_size) && "Trying to insert at invalid index");
             assert((start >= other.begin() && last < other.end() && last >= start) && "Trying to insert invalid range");
             
             //TODO
@@ -197,11 +197,15 @@ public:
 
             m_size += numElemsToInsert;
         }
+
+        /* Would not work is list contains arrays. Doesn't invoke a copy constructor, but rather copies contents as it is
+        TODO: Create a new variant that does copy contruction
+        */
         template<size_t SZ>
         void insertRangeAt(size_t index, const T(&list)[SZ])
         {
             static_assert(SZ > 0, "Passed Invalid array");
-            assert((index >= 0 && index < m_size) && "Trying to insert at invalid index");
+            assert((index >= 0 && index <= m_size) && "Trying to insert at invalid index");
             if(m_size + SZ > m_reservedSize)
             {
                 reserve(((m_size + SZ + 8) / 4) * 4);
@@ -210,7 +214,10 @@ public:
             // TODO: This might not work. Elements must be properly constructed to perform right type of copy.
             // If data is copied this way, and object has any arrays within it, they refer to the same raw memory location.
             // If one array in object is destroyed, other would dangle
-            memmove(m_rawData + index + SZ, m_rawData + index, (m_size - index) * TYPE_SIZE);
+            if(m_size - index > 0)
+            {
+                memmove(m_rawData + index + SZ, m_rawData + index, (m_size - index) * TYPE_SIZE);
+            }
             memcpy(m_rawData + index, list, SZ * TYPE_SIZE);
 
             m_size += SZ;
