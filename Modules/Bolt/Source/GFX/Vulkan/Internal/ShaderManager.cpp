@@ -3,5 +3,8 @@
 DEFINE_SINGLETON(Bolt::ShaderManager)
 namespace Bolt
 {
-    
+    void ShaderManager::constructShaderGroup()
+    {
+        
+    }
 }

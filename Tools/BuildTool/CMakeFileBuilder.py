@@ -115,6 +115,11 @@ class CMakeBuilder:
                 fd.write(f"add_library(${{PROJECT_NAME}} INTERFACE)")
                 self.AddNewLines(fd, 2)
                 return
+        else:
+            #groups source files unde project filer.
+            #TODO: Maintain directory structure
+            fd.write(f"source_group({module.Params.Name} FILES ${{SOURCES}})")
+            self.AddNewLines(fd,1)
 
         if isSubModule:
             fd.write(f"target_sources(${{PROJECT_NAME}} PRIVATE ${{SOURCES}})")

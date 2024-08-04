@@ -26,6 +26,15 @@ namespace Bolt
     {
         constructShaderModule(spirvPath);
     }
+    VulkanShader::~VulkanShader()
+    {
+        if (m_shaderModule != VK_NULL_HANDLE)
+        {
+            vkDestroyShaderModule(VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice()
+            , m_shaderModule
+            , VulkanRenderer::get()->getAllocationCallbacks());
+        }
+    }
 
     void VulkanShader::constructShaderModule(const char* spirvPath)
     {
