@@ -7,7 +7,7 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VulkanRenderPass);
     DEFINE_LOG_CATEGORY(VulkanRenderPass);
 
-    const VulkanRenderPass::Subpass  VulkanRenderPass::SUBPASS_EXTERNAL(nullptr);
+    const VulkanRenderPass::Subpass  VulkanRenderPass::SUBPASS_EXTERNAL;
 
 //=============================================================================================
 

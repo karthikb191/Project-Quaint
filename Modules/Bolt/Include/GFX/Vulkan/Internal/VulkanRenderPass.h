@@ -48,7 +48,10 @@ namespace Bolt
 
             const VkSubpassDescription& getDescription() const { return m_desc; }
             uint32_t getIndex() const { return m_index; }
+
         private:
+            Subpass() {}
+
             friend class VulkanRenderPass;
             uint32_t                                m_index = (~0U);
             VkSubpassDescription                    m_desc;
