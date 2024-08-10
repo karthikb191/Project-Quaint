@@ -66,6 +66,7 @@ public:
         m_genericMemFunc = reinterpret_cast<GenericMemberFuncType>(f);
     }
 
+    // Needs a Memory Context to bind a closure object. TODO: Maybe this can be improved
     template<typename LAMBDA>
     void BindLambda(LAMBDA lambda)
     {

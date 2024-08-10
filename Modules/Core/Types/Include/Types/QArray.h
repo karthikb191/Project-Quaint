@@ -26,13 +26,12 @@ namespace Quaint
         using Iterator = T*;
         using Const_Iterator = const T*;
 
-private:
+public:
         QArray() 
         {
             m_context = nullptr;
             m_size = 0;
         };
-public:
         static QArray<T> GetInvalidPlaceholder() { return QArray<T>(); }
 
         template<typename ...ARGS>
@@ -161,6 +160,7 @@ public:
         }
         void pushBack(const T& t)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             if(m_size >= m_reservedSize)
             {
                 reserve(INC_RESERVE_FROM(m_size));
@@ -173,10 +173,12 @@ public:
         //TODO: insert range; insert other array
         void insertAt(size_t index, const T& t)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             insertRangeAt(index, {t});
         }
         void insertRangeAt(size_t index, const QArray& other, Const_Iterator start, Const_Iterator last)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             assert((index >= 0 && index <= m_size) && "Trying to insert at invalid index");
             assert((start >= other.begin() && last < other.end() && last >= start) && "Trying to insert invalid range");
             
@@ -204,6 +206,7 @@ public:
         template<size_t SZ>
         void insertRangeAt(size_t index, const T(&list)[SZ])
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             static_assert(SZ > 0, "Passed Invalid array");
             assert((index >= 0 && index <= m_size) && "Trying to insert at invalid index");
             if(m_size + SZ > m_reservedSize)
@@ -226,23 +229,27 @@ public:
         /*Remove an element from back*/
         void popBack()
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             assert(m_size > 0 && "Trying to remove element from an empty array");
             --m_size;
         }
         /*Remove an element at index*/
         void removeAt(size_t index)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             assert((index >= 0 && index < m_size) && "Trying to remove element with invalid index");
             
             removeRange(begin() + index, begin() + index);
         }
         void removeAt(Const_Iterator itr)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             removeRange(itr, itr);
         }
         /*Removes [start, last] from array*/
         void removeRange(Iterator start, Iterator last)
         {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
             assert(start >= begin() && last < end() && "Trying to remove invalid element range");
             
             size_t n = (last - start) + 1;

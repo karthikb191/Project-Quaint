@@ -54,6 +54,8 @@ int main()
     testStr.length();
 
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
+
+    Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
     
     //TODO: Loop through application module 
     Bolt::RenderModule::get().getBoltRenderer()->update();

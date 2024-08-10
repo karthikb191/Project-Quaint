@@ -16,9 +16,9 @@ namespace Quaint
         Quaint::QVec4    color;
         Quaint::QVec2    texCoord;
 
-        constexpr uint32_t getPositionOffset() { return offsetof(QVertex, position); }
-        constexpr uint32_t getColorOffset() { return offsetof(QVertex, color); }
-        constexpr uint32_t getTexCoordOffset() { return offsetof(QVertex, texCoord); }
+        constexpr uint32_t getPositionOffset() const { return offsetof(QVertex, position); }
+        constexpr uint32_t getColorOffset() const { return offsetof(QVertex, color); }
+        constexpr uint32_t getTexCoordOffset() const { return offsetof(QVertex, texCoord); }
     };
 }
 
@@ -34,6 +34,8 @@ namespace Bolt
     
     protected:
         IShaderGroup* m_shaderGroup = nullptr;
+
+        //TODO: Add a GPU-backed object to give renderer necessary information
     };
 
     class Geometry : public RenderObject

@@ -1,0 +1,9 @@
+#ifndef _H_VULKAN_GRAPHICS_CONTEXT
+#define _H_VULKAN_GRAPHICS_CONTEXT
+
+namespace Bolt
+{
+    
+}
+
+#endif //_H_VULKAN_GRAPHICS_CONTEXT
