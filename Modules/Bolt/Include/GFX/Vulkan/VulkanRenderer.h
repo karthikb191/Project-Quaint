@@ -19,6 +19,7 @@
 #include "Internal/PipelineManager.h"
 #include "Internal/TextureManager.h"
 #include "Internal/ShaderManager.h"
+#include "Internal/VulkanRenderPass.h"
 
 namespace Bolt
 {
@@ -334,6 +335,7 @@ namespace Bolt
         DeviceManager*                      m_deviceManager = nullptr;
         ShaderManager*                      m_shaderManager = nullptr;
 
+        VulkanRenderPass                    m_customRenderPass;
         static VulkanRenderer*              s_Instance;                     
 
     #ifdef DEBUG_BUILD      

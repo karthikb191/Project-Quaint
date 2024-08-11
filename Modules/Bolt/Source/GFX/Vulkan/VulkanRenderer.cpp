@@ -147,7 +147,7 @@ namespace Bolt
         rpInfo.pDependencies = &dependency;
         rpInfo.subpassCount = 1;
         rpInfo.pSubpasses = &spDesc;
-
+        
         res = vkCreateRenderPass(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice()
                             , &rpInfo
                             , m_renderer->getAllocationCallbacks()
@@ -385,6 +385,7 @@ namespace Bolt
     , m_uniformBufferGpuMemory(context)
     , m_mappedUniformBuffers(context)
     , m_descriptorSets(context)
+    , m_customRenderPass(context)
     {
         s_Instance = this;
     }
@@ -521,7 +522,9 @@ namespace Bolt
         vkDestroyDescriptorPool(m_device, m_descriptorPool, m_allocationPtr);
         vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, m_allocationPtr);
         vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocationPtr);
-        vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
+        
+        m_customRenderPass.destroy();
+        //vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
         vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocationPtr);
         for(const VkImageView& view : m_swapchainImageViews)
         {
@@ -1082,7 +1085,7 @@ namespace Bolt
 
 
         //Pass in vertex input. This structure describes the format of vertex data that will be passed to the vertex shader
-        //TODO: Since we are hardcoding vertices in shader, this will be specify that there's no vertex data to load for now
+        //Populated below
         VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
         vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         //Spacing between data and whether data is per-vertex or per-instance
@@ -1203,6 +1206,9 @@ namespace Bolt
         colorDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         colorDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+        SAttachmentInfo& attachment = m_customRenderPass.addEmptyAttachment();
+        attachment.setType(VulkanRenderPass::EAttachmentType::Color);
+        attachment.setDescription(colorDesc);
 
         // A single renderpass can consist of multiple subpasses. Subpasses are subsequent render operations that depends on
         // content of framebuffer from previous passes.
@@ -1216,22 +1222,8 @@ namespace Bolt
         attachmentRef.attachment = 0;
         attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-        // Each element of pColorAttachments correspond to output location in the shader
-        // In the simple triangle, this attachmentReference is accessed by fragment shader through "layout(location = 0) out vec3 outColor"
-        // This is the OUTPUT color attachment
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &attachmentRef;
-
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorDesc;
-
+        CSubpass& subpass = m_customRenderPass.addEmptySubpass();
+        subpass.addColorAttachment(attachmentRef);
         
         //TODO: READ ALOT MORE ON THIS PART
         VkSubpassDependency dependency{};
@@ -1241,12 +1233,11 @@ namespace Bolt
         dependency.srcAccessMask = 0;
         dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
 
-        VkResult res = vkCreateRenderPass(m_device, &renderPassInfo, m_allocationPtr, &m_renderPass);
-        assert(res == VK_SUCCESS && "Render pass creation failed");
+        m_customRenderPass.addSubpassDependency(SUBPASS_EXTERNAL, subpass
+                                                , VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                                , 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
+        m_customRenderPass.construct();
     }
     void VulkanRenderer::createRenderPipeline()
     {
@@ -1310,7 +1301,8 @@ namespace Bolt
 
         graphicsPipelineInfo.layout = m_pipelineLayout;
 
-        graphicsPipelineInfo.renderPass = m_renderPass;
+        //graphicsPipelineInfo.renderPass = m_renderPass;
+        graphicsPipelineInfo.renderPass = m_customRenderPass.getRenderPass();
         graphicsPipelineInfo.subpass = 0;
 
         //Vulkan lets you create new pipelines by deriving from existing ones. More on this later
@@ -1335,7 +1327,7 @@ namespace Bolt
             frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             frameBufferInfo.width = m_swapchainExtent.width;
             frameBufferInfo.height = m_swapchainExtent.height;
-            frameBufferInfo.renderPass = m_renderPass;
+            frameBufferInfo.renderPass = m_customRenderPass.getRenderPass();
             frameBufferInfo.attachmentCount = 1;
             frameBufferInfo.pAttachments = &m_swapchainImageViews[i];
             frameBufferInfo.layers = 1;
@@ -1933,7 +1925,7 @@ namespace Bolt
         //Now we begin a renderpass
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = m_renderPass;
+        renderPassInfo.renderPass = m_customRenderPass.getRenderPass();
         renderPassInfo.framebuffer = m_frameBuffers[imageIndex];
 
         renderPassInfo.renderArea.offset = {0, 0};

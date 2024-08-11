@@ -19,16 +19,19 @@ namespace Bolt
             Resolve = 3,
             Max = 4
         };
-
-    private:
+    //private:
         struct AttachmentInfo
         {
-            EAttachmentType             type = EAttachmentType::Max;
-            VkAttachmentDescription     desc = { };
-
+            void setType(const EAttachmentType pType) { type = pType; }
+            void setDescription(const VkAttachmentDescription pDesc) { desc = pDesc; }
             uint32_t getIndex() { return index; }
         private:
+            friend class Quaint::QArray<AttachmentInfo>;
             friend class VulkanRenderPass;
+            AttachmentInfo() = default;
+            
+            EAttachmentType             type = EAttachmentType::Max;
+            VkAttachmentDescription     desc = { };
             uint32_t                    index = -1;
         };
 
@@ -36,10 +39,6 @@ namespace Bolt
         class Subpass
         {
         public:
-            Subpass(Quaint::IMemoryContext* context);
-
-            void construct();
-            
             // Add attachments in sequence. Do NOT mix them up. 
             // TODO: Add checks validating this
             void addColorAttachment(const VkAttachmentReference& ref);
@@ -50,17 +49,20 @@ namespace Bolt
             uint32_t getIndex() const { return m_index; }
 
         private:
+            Subpass(Quaint::IMemoryContext* context);
             Subpass() {}
 
+            void construct();
+            void destroy();
+
+            friend class Quaint::QArray<Subpass>;
             friend class VulkanRenderPass;
             uint32_t                                m_index = (~0U);
-            VkSubpassDescription                    m_desc;
+            VkSubpassDescription                    m_desc = { };
             VkPipelineBindPoint                     m_pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            uint32_t                                m_numAttachments[EAttachmentType::Max];
+            uint32_t                                m_numAttachments[EAttachmentType::Max] = {0};
             Quaint::QArray<VkAttachmentReference>   m_attachmentRefs;
         };
-
-    public:
 
         struct AttachmentReferenceInfo
         {
@@ -70,6 +72,7 @@ namespace Bolt
             VkImageLayout               layout;
         };
 
+    public:
         VulkanRenderPass(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderPass();
         void destroy();
@@ -87,20 +90,25 @@ namespace Bolt
 
         void construct();
 
+        const VkRenderPass getRenderPass() { return m_renderPass; }
         bool isValid() const { return m_renderPass != VK_NULL_HANDLE; }
         bool isBeingUsed () const { return m_beingUsed; }
 
+        
+        static const VulkanRenderPass::Subpass  SUBPASS_EXTERNAL;
+    
     private:
-
         Quaint::IMemoryContext*                 m_context = nullptr;
         VkRenderPass                            m_renderPass = VK_NULL_HANDLE;
         bool                                    m_beingUsed = false;
         Quaint::QArray<AttachmentInfo>          m_attchmentInfos;
         Quaint::QArray<Subpass>                 m_subPasses;
         Quaint::QArray<VkSubpassDependency>     m_subPassDependencies;
-        static const VulkanRenderPass::Subpass  SUBPASS_EXTERNAL;
     };
 
+    using SAttachmentInfo = VulkanRenderPass::AttachmentInfo;
+    using CSubpass = VulkanRenderPass::Subpass;
+    #define SUBPASS_EXTERNAL VulkanRenderPass::SUBPASS_EXTERNAL
 
     //TODO: Should this be here?
     class VulkanFrameBuffer

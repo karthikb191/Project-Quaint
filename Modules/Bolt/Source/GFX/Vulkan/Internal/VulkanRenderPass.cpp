@@ -24,7 +24,7 @@ namespace Bolt
         m_desc.inputAttachmentCount = m_numAttachments[EAttachmentType::Input];
         m_desc.colorAttachmentCount = m_numAttachments[EAttachmentType::Color];
         
-        assert( m_pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && "Only supporting graphics bind point for now");
+        assert(m_pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && "Only supporting graphics bind point for now");
         assert(m_numAttachments[EAttachmentType::Input] == 0 &&
                 m_numAttachments[EAttachmentType::Depth] == 0 && 
                 m_numAttachments[EAttachmentType::Resolve] == 0 && "Not yet supported");
@@ -36,6 +36,7 @@ namespace Bolt
         m_desc.pDepthStencilAttachment = nullptr;
         m_desc.pPreserveAttachments = nullptr;
         m_desc.pResolveAttachments = nullptr;
+        m_desc.flags = 0;
 
         //TODO: If everything works, uncomment the code below and check that nothing breaks
         //m_desc.pInputAttachments = attachmentRefBuffer;
@@ -54,6 +55,10 @@ namespace Bolt
 
 
         //TODO: Populate other types of attachments
+    }
+    void VulkanRenderPass::Subpass::destroy()
+    {
+
     }
 
     void VulkanRenderPass::Subpass::addColorAttachment(const VkAttachmentReference& ref)
@@ -86,6 +91,11 @@ namespace Bolt
         {
             VkDevice device = VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice();
             VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+            for(auto& subpass : m_subPasses)
+            {
+                subpass.destroy();
+            }
 
             if(m_renderPass != VK_NULL_HANDLE)
             {
@@ -183,5 +193,10 @@ namespace Bolt
             info.dependencyCount = m_subPassDependencies.getSize();
             info.pDependencies = m_subPassDependencies.getBuffer();
         }
+        
+        VkDevice device = VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VkResult res = vkCreateRenderPass(device, &info, callbacks, &m_renderPass);
+        ASSERT_SUCCESS(res, "Could not create render pass!!");
     }
 }
