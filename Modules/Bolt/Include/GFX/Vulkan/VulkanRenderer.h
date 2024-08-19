@@ -20,6 +20,7 @@
 #include "Internal/TextureManager.h"
 #include "Internal/ShaderManager.h"
 #include "Internal/VulkanRenderPass.h"
+#include "Internal/RenderScene.h"
 
 namespace Bolt
 {
@@ -89,13 +90,20 @@ namespace Bolt
         Quaint::QMat4x4     view;
         Quaint::QMat4x4     proj;
     };
+    
+    struct FrameInfo
+    {
+        UniformBufferObject         ubo;
+        VkFramebuffer               frameBuffer;
+        VkFence                     renderFence = VK_NULL_HANDLE;
+    };
 
     // TODO: This might not be a right name
-    class GraphicsContext
+    class GraphicsContextInternal
     {
     public:
-        GraphicsContext();
-        ~GraphicsContext();
+        GraphicsContextInternal();
+        void destroy();
 
         void setup(VulkanRenderer* renderer);
         void initialize(uint32_t width, uint32_t height, VulkanTexture* texture);
@@ -335,7 +343,7 @@ namespace Bolt
         DeviceManager*                      m_deviceManager = nullptr;
         ShaderManager*                      m_shaderManager = nullptr;
 
-        VulkanRenderPass                    m_customRenderPass;
+        vulkan::VulkanRenderPass            m_customRenderPass;
         static VulkanRenderer*              s_Instance;                     
 
     #ifdef DEBUG_BUILD      

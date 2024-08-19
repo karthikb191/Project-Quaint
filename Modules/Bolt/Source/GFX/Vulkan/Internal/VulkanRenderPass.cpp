@@ -2,7 +2,7 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <LoggerModule.h>
 
-namespace Bolt
+namespace Bolt { namespace vulkan
 {
     DECLARE_LOG_CATEGORY(VulkanRenderPass);
     DEFINE_LOG_CATEGORY(VulkanRenderPass);
@@ -74,6 +74,7 @@ namespace Bolt
 
     VulkanRenderPass::VulkanRenderPass(Quaint::IMemoryContext* context)
     : m_context(context)
+    , m_frameBuffer(context)
     {
         m_attchmentInfos = Quaint::QArray<VulkanRenderPass::AttachmentInfo>(m_context);
         m_subPasses = Quaint::QArray<VulkanRenderPass::Subpass>(m_context, m_context);
@@ -101,7 +102,7 @@ namespace Bolt
             {
                 vkDestroyRenderPass(device, m_renderPass, callbacks);
             }
-
+            m_renderPass = VK_NULL_HANDLE;
             QLOG_I(VulkanRenderPass, "Destroyed Vulkan Renderpass");
         }
     }
@@ -199,4 +200,4 @@ namespace Bolt
         VkResult res = vkCreateRenderPass(device, &info, callbacks, &m_renderPass);
         ASSERT_SUCCESS(res, "Could not create render pass!!");
     }
-}
+}}

@@ -3,11 +3,13 @@
 
 #include <Vulkan/vulkan_core.h>
 #include <Types/QArray.h>
+#include "VulkanFrameBuffer.h"
 
-namespace Bolt
+namespace Bolt { namespace vulkan 
 {
     class VulkanRenderPass;
 
+    /* TODO: Should take a reference to FrameBuffer to create attachments*/
     class VulkanRenderPass
     {
     public:
@@ -102,6 +104,7 @@ namespace Bolt
         VkRenderPass                            m_renderPass = VK_NULL_HANDLE;
         bool                                    m_beingUsed = false;
         Quaint::QArray<AttachmentInfo>          m_attchmentInfos;
+        FrameBuffer                             m_frameBuffer;
         Quaint::QArray<Subpass>                 m_subPasses;
         Quaint::QArray<VkSubpassDependency>     m_subPassDependencies;
     };
@@ -109,12 +112,6 @@ namespace Bolt
     using SAttachmentInfo = VulkanRenderPass::AttachmentInfo;
     using CSubpass = VulkanRenderPass::Subpass;
     #define SUBPASS_EXTERNAL VulkanRenderPass::SUBPASS_EXTERNAL
-
-    //TODO: Should this be here?
-    class VulkanFrameBuffer
-    {
-
-    };
-}
+}}
 
 #endif //_H_VULKAN_RENDER_PASS

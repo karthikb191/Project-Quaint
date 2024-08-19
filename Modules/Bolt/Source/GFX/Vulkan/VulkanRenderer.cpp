@@ -16,14 +16,16 @@
 
 namespace Bolt
 {
+    using namespace vulkan;
+    
     #define VULKAN_RENDERER_LOGGER
     DECLARE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
     DEFINE_LOG_CATEGORY(VULKAN_RENDERER_LOGGER);
 
     VulkanRenderer* VulkanRenderer::s_Instance = nullptr;
 
-    GraphicsContext::GraphicsContext() {}
-    void GraphicsContext::setup(VulkanRenderer* renderer)
+    GraphicsContextInternal::GraphicsContextInternal() {}
+    void GraphicsContextInternal::setup(VulkanRenderer* renderer)
     {
         m_renderer = renderer;
 
@@ -49,7 +51,7 @@ namespace Bolt
                             , &m_internalFence);
     }
 
-    GraphicsContext::~GraphicsContext()
+    void GraphicsContextInternal::destroy()
     {
         if(m_frameBuffer != VK_NULL_HANDLE)
         {
@@ -68,7 +70,7 @@ namespace Bolt
         vkDestroyFence(m_renderer->getDeviceManager()->getDeviceDefinition().getDevice(), m_internalFence, m_renderer->getAllocationCallbacks());
     }
 
-    void GraphicsContext::initializeCommandRecordCapability(const EQueueType queueType)
+    void GraphicsContextInternal::initializeCommandRecordCapability(const EQueueType queueType)
     {
         VkResult res = VK_SUCCESS;
         VkCommandPoolCreateInfo poolInfo {};
@@ -101,7 +103,7 @@ namespace Bolt
     }
 
     //TODO: Currently only supporting a single attachment. 
-    void GraphicsContext::initialize(uint32_t width, uint32_t height, VulkanTexture* texture)
+    void GraphicsContextInternal::initialize(uint32_t width, uint32_t height, VulkanTexture* texture)
     {
         m_texture = texture; //TODO: Do this in a better way
         VkResult res = VK_SUCCESS;
@@ -173,7 +175,7 @@ namespace Bolt
         ASSERT_SUCCESS(res, "Failed to create frame buffer");
     }
 
-    void GraphicsContext::begin()
+    void GraphicsContextInternal::begin()
     {
         VkCommandBufferBeginInfo beginInfo {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -205,7 +207,7 @@ namespace Bolt
         vkCmdBeginRenderPass(m_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    void GraphicsContext::end(VkImage swapChainImage)
+    void GraphicsContextInternal::end(VkImage swapChainImage)
     {
         vkCmdEndRenderPass(m_commandBuffer);
 
@@ -320,9 +322,8 @@ namespace Bolt
         vkQueueSubmit(m_queue, 1, &submitinfo, m_internalFence);
     }
 
-    GraphicsContext testContext;
+    GraphicsContextInternal testContext;
     VulkanTexture testTexture;
-
 
     auto validationLayers = Quaint::createFastArray<Quaint::QString256>(
         {
@@ -368,6 +369,10 @@ namespace Bolt
 
     VulkanRenderer::~VulkanRenderer()
     {
+        if(m_running)
+        {
+            shutdown();
+        }
     }
     VulkanRenderer::VulkanRenderer(Quaint::IMemoryContext* context)
     : m_context(context)
@@ -467,9 +472,15 @@ namespace Bolt
         createCommandBuffer();
         createSyncObjects();
 
-        testTexture.create(128, 128);
-        testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        testTexture.createImageView();
+        testTexture
+        .defaultInit()
+        .setWidth(128)
+        .setHeight(128)
+        .build()
+        .createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .createImageView();
+        //testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        //testTexture.createImageView();
         testContext.setup(this);
         testContext.initializeCommandRecordCapability(EQueueType::Graphics);
         testContext.initialize(testTexture.getWidth(), testTexture.getHeight(), &testTexture);
@@ -482,7 +493,11 @@ namespace Bolt
 
     void VulkanRenderer::shutdown()
     {
+        m_running = false;
         vkDeviceWaitIdle(m_device);
+
+        testContext.destroy();
+        testTexture.destroy();
 
         for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
@@ -491,8 +506,16 @@ namespace Bolt
             vkDestroyFence(m_device, m_inFlightFences[i], m_allocationPtr);
         }
 
-        vkDestroyCommandPool(m_device, m_graphicsCommandPool, m_allocationPtr);
-        vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
+        if(m_transferCommandPool == m_graphicsCommandPool)
+        {
+            vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
+            m_graphicsCommandPool = VK_NULL_HANDLE;
+        }
+        else
+        {
+            vkDestroyCommandPool(m_device, m_transferCommandPool, m_allocationPtr);
+            vkDestroyCommandPool(m_device, m_graphicsCommandPool, m_allocationPtr);
+        }
 
         //Sample texture bind region
         vkDestroySampler(m_device, m_textureSampler, m_allocationPtr);

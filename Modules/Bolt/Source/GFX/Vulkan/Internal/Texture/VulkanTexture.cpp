@@ -10,40 +10,131 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VKTEXTURE_LOGGER);
     DEFINE_LOG_CATEGORY(VKTEXTURE_LOGGER);
 
-    VulkanTexture::VulkanTexture() {}
+    VulkanTexture::VulkanTexture() 
+    {
+    }
     VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height)
     {
         m_imageInfo = getDefaultImageCreateInfo();
         m_imageInfo.extent.width = width;
         m_imageInfo.extent.height = height;
-        createTexture(m_imageInfo);
+        createTexture();
     }
     VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format)
-    {
-        VkImageCreateInfo info = getDefaultImageCreateInfo();
-        m_imageInfo.extent.width = width;
-        m_imageInfo.extent.height = height;
-        m_imageInfo.format = format;
-        createTexture(m_imageInfo);
-    }
-    VulkanTexture::VulkanTexture(const VkImageCreateInfo& imageInfo)
-    {
-        m_imageInfo = imageInfo;
-        createTexture(m_imageInfo);
-    }
-
-    void VulkanTexture::create(const uint32_t width, const uint32_t height)
     {
         m_imageInfo = getDefaultImageCreateInfo();
         m_imageInfo.extent.width = width;
         m_imageInfo.extent.height = height;
-        createTexture(m_imageInfo);
+        m_imageInfo.format = format;
+        createTexture();
+    }
+    VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format, VkImageUsageFlags usage, VkSharingMode sharingMode)
+    {
+        m_imageInfo = getDefaultImageCreateInfo();
+        m_imageInfo.extent.width = width;
+        m_imageInfo.extent.height = height;
+        m_imageInfo.format = format;
+        m_imageInfo.usage = usage;
+        m_imageInfo.sharingMode = sharingMode;
+        createTexture();
+    }
+    VulkanTexture::VulkanTexture(const VkImageCreateInfo& imageInfo)
+    {
+        m_imageInfo = imageInfo;
+        createTexture();
+    }
+    VulkanTexture::~VulkanTexture()
+    {
+        if (isValid())
+        {
+            destroy();
+        }
+    }
+    void VulkanTexture::destroy()
+    {
+        VkAllocationCallbacks *callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        DeviceManager* deviceManager = VulkanRenderer::get()->getDeviceManager();
+        VkDevice device = deviceManager->getDeviceDefinition().getDevice();
+
+        if(m_imageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, m_imageView, callbacks);
+        }
+        if(m_gpuMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, m_gpuMemory, callbacks);
+        }
+        if(m_image != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, m_image, callbacks);
+        }
+        m_imageView = VK_NULL_HANDLE;
+        m_image = VK_NULL_HANDLE;
+        m_gpuMemory = VK_NULL_HANDLE;
+    }
+
+    VulkanTexture VulkanTexture::create()
+    {
+        return VulkanTexture();
+    }
+    VulkanTexture* VulkanTexture::create(Quaint::IMemoryContext* context)
+    {
+        return QUAINT_NEW(context, VulkanTexture);
+    }
+    VulkanTexture& VulkanTexture::defaultInit()
+    {
+        m_imageInfo = getDefaultImageCreateInfo();
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setWidth(const uint32_t width)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.extent.width = width;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setHeight(const uint32_t height)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.extent.height = height;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setFormat(const VkFormat format)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.format = format;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setUsage(const VkImageUsageFlagBits usage)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.usage = usage;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setSharingMode(const VkSharingMode sharingMode)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.sharingMode = sharingMode;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setQueueFamilies(const uint32_t numFamilyIndices, const uint32_t* queueFamilyIndices)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.queueFamilyIndexCount = numFamilyIndices;
+        m_imageInfo.pQueueFamilyIndices = queueFamilyIndices;
+        return *this;
+    }
+
+    VulkanTexture& VulkanTexture::build()
+    {
+        //TODO: Add any assert checks here
+        createTexture();
+        return *this;
     }
 
     VkImageCreateInfo VulkanTexture::getDefaultImageCreateInfo()
     {
         //TODO: Handle limitations for samples, arrayLayers
-        VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
+        VulkanRenderer* renderer = VulkanRenderer::get();
         DeviceManager* deviceManager = renderer->getDeviceManager();
 
         VkImageCreateInfo info {};
@@ -61,7 +152,7 @@ namespace Bolt
         info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
         info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        uint32_t queues[] = { deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getQueueFamily() };
+        uint32_t queues[] = { deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily() };
         info.queueFamilyIndexCount = 1;
         info.pQueueFamilyIndices = queues;
         info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -71,11 +162,11 @@ namespace Bolt
         return info;
     }
 
-    void VulkanTexture::createTexture(const VkImageCreateInfo& imageInfo)
+    void VulkanTexture::createTexture()
     {
         VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
         DeviceManager* deviceManager = renderer->getDeviceManager();
-        VkResult res = vkCreateImage(deviceManager->getDeviceDefinition().getDevice(), &imageInfo, renderer->getAllocationCallbacks(), &m_image);
+        VkResult res = vkCreateImage(deviceManager->getDeviceDefinition().getDevice(), &m_imageInfo, renderer->getAllocationCallbacks(), &m_image);
 
         assert (res == VK_SUCCESS && "Failed to create texture.");
         if(res != VK_SUCCESS)
@@ -83,6 +174,7 @@ namespace Bolt
             QLOG_E(VKTEXTURE_LOGGER, "Failed to create texture. Texture handle will be null!!!");
             m_image = VK_NULL_HANDLE;
         }
+        m_isCreated = res == VK_SUCCESS;
     }
 
     VkAttachmentDescription VulkanTexture::buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout, 
@@ -103,12 +195,12 @@ namespace Bolt
         return desc;
     }    
 
-    void VulkanTexture::createBackingMemory(VkMemoryPropertyFlags propertyFlags)
+    VulkanTexture& VulkanTexture::createBackingMemory(VkMemoryPropertyFlags propertyFlags)
     {
         if(m_isBacked)
         {
             assert(false && "Image is already backed");
-            return;
+            return *this;
         }
         VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
         const DeviceDefinition& deviceDefinition = renderer->getDeviceManager()->getDeviceDefinition();
@@ -145,9 +237,11 @@ namespace Bolt
 
         res = vkBindImageMemory(deviceDefinition.getDevice(), m_image, m_gpuMemory, 0);
         assert(res == VK_SUCCESS && "Failed to bind Image to GPU Backing Memory");
+        
+        return *this;
     }
 
-    void VulkanTexture::createImageView()
+    VulkanTexture& VulkanTexture::createImageView()
     {
         VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
         VkImageViewCreateInfo createInfo{};
@@ -173,6 +267,8 @@ namespace Bolt
                                         , renderer->getAllocationCallbacks()
                                         , &m_imageView);
         assert(res == VK_SUCCESS && "Failed to create image view of sample texture");
+
+        return *this;
     }
 
     void VulkanTexture::transitionLayout(const VkImageLayout from, const VkImageLayout to)
