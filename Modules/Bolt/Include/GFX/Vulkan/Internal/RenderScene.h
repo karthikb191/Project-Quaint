@@ -47,7 +47,7 @@ namespace Bolt { namespace vulkan{
         inline const VkFormat getFormat() const { return desc.format; }
         inline const VkSampleCountFlagBits getSampleCount() { return desc.samples; }
 
-        inline VkAttachmentDescription& getDescription() { return desc; }
+        inline const VkAttachmentDescription& getDescription() const { return desc; }
         inline RenderScene& finalizeAttachmentInfo() { return *scene; }
 
     private:
@@ -66,6 +66,7 @@ namespace Bolt { namespace vulkan{
     protected:
         RenderScene(Quaint::IMemoryContext* context);
         virtual ~RenderScene() noexcept = default;
+        virtual void construct() = 0;
         virtual void destroy() = 0;
 
     public:
@@ -77,9 +78,10 @@ namespace Bolt { namespace vulkan{
         
         AttachmentInfo&     beginAttachmentSetup();
 
+        const Quaint::QArray<AttachmentInfo>& getAttachmentInfos() const { return m_attchmentInfos; }
 
     protected:
-        virtual RenderScene& buildFrameBuffer() = 0;
+        virtual void buildFrameBuffer() = 0;
 
         Quaint::IMemoryContext*                 m_context = nullptr;
         GraphicsContext                         m_graphicsContext;
@@ -110,7 +112,9 @@ namespace Bolt { namespace vulkan{
         virtual ~RenderFrameScene() noexcept {}
         
         /* Should be called once all the required information has been set*/
-        void construct();
+        virtual void construct() override;
+
+        VulkanRenderPass& beginRenderPassSetup() { return m_renderPass; }
 
     private:
 
@@ -118,14 +122,15 @@ namespace Bolt { namespace vulkan{
 
         //RenderFrameScene& buildCommandPool();
         // Let Graphics context build command pool. If we need a new command buffer, we can get the pool from context
-        RenderFrameScene& buildGraphicsContext(); 
-        virtual RenderFrameScene& buildFrameBuffer() override;
+        void buildGraphicsContext(); 
+        virtual void buildFrameBuffer() override;
 
         uint32_t getNextFrame();
         
         Quaint::QArray<FrameInfo>                   m_frameInfo;
         uint8_t                                     m_nextFrameIndex = 0;
         const uint8_t                               m_framesInFlight = 1;
+        VulkanRenderPass                            m_renderPass;
         VkSwapchainKHR                              m_swapchain;
     };
 }}

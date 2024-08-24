@@ -1037,15 +1037,27 @@ namespace Bolt
         VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
         VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
 
-        m_renderScene.beginAttachmentSetup()
+        AttachmentInfo& outputAttachment = m_renderScene.beginAttachmentSetup()
         .setType(EAttachmentType::Color)
         .setFormat(format.format)
         .setSamples(VK_SAMPLE_COUNT_1_BIT)
         .setOps( VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE )
         .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
-        .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-        .finalizeAttachmentInfo();
-        
+        .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+        //TODO: Add end setup functions?
+
+        VulkanRenderPass::Subpass& subpass = m_renderScene.beginRenderPassSetup()
+        .beginSubpassSetup()
+        .addColorAttachment(outputAttachment.getIndex(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        m_renderScene.beginRenderPassSetup()
+        .addSubpassDependency(
+            subpass, SUBPASS_EXTERNAL
+            , VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+            ,  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
+
+        m_renderScene.construct();
     }
 
     void VulkanRenderer::createDescriptorSetLayout()

@@ -40,6 +40,8 @@ namespace Bolt
     public:
         VulkanVertexShader(const char* spirvPath);
         VulkanVertexShader(const char* spirvPath, const Quaint::QName entryFunction);
+
+    private:
     };
 
     class VulkanFragmentShader : public VulkanShader

@@ -38,7 +38,7 @@ namespace Bolt
     : m_queueDefinitions(context)
     {}
 
-    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueType flags) const
+    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueTypeFlags flags) const
     {
         for(const QueueDefinition& def : m_queueDefinitions)
         {

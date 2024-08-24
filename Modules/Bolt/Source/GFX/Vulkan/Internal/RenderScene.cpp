@@ -19,22 +19,31 @@ namespace Bolt { namespace vulkan{
     : RenderScene(context)
     , m_framesInFlight(framesInFlight)
     , m_nextFrameIndex(0)
+    , m_renderPass(context)
     {}
 
     void RenderFrameScene::construct()
     {
-        // Build Commandpool
-        // Build swapchain
+        m_renderPass.construct();
+        buildGraphicsContext();
         // Build Graphics context
+        // Build swapchain
     }
 
     void RenderFrameScene::destroy()
     {
-        
+
     }
 
-    RenderFrameScene& RenderFrameScene::buildFrameBuffer()
+    void RenderFrameScene::buildGraphicsContext()
     {
-        return *this;
+        m_graphicsContext.buildCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+        , EQueueType::Graphics | EQueueType::Transfer);
+
+        // How to build renderpass
+    }
+
+    void RenderFrameScene::buildFrameBuffer()
+    {
     }
 }}

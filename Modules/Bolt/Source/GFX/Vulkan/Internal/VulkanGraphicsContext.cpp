@@ -18,6 +18,11 @@ namespace Bolt { namespace vulkan
     : m_context(context)
     {}
 
+    void GraphicsContext::construct()
+    {
+        m_valid = true;
+    }
+
     void GraphicsContext::destroy()
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
@@ -31,7 +36,7 @@ namespace Bolt { namespace vulkan
         }
     }
 
-    void GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueType supportedQueues)
+    void GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues)
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
         const VkDevice& device = dm->getDeviceDefinition().getDevice();
@@ -55,11 +60,6 @@ namespace Bolt { namespace vulkan
         );
         
         m_commandPool = CommandPool(pool, flags, def);
-    }
-
-    void GraphicsContext::buildRenderPass(const RenderScene* const scene)
-    {
-
     }
 
 }}

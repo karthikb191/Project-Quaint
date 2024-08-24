@@ -42,7 +42,8 @@ namespace Bolt { namespace vulkan
         public:
             // Add attachments in sequence. Do NOT mix them up. 
             // TODO: Add checks validating this
-            void addColorAttachment(const VkAttachmentReference& ref);
+            Subpass& addColorAttachment(const VkAttachmentReference& ref);
+            Subpass& addColorAttachment(const uint32_t attachIndex, const VkImageLayout layout);
 
             //TODO: Add more attachment types
 
@@ -83,13 +84,15 @@ namespace Bolt { namespace vulkan
         AttachmentInfo& addEmptyAttachment();
         /* Returns an empty SubPass that needs to be filled appropriately */
         Subpass& addEmptySubpass();
+        Subpass& beginSubpassSetup();
 
-        void addSubpassDependency(const Subpass& src, const Subpass& dst
+        VulkanRenderPass& addSubpassDependency(const Subpass& src, const Subpass& dst
                                 , VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask
                                 , VkAccessFlags srcFlag, VkAccessFlags dstFlag
                                 , VkDependencyFlags dependencyFlags);
 
         void construct();
+        void constructFromScene(const RenderScene* scene);
 
         const VkRenderPass getRenderPass() { return m_renderPass; }
         bool isValid() const { return m_renderPass != VK_NULL_HANDLE; }

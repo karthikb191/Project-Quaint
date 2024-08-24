@@ -2,8 +2,9 @@
 #define _H_VULKAN_GRAPHICS_CONTEXT
 
 #include <vulkan/vulkan.h>
-#include <GFX/Vulkan/Internal/DeviceManager.h>
 #include <Interface/IMemoryContext.h>
+#include <GFX/Vulkan/Internal/DeviceManager.h>
+#include <GFX/Vulkan/Internal/VulkanRenderPass.h>
 
 namespace Bolt{namespace vulkan
 {
@@ -22,6 +23,7 @@ namespace Bolt{namespace vulkan
         bool isValid() const { return commandPool != VK_NULL_HANDLE; }
 
         VkCommandPool getHandle() { return commandPool; }
+
     private:
         CommandPool(){}
         CommandPool(VkCommandPool pPool, const VkCommandPoolCreateFlags pFlags, const QueueDefinition& pQueueDef);
@@ -36,11 +38,11 @@ namespace Bolt{namespace vulkan
     {
     public:
         GraphicsContext(Quaint::IMemoryContext* context);
+        void construct();
         void destroy();
-        void buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueType supportedQueues);
+        void buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues);
 
-        /* Renderpass is dependent on attachment information setup in scene */
-        void buildRenderPass(const RenderScene* const scene);
+        inline bool isValid() const { return m_valid; }
         //TODO: For creation
         // Create Graphics Context for (Renderpass) function parameter
         // Set list of attachments to be used and create their views
@@ -63,8 +65,9 @@ namespace Bolt{namespace vulkan
         // Expose a fence 
         
     private:
-        Quaint::IMemoryContext*         m_context;
-        CommandPool                     m_commandPool;
+        Quaint::IMemoryContext*         m_context = nullptr;
+        CommandPool                     m_commandPool = {};
+        bool                            m_valid = false;
     };
 }}
 

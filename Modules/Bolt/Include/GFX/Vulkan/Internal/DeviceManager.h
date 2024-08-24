@@ -17,6 +17,8 @@ namespace Bolt
         Transfer = VK_QUEUE_TRANSFER_BIT,
         Invalid = 0xffffffff
     };
+    typedef uint32_t EQueueTypeFlags;
+
     struct QueueRequirements
     {
         EQueueType          queueType;
@@ -75,7 +77,7 @@ namespace Bolt
         DeviceDefinition& operator=(const DeviceDefinition&) = default;
 
         /*Simple Getters and Setters*/
-        const QueueDefinition& getQueueOfType(const EQueueType flags) const;
+        const QueueDefinition& getQueueOfType(const EQueueTypeFlags flags) const;
         const QueueDefinition& getQueueSupportingPresentation() const;
 
         VkPhysicalDevice getPhysicalDevice() const { return m_physicalDevice; }

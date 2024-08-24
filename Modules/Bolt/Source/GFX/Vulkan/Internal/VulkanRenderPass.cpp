@@ -62,13 +62,28 @@ namespace Bolt { namespace vulkan
 
     }
 
-    void VulkanRenderPass::Subpass::addColorAttachment(const VkAttachmentReference& ref)
+    VulkanRenderPass::Subpass& VulkanRenderPass::Subpass::addColorAttachment(const VkAttachmentReference& ref)
     {
         assert(m_numAttachments[EAttachmentType::Depth] == 0 && m_numAttachments[EAttachmentType::Resolve] == 0
             && "Add attachments in order input - color - depth - resolve");
 
         ++m_numAttachments[EAttachmentType::Color];
         m_attachmentRefs.pushBack(ref);
+        return *this;
+    }
+
+    VulkanRenderPass::Subpass& VulkanRenderPass::Subpass::addColorAttachment(const uint32_t attachIndex, const VkImageLayout layout)
+    {
+        assert(m_numAttachments[EAttachmentType::Depth] == 0 && m_numAttachments[EAttachmentType::Resolve] == 0
+            && "Add attachments in order input - color - depth - resolve");
+
+        VkAttachmentReference ref {};
+        ref.attachment = attachIndex;
+        ref.layout = layout;
+
+        ++m_numAttachments[EAttachmentType::Color];
+        m_attachmentRefs.pushBack(ref);
+        return *this;
     }
 
 //=============================================================================================
@@ -125,7 +140,15 @@ namespace Bolt { namespace vulkan
         return m_subPasses[subpass.m_index];
     }
 
-    void VulkanRenderPass::addSubpassDependency(const Subpass& src, const Subpass& dst
+    VulkanRenderPass::Subpass& VulkanRenderPass::beginSubpassSetup()
+    {
+        Subpass subpass(m_context);
+        subpass.m_index = m_subPasses.getSize();
+        m_subPasses.pushBack(subpass);
+        return m_subPasses[subpass.m_index];
+    }
+
+    VulkanRenderPass& VulkanRenderPass::addSubpassDependency(const Subpass& src, const Subpass& dst
                                 , VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask
                                 , VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask
                                 , VkDependencyFlags dependencyFlags)
@@ -149,11 +172,12 @@ namespace Bolt { namespace vulkan
         dependency.dstAccessMask = dstAccessMask;
         dependency.dependencyFlags = dependencyFlags;
         m_subPassDependencies.pushBack(dependency);
+
+        return *this;
     }
 
     void VulkanRenderPass::construct()
     {
-        //TODO: Construct subpasses
         for(Subpass& subpass : m_subPasses)
         {
             subpass.construct();
@@ -174,6 +198,58 @@ namespace Bolt { namespace vulkan
                 attachDescs[i] = m_attchmentInfos[i].desc;
             }
             info.attachmentCount = m_attchmentInfos.getSize();
+            info.pAttachments = attachDescs.getBuffer();
+        }
+
+        //Populating subpass information
+        uint32_t numSubpasses = m_subPasses.getSize();
+        Quaint::QArray<VkSubpassDescription> subpassDescs(m_context, numSubpasses);
+        assert(numSubpasses > 0 && "RenderPass needs atleast a single subpass!!");
+        for(uint32_t i = 0; i < numSubpasses; ++i)
+        {
+            subpassDescs[i] = m_subPasses[i].getDescription();
+        }
+        info.subpassCount = numSubpasses;
+        info.pSubpasses = subpassDescs.getBuffer();
+
+        //Populating subpass dependency information
+        uint32_t numDependencies = m_subPassDependencies.getSize();
+        if(numDependencies > 0)
+        {
+            info.dependencyCount = m_subPassDependencies.getSize();
+            info.pDependencies = m_subPassDependencies.getBuffer();
+        }
+        
+        VkDevice device = VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VkResult res = vkCreateRenderPass(device, &info, callbacks, &m_renderPass);
+        ASSERT_SUCCESS(res, "Could not create render pass!!");
+    }
+
+    void VulkanRenderPass::constructFromScene(const RenderScene* scene)
+    {
+        for(Subpass& subpass : m_subPasses)
+        {
+            subpass.construct();
+        }
+
+        VkRenderPassCreateInfo info {};
+        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+
+        info.flags = 0; //Not used for now. TODO: Check back later
+        
+        // populating Attachments information
+        const auto& attachmentInfos = scene->getAttachmentInfos();
+
+        uint32_t numAttachments = attachmentInfos.getSize();
+        Quaint::QArray<VkAttachmentDescription> attachDescs(m_context, numAttachments);
+        if(numAttachments > 0)
+        {
+            for(uint32_t i = 0; i < numAttachments; ++i)
+            {
+                attachDescs[i] = attachmentInfos[i].getDescription();
+            }
+            info.attachmentCount = attachmentInfos.getSize();
             info.pAttachments = attachDescs.getBuffer();
         }
 
