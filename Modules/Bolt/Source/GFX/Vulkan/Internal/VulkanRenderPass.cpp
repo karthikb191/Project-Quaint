@@ -1,6 +1,7 @@
-#include <GFX/Vulkan/Internal/VulkanRenderPass.h>
-#include <GFX/Vulkan/VulkanRenderer.h>
 #include <LoggerModule.h>
+#include <GFX/Vulkan/VulkanRenderer.h>
+#include <GFX/Vulkan/Internal/VulkanRenderPass.h>
+#include <GFX/Vulkan/Internal/RenderScene.h>
 
 namespace Bolt { namespace vulkan
 {
@@ -72,9 +73,9 @@ namespace Bolt { namespace vulkan
 
 //=============================================================================================
 
-    VulkanRenderPass::VulkanRenderPass(Quaint::IMemoryContext* context)
+    VulkanRenderPass::VulkanRenderPass(Quaint::IMemoryContext* context, RenderScene* scene)
     : m_context(context)
-    , m_frameBuffer(context)
+    //, m_scene(scene)
     {
         m_attchmentInfos = Quaint::QArray<VulkanRenderPass::AttachmentInfo>(m_context);
         m_subPasses = Quaint::QArray<VulkanRenderPass::Subpass>(m_context, m_context);

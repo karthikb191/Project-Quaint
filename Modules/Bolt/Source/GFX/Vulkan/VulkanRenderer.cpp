@@ -391,6 +391,7 @@ namespace Bolt
     , m_mappedUniformBuffers(context)
     , m_descriptorSets(context)
     , m_customRenderPass(context)
+    , m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
     {
         s_Instance = this;
     }
@@ -872,7 +873,7 @@ namespace Bolt
 //--------------------------------------------------------------------
 
 //----------------------------Swapchain Creation
-    VkSurfaceFormatKHR chooseSurfaceFormat(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo)
+    VkSurfaceFormatKHR chooseSurfaceFormat(VulkanRenderer::SwapchainSupportInfo& supportInfo)
     {
         for (const VkSurfaceFormatKHR& availableFormat : supportInfo.surfaceFormat) {
             if (availableFormat.format == VK_FORMAT_R8G8B8A8_SRGB
@@ -927,7 +928,7 @@ namespace Bolt
     {
         VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
 
-        VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(m_context, supportInfo);
+        VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(supportInfo);
         VkPresentModeKHR presentMode = choosePresentationMode(m_context, supportInfo);
         VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
         
@@ -1030,6 +1031,22 @@ namespace Bolt
 
     }
 //--------------------------------------------------
+    void VulkanRenderer::createScene()
+    {
+        //First attachment is a swapchain image
+        VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
+        VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
+
+        m_renderScene.beginAttachmentSetup()
+        .setType(EAttachmentType::Color)
+        .setFormat(format.format)
+        .setSamples(VK_SAMPLE_COUNT_1_BIT)
+        .setOps( VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE )
+        .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
+        .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        .finalizeAttachmentInfo();
+        
+    }
 
     void VulkanRenderer::createDescriptorSetLayout()
     {

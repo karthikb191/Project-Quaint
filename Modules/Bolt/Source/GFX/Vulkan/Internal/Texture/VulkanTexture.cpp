@@ -43,6 +43,10 @@ namespace Bolt
         m_imageInfo = imageInfo;
         createTexture();
     }
+    VulkanTexture::VulkanTexture(VkImage image)
+    {
+        m_image = image;
+    }
     VulkanTexture::~VulkanTexture()
     {
         if (isValid())

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <Vulkan/vulkan.h>
 #include <GFX/Texture/BoltTexture.h>
+#include <GFX/Vulkan/Internal/DeviceManager.h>
 
 namespace Bolt
 {
@@ -18,6 +19,8 @@ namespace Bolt
         VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format);
         VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format, VkImageUsageFlags usage, VkSharingMode sharingMode);
         VulkanTexture(const VkImageCreateInfo& imageInfo);
+        /* Takes ownership of the VkImage passed */
+        VulkanTexture(VkImage image);
         ~VulkanTexture();
         void destroy();
 

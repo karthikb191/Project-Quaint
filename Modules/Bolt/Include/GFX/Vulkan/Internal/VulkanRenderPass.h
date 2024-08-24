@@ -3,11 +3,11 @@
 
 #include <Vulkan/vulkan_core.h>
 #include <Types/QArray.h>
-#include "VulkanFrameBuffer.h"
 
 namespace Bolt { namespace vulkan 
 {
     class VulkanRenderPass;
+    class RenderScene;
 
     /* TODO: Should take a reference to FrameBuffer to create attachments*/
     class VulkanRenderPass
@@ -21,7 +21,6 @@ namespace Bolt { namespace vulkan
             Resolve = 3,
             Max = 4
         };
-    //private:
         struct AttachmentInfo
         {
             void setType(const EAttachmentType pType) { type = pType; }
@@ -75,7 +74,7 @@ namespace Bolt { namespace vulkan
         };
 
     public:
-        VulkanRenderPass(Quaint::IMemoryContext* context);
+        VulkanRenderPass(Quaint::IMemoryContext* context, RenderScene* scene = nullptr);
         virtual ~VulkanRenderPass();
         void destroy();
         //TODO: Add input and other output attachments
@@ -101,10 +100,10 @@ namespace Bolt { namespace vulkan
     
     private:
         Quaint::IMemoryContext*                 m_context = nullptr;
+        RenderScene*                            m_scene = nullptr;
         VkRenderPass                            m_renderPass = VK_NULL_HANDLE;
         bool                                    m_beingUsed = false;
         Quaint::QArray<AttachmentInfo>          m_attchmentInfos;
-        FrameBuffer                             m_frameBuffer;
         Quaint::QArray<Subpass>                 m_subPasses;
         Quaint::QArray<VkSubpassDependency>     m_subPassDependencies;
     };

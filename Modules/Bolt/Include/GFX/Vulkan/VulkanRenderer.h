@@ -28,7 +28,8 @@ namespace Bolt
     
     #define MAX_FRAMES_IN_FLIGHT 2
 
-    #define ASSERT_SUCCESS(res, msg) assert(res == VK_SUCCESS && msg)
+    #define ASSERT_SUCCESS1(res, msg) assert(res == VK_SUCCESS && msg)
+    #define ASSERT_SUCCESS(res, msg) ASSERT_SUCCESS1((res), msg)
 
     //TODO: Move these
     struct QVector2
@@ -226,6 +227,9 @@ namespace Bolt
         void createSurface();
         void selectPhysicalDevice();
         void createLogicalDevice();
+
+        void createScene();
+
         void createSwapchain();
         void createImageViews();
         void setupFixedFunctions(FixedStageInfo& fixedStageInfo);
@@ -344,7 +348,8 @@ namespace Bolt
         ShaderManager*                      m_shaderManager = nullptr;
 
         vulkan::VulkanRenderPass            m_customRenderPass;
-        static VulkanRenderer*              s_Instance;                     
+        vulkan::RenderFrameScene            m_renderScene;                     
+        static VulkanRenderer*              s_Instance;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;
