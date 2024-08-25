@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include <Interface/IMemoryContext.h>
+#include <Types/QArray.h>
 #include <GFX/Vulkan/Internal/DeviceManager.h>
 #include <GFX/Vulkan/Internal/VulkanRenderPass.h>
 
@@ -40,9 +41,16 @@ namespace Bolt{namespace vulkan
         GraphicsContext(Quaint::IMemoryContext* context);
         void construct();
         void destroy();
-        void buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues);
+        
+        CommandPool& buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues);
+        
+        //TODO: Maybe add and remove could be handled better
+        /* Requested code is free to use the buffer as it likes */
+        void addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers = nullptr);
+        void removeCommandBuffer(const VkCommandBuffer* buffers, const uint32_t count);
 
         inline bool isValid() const { return m_valid; }
+        CommandPool& getCommandPool() { return m_commandPool; }
         //TODO: For creation
         // Create Graphics Context for (Renderpass) function parameter
         // Set list of attachments to be used and create their views

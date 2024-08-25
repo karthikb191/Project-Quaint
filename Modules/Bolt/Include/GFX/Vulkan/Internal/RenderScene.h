@@ -40,12 +40,29 @@ namespace Bolt { namespace vulkan{
         {
             desc.initialLayout = pInitialLayout; desc.finalLayout = pFinalLayout; return *this;
         }
+        inline AttachmentInfo& setExtent(const VkExtent3D& pExtent) { extent = pExtent; return *this; }
+        inline AttachmentInfo& setMemoryPropertyFlags(const VkMemoryPropertyFlags pFlags) { memoryPropertyFlags = pFlags; return *this; }
+
+        /* Image view is constructed from a few settings above and the ones below*/
+        inline AttachmentInfo& setImageViewType(const VkImageViewType pType) { viewType = pType; return*this; }
+        inline AttachmentInfo& setImageViewFormat(const VkFormat pFormat) { viewFormat = pFormat; return*this; }
+        inline AttachmentInfo& setImageViewComponentMapping(const VkComponentMapping& pMapping) { viewComponentMapping = pMapping; return*this; }
+        inline AttachmentInfo& setImageViewSubresourceRange(const VkImageSubresourceRange& pRange) { subresourceRange = pRange; return*this; }
+        inline AttachmentInfo& setIsSwapchainImage(bool pIsSwapChainImage) { isSwapchainImage = pIsSwapChainImage; return*this; }
  
         inline uint32_t getIndex() const { return index; }
         inline const RenderScene* getScene() const { return scene; }
         inline const EAttachmentType getType() const { return type; }
         inline const VkFormat getFormat() const { return desc.format; }
-        inline const VkSampleCountFlagBits getSampleCount() { return desc.samples; }
+        inline const VkSampleCountFlagBits getSampleCount() const { return desc.samples; }
+        inline const VkExtent3D& getExtent() const { return extent; }
+        inline const VkMemoryPropertyFlags getMemoryPropertyFlags() const { return memoryPropertyFlags; }
+        inline const VkImageViewType getImageViewType() const { return viewType; }
+        inline const VkFormat getImageViewFormat() const { return viewFormat; }
+        inline const VkComponentMapping& getImageViewComponentMapping() const { return viewComponentMapping; }
+        inline const VkImageSubresourceRange& getImageViewSubresourceRange() const { return subresourceRange; }
+        inline bool getIsSwapchainImage() const { return isSwapchainImage; }
+ 
 
         inline const VkAttachmentDescription& getDescription() const { return desc; }
         inline RenderScene& finalizeAttachmentInfo() { return *scene; }
@@ -59,6 +76,15 @@ namespace Bolt { namespace vulkan{
         VkAttachmentDescription     desc = { };
         uint32_t                    index = -1;
         RenderScene*                scene = nullptr;
+        VkExtent3D                  extent = {512, 512, 1};
+        bool                        isSwapchainImage = false;
+
+        //View specific information. Framebuffer is setup based on this
+        VkMemoryPropertyFlags       memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        VkImageViewType             viewType = VK_IMAGE_VIEW_TYPE_2D;
+        VkFormat                    viewFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        VkComponentMapping          viewComponentMapping = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY };
+        VkImageSubresourceRange     subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
     };
 
     class RenderScene
@@ -71,8 +97,8 @@ namespace Bolt { namespace vulkan{
 
     public:
     
-        void begin();
-        void end();
+        virtual void begin() = 0;
+        virtual void end() = 0;
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
         
@@ -99,9 +125,7 @@ namespace Bolt { namespace vulkan{
     struct FrameInfo
     {
         MVP                         mvpUBO;
-        FrameBuffer                 frameBuffer;
-        VkCommandBuffer             commandBuffer;
-        Bolt::VulkanTexture         texture;
+        VkCommandBuffer             commandBuffer = VK_NULL_HANDLE;
     };
 
     /* Renders to a swapchain */
@@ -114,7 +138,11 @@ namespace Bolt { namespace vulkan{
         /* Should be called once all the required information has been set*/
         virtual void construct() override;
 
-        VulkanRenderPass& beginRenderPassSetup() { return m_renderPass; }
+        virtual void begin() override;
+        virtual void end() override;
+
+        VulkanRenderPass& editRenderPassSetup() { return m_renderPass; }
+        void setupSwapchain();
 
     private:
 
@@ -128,10 +156,12 @@ namespace Bolt { namespace vulkan{
         uint32_t getNextFrame();
         
         Quaint::QArray<FrameInfo>                   m_frameInfo;
+        Quaint::QArray<FrameBuffer>                 m_framebuffers;
         uint8_t                                     m_nextFrameIndex = 0;
         const uint8_t                               m_framesInFlight = 1;
         VulkanRenderPass                            m_renderPass;
         VkSwapchainKHR                              m_swapchain;
+        VkSwapchainKHR                              m_outOfDateSwapchain;
     };
 }}
 

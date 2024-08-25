@@ -36,18 +36,15 @@ namespace Bolt { namespace vulkan
         }
     }
 
-    void GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues)
+    CommandPool& GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues)
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
         const VkDevice& device = dm->getDeviceDefinition().getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
         const QueueDefinition& def = dm->getDeviceDefinition().getQueueOfType(supportedQueues);
-        if (!def.isvalid())
-        {
-            QLOG_E(VulkanGraphicsContext, "could not find a queue with required support");
-            return;
-        }
+        assert(def.isvalid() && "could not find a queue with required support");
+        
         VkCommandPoolCreateInfo info {};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         info.flags = flags;
@@ -60,6 +57,39 @@ namespace Bolt { namespace vulkan
         );
         
         m_commandPool = CommandPool(pool, flags, def);
+        return m_commandPool;
     }
 
+    void GraphicsContext::addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers)
+    {
+        assert(buffers != nullptr && "Need valid pointer to to the allocated command buffer");
+
+        DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
+        const VkDevice& device = dm->getDeviceDefinition().getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.pNext = nullptr;
+        info.commandBufferCount = count;
+        info.level = level;
+
+        Quaint::QArray<VkCommandBuffer> allocatedBuffers(m_context, count);
+        ASSERT_SUCCESS(vkAllocateCommandBuffers(device, &info, allocatedBuffers.getBuffer_NonConst()),
+                        "Failed to allocate all the required command buffers");
+    }
+
+    void GraphicsContext::removeCommandBuffer(const VkCommandBuffer* buffers, const uint32_t count)
+    {
+        if(buffers != nullptr && count > 0)
+        {
+            QLOG_E(VulkanGraphicsContext, "Cannot remove command buffer. Invalid data provided.");
+            return;
+        }
+        DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
+        const VkDevice& device = dm->getDeviceDefinition().getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        vkFreeCommandBuffers(device, m_commandPool.commandPool, count, buffers);
+    }
 }}

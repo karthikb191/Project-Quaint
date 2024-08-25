@@ -33,17 +33,22 @@ namespace Bolt
         VulkanTexture& setUsage(const VkImageUsageFlagBits usage);
         VulkanTexture& setSharingMode(const VkSharingMode sharingMode);
         VulkanTexture& setQueueFamilies(const uint32_t numFamilyIndices, const uint32_t* queueFamilyIndices);
-
+        VulkanTexture& setMemoryProperty(const VkMemoryPropertyFlags flags);
+        
+        /* Null image handle can be passed. Will be replaced with the image handle of this this object */
+        VulkanTexture& setImageViewInfo(const VkImageViewCreateInfo& info);
 
         /* From must match with the current layout */
         VulkanTexture& build();
         VulkanTexture& createBackingMemory(VkMemoryPropertyFlags propertyFlags);
+        VulkanTexture& createBackingMemory();
         VulkanTexture& createImageView();
         void transitionLayout(const VkImageLayout from, const VkImageLayout to);
         void transferOwnership(const EQueueType from, const EQueueType to);
 
         VkImage* getImageRef() { return &m_image; }
         VkImageView* getImageViewRef() { return &m_imageView; }
+        VkImageView getImageView() { return m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
         bool isBacked() { return m_isBacked; }
         uint32_t getWidth() { return m_imageInfo.extent.width; }
@@ -59,11 +64,13 @@ namespace Bolt
         void createTexture();
 
         VkImageCreateInfo           m_imageInfo;
+        VkImageViewCreateInfo       m_imageViewInfo;
         bool                        m_isCreated = false;
         bool                        m_isBacked = false;
         VkImage                     m_image = VK_NULL_HANDLE;
         VkImageView                 m_imageView = VK_NULL_HANDLE;
         VkDeviceMemory              m_gpuMemory = VK_NULL_HANDLE;
+        VkMemoryPropertyFlags       m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     };
 
     /* Has an Image-View that can be bound */

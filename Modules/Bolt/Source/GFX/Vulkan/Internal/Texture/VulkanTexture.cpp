@@ -10,11 +10,35 @@ namespace Bolt
     DECLARE_LOG_CATEGORY(VKTEXTURE_LOGGER);
     DEFINE_LOG_CATEGORY(VKTEXTURE_LOGGER);
 
+    VkImageViewCreateInfo getDefaultImageViewCreateInfo()
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = VK_NULL_HANDLE;
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        
+        //subresource range selects mipmap levels and array layers to be accessible to the view
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        return createInfo;
+    }
+
     VulkanTexture::VulkanTexture() 
     {
+        m_imageViewInfo = getDefaultImageViewCreateInfo();
     }
     VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height)
     {
+        m_imageViewInfo = getDefaultImageViewCreateInfo();
         m_imageInfo = getDefaultImageCreateInfo();
         m_imageInfo.extent.width = width;
         m_imageInfo.extent.height = height;
@@ -22,6 +46,7 @@ namespace Bolt
     }
     VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format)
     {
+        m_imageViewInfo = getDefaultImageViewCreateInfo();
         m_imageInfo = getDefaultImageCreateInfo();
         m_imageInfo.extent.width = width;
         m_imageInfo.extent.height = height;
@@ -30,6 +55,7 @@ namespace Bolt
     }
     VulkanTexture::VulkanTexture(const uint32_t width, const uint32_t height, VkFormat format, VkImageUsageFlags usage, VkSharingMode sharingMode)
     {
+        m_imageViewInfo = getDefaultImageViewCreateInfo();
         m_imageInfo = getDefaultImageCreateInfo();
         m_imageInfo.extent.width = width;
         m_imageInfo.extent.height = height;
@@ -40,6 +66,7 @@ namespace Bolt
     }
     VulkanTexture::VulkanTexture(const VkImageCreateInfo& imageInfo)
     {
+        m_imageViewInfo = getDefaultImageViewCreateInfo();
         m_imageInfo = imageInfo;
         createTexture();
     }
@@ -127,6 +154,17 @@ namespace Bolt
         m_imageInfo.pQueueFamilyIndices = queueFamilyIndices;
         return *this;
     }
+    VulkanTexture& VulkanTexture::setMemoryProperty(const VkMemoryPropertyFlags flags) 
+    { 
+        m_memoryPropertyFlags = flags; 
+        return *this;
+    }
+
+    VulkanTexture& VulkanTexture::setImageViewInfo(const VkImageViewCreateInfo& info)
+    {
+        m_imageViewInfo = info;
+        return *this;
+    }
 
     VulkanTexture& VulkanTexture::build()
     {
@@ -199,6 +237,10 @@ namespace Bolt
         return desc;
     }    
 
+    VulkanTexture& VulkanTexture::createBackingMemory()
+    {
+        return createBackingMemory(m_memoryPropertyFlags);
+    }
     VulkanTexture& VulkanTexture::createBackingMemory(VkMemoryPropertyFlags propertyFlags)
     {
         if(m_isBacked)
@@ -248,26 +290,10 @@ namespace Bolt
     VulkanTexture& VulkanTexture::createImageView()
     {
         VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
-        VkImageViewCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image = m_image;
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        
-        //subresource range selects mipmap levels and array layers to be accessible to the view
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
 
+        m_imageViewInfo.image = m_image;
         VkResult res = vkCreateImageView(renderer->getDeviceManager()->getDeviceDefinition().getDevice()
-                                        , &createInfo
+                                        , &m_imageViewInfo
                                         , renderer->getAllocationCallbacks()
                                         , &m_imageView);
         assert(res == VK_SUCCESS && "Failed to create image view of sample texture");

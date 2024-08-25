@@ -192,6 +192,8 @@ namespace Bolt
         DeviceManager* getDeviceManager() { return m_deviceManager; }
         VkAllocationCallbacks* getAllocationCallbacks() { return m_allocationPtr; }
         VkSurfaceKHR getSurface() { return m_surface; }
+        VkPhysicalDevice getPhysicalDevice() { return m_physicalDevice; }
+        VkDevice getDevice() { return m_device; }
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         
         static VulkanRenderer* get() { return s_Instance; }
@@ -355,6 +357,11 @@ namespace Bolt
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;
     #endif
     };
+
+    VulkanRenderer::SwapchainSupportInfo querySwapchainSupport(Quaint::IMemoryContext* context, const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
+    VkSurfaceFormatKHR chooseSurfaceFormat(VulkanRenderer::SwapchainSupportInfo& supportInfo);
+    VkExtent2D chooseSwapExtent(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo);
+    VkPresentModeKHR choosePresentationMode(Quaint::IMemoryContext* context, VulkanRenderer::SwapchainSupportInfo& supportInfo);
 }
 
 #endif
