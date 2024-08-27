@@ -147,12 +147,19 @@ public:
         Iterator end() { return m_rawData + m_size; }
         Const_Iterator end() const { return m_rawData + m_size; }
 
-        //TODO: Test this
         void resize(size_t size)
         {
             m_size = size;
             reserve(((size + 8) / 4) * 4);
         }
+        
+        template<typename ...ARGS>
+        void resizeWithArgs(size_t size, ARGS... args)
+        {
+            resize(size);
+            construct(args...);
+        }
+
         void reserve(size_t size)
         {
             m_reservedSize = size;

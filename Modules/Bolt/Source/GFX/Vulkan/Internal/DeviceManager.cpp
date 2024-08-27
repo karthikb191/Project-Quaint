@@ -38,12 +38,14 @@ namespace Bolt
     : m_queueDefinitions(context)
     {}
 
-    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueTypeFlags flags) const
+    const QueueDefinition& DeviceDefinition::getQueueOfType(const EQueueTypeFlags flags, const bool requiresPresentation) const
     {
         for(const QueueDefinition& def : m_queueDefinitions)
         {
             if((def.getTypeFlags() & flags) == flags)
             {
+                if(requiresPresentation && !def.supportsPresentation()) continue;
+                
                 return def;
             }
         }

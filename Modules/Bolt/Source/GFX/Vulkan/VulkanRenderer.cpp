@@ -450,28 +450,30 @@ namespace Bolt
         m_transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
         m_presentQueue = m_deviceManager->getDeviceDefinition().getQueueSupportingPresentation().getVulkanQueueHandle();
 
-        createSwapchain();
-        createImageViews();
-        createRenderPass();
-        createDescriptorSetLayout();
-        createRenderPipeline();
-        createFrameBuffers();
-        createCommandPool();
+        createScene();
 
-        //Sample Texture binding to rect
-        createSampleImage();
-        createSampleImageView();
-        createSampleImageSampler();
-
-        createVertexBuffer();
-        createIndexBuffer();
-        
-        createUniformBuffers();
-        createDescriptorPool();
-        createDescriptorSets();
-
-        createCommandBuffer();
-        createSyncObjects();
+        //createSwapchain();
+        //createImageViews();
+        //createRenderPass();
+        //createDescriptorSetLayout();
+        //createRenderPipeline();
+        //createFrameBuffers();
+        //createCommandPool();
+//
+        ////Sample Texture binding to rect
+        //createSampleImage();
+        //createSampleImageView();
+        //createSampleImageSampler();
+//
+        //createVertexBuffer();
+        //createIndexBuffer();
+        //
+        //createUniformBuffers();
+        //createDescriptorPool();
+        //createDescriptorSets();
+//
+        //createCommandBuffer();
+        //createSyncObjects();
 
         testTexture
         .defaultInit()
@@ -1036,30 +1038,44 @@ namespace Bolt
         //First attachment is a swapchain image
         VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
         VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
+        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+        
+        //TODO: Maybe add some queue information here?
+        VkImageSubresourceRange range{};
+        range.aspectMask =VK_IMAGE_ASPECT_COLOR_BIT;
+        range.layerCount = 1;
+        range.baseArrayLayer = 0;
+        range.levelCount = 1;
+        range.baseMipLevel = 0;
 
         //TODO: This way of accessing is dangerous when array data is modified
-        AttachmentInfo& outputAttachment = m_renderScene.beginAttachmentSetup()
+        uint32_t swapchainOuputColorAttachment = m_renderScene.beginAttachmentSetup()
         .setType(EAttachmentType::Color)
         .setFormat(format.format)
         .setSamples(VK_SAMPLE_COUNT_1_BIT)
         .setOps( VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE )
         .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
         .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-        .setIsSwapchainImage(true);
+        .setExtent({swapExtent.width, swapExtent.height, 1})
+        .setMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setImageViewType(VK_IMAGE_VIEW_TYPE_2D)
+        .setImageViewFormat(format.format)
+        .setImageViewComponentMapping({ VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY })
+        .setImageViewSubresourceRange(range)
+        .setIsSwapchainImage(true)
+        .getIndex();
 
         //TODO: Add end setup functions?
 
         VulkanRenderPass::Subpass& subpass = m_renderScene.editRenderPassSetup()
         .beginSubpassSetup()
-        .addColorAttachment(outputAttachment.getIndex(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        .addColorAttachment(swapchainOuputColorAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         m_renderScene.editRenderPassSetup()
         .addSubpassDependency(
             subpass, SUBPASS_EXTERNAL
             , VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
             ,  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
-
-        m_renderScene.setupSwapchain();
 
         m_renderScene.construct();
     }
@@ -2076,86 +2092,89 @@ namespace Bolt
 
     void VulkanRenderer::drawFrame()
     {
-        vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+        m_renderScene.begin();
+        m_renderScene.end();
+        m_renderScene.submit();
+        // vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
         
-        uint32_t imageIndex;
+        // uint32_t imageIndex;
         
-        //Semaphore is signalled when presentation engine finishes using the image
-        VkResult res = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
+        // //Semaphore is signalled when presentation engine finishes using the image
+        // VkResult res = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-        if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-        {
-            recreateSwapchain();
-            return;
-        }
-        assert(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR && "Failed to acquire swapchain image");
-        vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
+        // if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+        // {
+        //     recreateSwapchain();
+        //     return;
+        // }
+        // assert(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR && "Failed to acquire swapchain image");
+        // vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
 
 
-        vkResetCommandBuffer(m_commandBuffers[m_currentFrame], 0);
+        // vkResetCommandBuffer(m_commandBuffers[m_currentFrame], 0);
 
-        recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
+        // recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
 
-        updateUniformBuffer(m_currentFrame);
+        // updateUniformBuffer(m_currentFrame);
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        // VkSubmitInfo submitInfo{};
+        // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        //Wait for image to become available
-        VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphores[m_currentFrame]};
+        // //Wait for image to become available
+        // VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphores[m_currentFrame]};
         
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
+        // VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        // submitInfo.waitSemaphoreCount = 1;
+        // submitInfo.pWaitSemaphores = waitSemaphores;
+        // submitInfo.pWaitDstStageMask = waitStages;
 
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &m_commandBuffers[m_currentFrame];
+        // submitInfo.commandBufferCount = 1;
+        // submitInfo.pCommandBuffers = &m_commandBuffers[m_currentFrame];
 
-        VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame]};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
+        // VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame]};
+        // submitInfo.signalSemaphoreCount = 1;
+        // submitInfo.pSignalSemaphores = signalSemaphores;
 
-        //TODO: Try a vkCmdBlitImage here
+        // //TODO: Try a vkCmdBlitImage here
 
-        //Wait for image to be available from vkAcquireImage. Then singal renderFinishedSemaphore once render is finished
-        res = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFences[m_currentFrame]);
-        assert(res == VK_SUCCESS && "Could not submit to queue");
-        //assert(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS && "Could not submit to queue");
-
-
-        //Runing Graphics context
-        testContext.begin();
+        // //Wait for image to be available from vkAcquireImage. Then singal renderFinishedSemaphore once render is finished
+        // res = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFences[m_currentFrame]);
+        // assert(res == VK_SUCCESS && "Could not submit to queue");
+        // //assert(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS && "Could not submit to queue");
 
 
-        testContext.end(m_swapchainImages[imageIndex]);
+        // //Runing Graphics context
+        // testContext.begin();
 
-        VkSemaphore renderWaitSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame], testContext.getSyncSemaphore()};
 
-        //READ ALOT MORE ON THIS PART
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        // testContext.end(m_swapchainImages[imageIndex]);
 
-        presentInfo.waitSemaphoreCount = 2;
-        presentInfo.pWaitSemaphores = renderWaitSemaphores;
+        // VkSemaphore renderWaitSemaphores[] = {m_renderFinishedSemaphores[m_currentFrame], testContext.getSyncSemaphore()};
 
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_swapchain;
-        presentInfo.pImageIndices = &imageIndex;
+        // //READ ALOT MORE ON THIS PART
+        // VkPresentInfoKHR presentInfo{};
+        // presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        res = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+        // presentInfo.waitSemaphoreCount = 2;
+        // presentInfo.pWaitSemaphores = renderWaitSemaphores;
+
+        // presentInfo.swapchainCount = 1;
+        // presentInfo.pSwapchains = &m_swapchain;
+        // presentInfo.pImageIndices = &imageIndex;
+
+        // res = vkQueuePresentKHR(m_presentQueue, &presentInfo);
 
         
-        if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-        {
-            recreateSwapchain();
-            return;
-        }
-        assert(res == VK_SUCCESS && "Failed to acquire swapchain image");
+        // if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+        // {
+        //     recreateSwapchain();
+        //     return;
+        // }
+        // assert(res == VK_SUCCESS && "Failed to acquire swapchain image");
 
-        m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        // m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-        assert(res==VK_SUCCESS && "Could not present");
+        // assert(res==VK_SUCCESS && "Could not present");
     }
 
     void VulkanRenderer::cleanupOutofDateSwapchain()

@@ -99,6 +99,7 @@ namespace Bolt { namespace vulkan{
     
         virtual void begin() = 0;
         virtual void end() = 0;
+        virtual void submit() = 0;
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
         
@@ -126,6 +127,9 @@ namespace Bolt { namespace vulkan{
     {
         MVP                         mvpUBO;
         VkCommandBuffer             commandBuffer = VK_NULL_HANDLE;
+        VkFence                     renderFence = VK_NULL_HANDLE;
+        VkSemaphore                 scImageAvailableSemaphore = VK_NULL_HANDLE;
+        VkSemaphore                 renderFinishedSemaphore = VK_NULL_HANDLE;
     };
 
     /* Renders to a swapchain */
@@ -140,6 +144,7 @@ namespace Bolt { namespace vulkan{
 
         virtual void begin() override;
         virtual void end() override;
+        virtual void submit() override;
 
         VulkanRenderPass& editRenderPassSetup() { return m_renderPass; }
         void setupSwapchain();
@@ -152,16 +157,20 @@ namespace Bolt { namespace vulkan{
         // Let Graphics context build command pool. If we need a new command buffer, we can get the pool from context
         void buildGraphicsContext(); 
         virtual void buildFrameBuffer() override;
+        void setupFrameInfo();
 
         uint32_t getNextFrame();
         
         Quaint::QArray<FrameInfo>                   m_frameInfo;
         Quaint::QArray<FrameBuffer>                 m_framebuffers;
         uint8_t                                     m_nextFrameIndex = 0;
+        uint32_t                                    m_currentImageIndex = 0;
         const uint8_t                               m_framesInFlight = 1;
         VulkanRenderPass                            m_renderPass;
         VkSwapchainKHR                              m_swapchain;
         VkSwapchainKHR                              m_outOfDateSwapchain;
+        uint32_t                                    m_currentFrame = -1;
+        VkExtent2D                                  m_swapchainExtent = {};
     };
 }}
 

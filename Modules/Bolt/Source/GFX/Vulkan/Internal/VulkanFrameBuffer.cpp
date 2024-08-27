@@ -28,7 +28,7 @@ namespace Bolt{ namespace vulkan{
         const VkDevice& device = dm->getDeviceDefinition().getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        Quaint::QArray<VkImageView> views(m_context, m_attachments.getSize());
+        Quaint::QArray<VkImageView> views(m_context);
         for(auto& attachment : m_attachments)
         {
             //If it's not valid, try creating it
@@ -38,10 +38,11 @@ namespace Bolt{ namespace vulkan{
             }
 
             assert(attachment.isValid() && "Attachment is still not valid even after trying to build it.");
-            if(!attachment.isBacked())
+            if(!attachment.isBacked() && !attachment.getIsSwapchainImage())
             {
                 attachment.createBackingMemory();
             }
+            attachment.createImageView();
             assert(attachment.isBacked() && "Could not back attachment to GPU Memory.");
             views.pushBack(attachment.getImageView());
         }
@@ -71,7 +72,8 @@ namespace Bolt{ namespace vulkan{
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setQueueFamilies(queueFamilies.getSize(), queueFamilies.getBuffer())
         .setMemoryProperty(info->getMemoryPropertyFlags())
-        .setImageViewInfo(viewInfo);
+        .setImageViewInfo(viewInfo)
+        .setIsSwapchainImage(info->getIsSwapchainImage());
 
         m_attachments.pushBack(texture);
         return *this;

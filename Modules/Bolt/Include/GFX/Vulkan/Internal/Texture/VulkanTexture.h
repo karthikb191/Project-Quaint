@@ -37,6 +37,7 @@ namespace Bolt
         
         /* Null image handle can be passed. Will be replaced with the image handle of this this object */
         VulkanTexture& setImageViewInfo(const VkImageViewCreateInfo& info);
+        VulkanTexture& setIsSwapchainImage(const bool isSwapchainImage);
 
         /* From must match with the current layout */
         VulkanTexture& build();
@@ -50,9 +51,10 @@ namespace Bolt
         VkImageView* getImageViewRef() { return &m_imageView; }
         VkImageView getImageView() { return m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
-        bool isBacked() { return m_isBacked; }
+        bool isBacked() { return m_isBacked || getIsSwapchainImage(); }
         uint32_t getWidth() { return m_imageInfo.extent.width; }
         uint32_t getHeight() { return m_imageInfo.extent.height; }
+        bool getIsSwapchainImage() { return m_isSwapchainImage; }
         VkAttachmentDescription buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout,
                                                             VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
                                                             VkAttachmentDescriptionFlags flags);
@@ -71,6 +73,7 @@ namespace Bolt
         VkImageView                 m_imageView = VK_NULL_HANDLE;
         VkDeviceMemory              m_gpuMemory = VK_NULL_HANDLE;
         VkMemoryPropertyFlags       m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        bool                        m_isSwapchainImage =  false;
     };
 
     /* Has an Image-View that can be bound */

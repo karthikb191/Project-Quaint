@@ -76,10 +76,10 @@ namespace Bolt
     }
     VulkanTexture::~VulkanTexture()
     {
-        if (isValid())
-        {
-            destroy();
-        }
+        //if (isValid())
+        //{
+        //    destroy();
+        //}
     }
     void VulkanTexture::destroy()
     {
@@ -163,6 +163,11 @@ namespace Bolt
     VulkanTexture& VulkanTexture::setImageViewInfo(const VkImageViewCreateInfo& info)
     {
         m_imageViewInfo = info;
+        return *this;
+    }
+    VulkanTexture& VulkanTexture::setIsSwapchainImage(const bool isSwapchainImage)
+    {
+        m_isSwapchainImage = isSwapchainImage;
         return *this;
     }
 
@@ -289,6 +294,11 @@ namespace Bolt
 
     VulkanTexture& VulkanTexture::createImageView()
     {
+        if(m_imageView != VK_NULL_HANDLE)
+        {
+            assert(false && "Image view is not a null handle");
+            return *this;
+        }
         VulkanRenderer* renderer = static_cast<VulkanRenderer*>(Bolt::RenderModule::get().getBoltRenderer()->GetRenderer());
 
         m_imageViewInfo.image = m_image;

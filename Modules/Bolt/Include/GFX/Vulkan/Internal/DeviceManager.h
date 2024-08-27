@@ -77,7 +77,7 @@ namespace Bolt
         DeviceDefinition& operator=(const DeviceDefinition&) = default;
 
         /*Simple Getters and Setters*/
-        const QueueDefinition& getQueueOfType(const EQueueTypeFlags flags) const;
+        const QueueDefinition& getQueueOfType(const EQueueTypeFlags flags, const bool requiresPresentation = false) const;
         const QueueDefinition& getQueueSupportingPresentation() const;
 
         VkPhysicalDevice getPhysicalDevice() const { return m_physicalDevice; }

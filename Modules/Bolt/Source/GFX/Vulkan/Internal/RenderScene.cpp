@@ -3,7 +3,8 @@
 
 namespace Bolt { namespace vulkan{
     RenderScene::RenderScene(Quaint::IMemoryContext* context)
-    : m_graphicsContext(context)
+    : m_context(context)
+    , m_graphicsContext(context)
     , m_attchmentInfos(context)
     {}
 
@@ -22,7 +23,7 @@ namespace Bolt { namespace vulkan{
     , m_nextFrameIndex(0)
     , m_renderPass(context)
     , m_framebuffers(context, context)
-    , m_frameInfo(context, framesInFlight)
+    , m_frameInfo(context)
     {}
 
     void RenderFrameScene::construct()
@@ -30,9 +31,9 @@ namespace Bolt { namespace vulkan{
         //TODO: Find a place to add command buffers
         buildGraphicsContext();
         m_renderPass.constructFromScene(this);
+        setupSwapchain();
         buildFrameBuffer();
-        // Build Graphics context
-        // Build swapchain
+        setupFrameInfo();
     }
 
     void RenderFrameScene::destroy()
@@ -79,7 +80,7 @@ namespace Bolt { namespace vulkan{
         createInfo.minImageCount = imageCount;
         createInfo.imageFormat = swapchainInfo->getFormat();
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = swapExtent;
+        createInfo.imageExtent = {swapchainInfo->getExtent().width, swapchainInfo->getExtent().height}; //Should match with the one setup in attachment
         createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
         //TODO: Change this later if we are using a memory command to transfer images to swapchain
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -97,6 +98,8 @@ namespace Bolt { namespace vulkan{
         createInfo.oldSwapchain = m_outOfDateSwapchain; //This will eventually have a null handle 
         createInfo.presentMode = presentMode;
 
+        //Registering swapchain extent for easier access
+        m_swapchainExtent = createInfo.imageExtent;
         VkResult res = vkCreateSwapchainKHR(VulkanRenderer::get()->getDevice(), &createInfo, VulkanRenderer::get()->getAllocationCallbacks(), &m_swapchain);
         assert(res == VK_SUCCESS && "Swapchain creation failed! Application will terminate");
     }
@@ -104,7 +107,7 @@ namespace Bolt { namespace vulkan{
     void RenderFrameScene::buildGraphicsContext()
     {
         m_graphicsContext.buildCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-        , EQueueType::Graphics | EQueueType::Transfer);
+        , EQueueType::Graphics | EQueueType::Transfer, true);
         m_graphicsContext.construct();
         // How to build renderpass
     }
@@ -133,9 +136,10 @@ namespace Bolt { namespace vulkan{
         Quaint::QArray<uint32_t> families(m_context);
         families.pushBack(family);
 
-        m_framebuffers.resize(swapchainImageCount);
+        m_framebuffers.resizeWithArgs(swapchainImageCount, m_context);
         for(uint32_t i = 0; i < swapchainImageCount; ++i)
         {
+            FrameBuffer buffer(m_context);
             m_framebuffers[i]
             .addAttachment(swapchainImages[i], swapchainInfo, families)
             .setExtent(swapchainInfo->getExtent())
@@ -144,12 +148,118 @@ namespace Bolt { namespace vulkan{
         }
     }
 
+    void RenderFrameScene::setupFrameInfo()
+    {
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        VkSemaphoreCreateInfo semInfo{};
+        semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semInfo.flags = 0;
+
+        for(uint32_t i = 0; i < m_framesInFlight; ++i)
+        {
+            FrameInfo info{};
+            auto buffers = m_graphicsContext.addCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, &info.commandBuffer);
+            info.commandBuffer = buffers[0];
+
+            ASSERT_SUCCESS(vkCreateFence(VulkanRenderer::get()->getDevice(), &fenceInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.renderFence)
+                , "Coule not create fence");
+
+            ASSERT_SUCCESS(vkCreateSemaphore(VulkanRenderer::get()->getDevice(), &semInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.scImageAvailableSemaphore)
+                , "Could not create semaphore");
+
+            ASSERT_SUCCESS(vkCreateSemaphore(VulkanRenderer::get()->getDevice(), &semInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.renderFinishedSemaphore)
+            , "Could not create Render finished semaphore");
+            m_frameInfo.pushBack(info);
+        }
+    }
+
     void RenderFrameScene::begin()
     {
+        m_currentFrame = (m_currentFrame + 1) % m_framesInFlight;
 
+        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        vkWaitForFences(device, 1, &frameInfo.renderFence, VK_TRUE, UINT64_MAX);
+        
+        //Semaphore is signalled when presentation engine finishes using the image
+        VkResult res = vkAcquireNextImageKHR(device, m_swapchain, UINT64_MAX, frameInfo.scImageAvailableSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
+
+        //if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+        //{
+        //    recreateSwapchain();
+        //    return;
+        //}
+        assert(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR && "Failed to acquire swapchain image");
+        vkResetFences(device, 1, &frameInfo.renderFence);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional\\
+
+        vkResetCommandBuffer(frameInfo.commandBuffer, 0);
+
+        res = vkBeginCommandBuffer(frameInfo.commandBuffer, &beginInfo);
+        assert(res==VK_SUCCESS && "Could not being command buffer");
+
+        //Now we begin a renderpass
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_renderPass.getRenderPass();
+        renderPassInfo.framebuffer = m_framebuffers[m_currentImageIndex].getHandle();
+
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = m_swapchainExtent;
+
+        VkClearValue clearColor = {0.5f, 0.1f, 0.0f, 1.0f};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(frameInfo.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
+
     void RenderFrameScene::end()
     {
-
+        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
+        vkCmdEndRenderPass(frameInfo.commandBuffer);
+        vkEndCommandBuffer(frameInfo.commandBuffer);
     }
+
+    void RenderFrameScene::submit()
+    {
+        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
+        VkQueue handle = m_graphicsContext.getCommandPool().getQueueDefinition().getVulkanQueueHandle();
+
+        //Submit to graphics queue.
+        // Wait for image to be available at COLOR_ATTACHMENT pipeline stage and signal render finished semaphore
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSubmitInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        info.commandBufferCount = 1;
+        info.pCommandBuffers = &frameInfo.commandBuffer;
+        info.waitSemaphoreCount = 1;
+        info.pWaitSemaphores = &frameInfo.scImageAvailableSemaphore;
+        info.signalSemaphoreCount = 1;
+        info.pSignalSemaphores = &frameInfo.renderFinishedSemaphore;
+        info.pWaitDstStageMask = waitStages;
+        ASSERT_SUCCESS(vkQueueSubmit(handle, 1, &info, frameInfo.renderFence), "Submit to graphics queue failed");
+
+        //Submit to presentation queue
+        //Wait for render to complete
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &frameInfo.renderFinishedSemaphore;
+
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &m_swapchain;
+        presentInfo.pImageIndices = &m_currentImageIndex;
+
+       ASSERT_SUCCESS(vkQueuePresentKHR(handle, &presentInfo), "Failed to submit to present queue");
+    }
+
 }}

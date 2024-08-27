@@ -36,13 +36,14 @@ namespace Bolt { namespace vulkan
         }
     }
 
-    CommandPool& GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues)
+    CommandPool& GraphicsContext::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport)
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
         const VkDevice& device = dm->getDeviceDefinition().getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        const QueueDefinition& def = dm->getDeviceDefinition().getQueueOfType(supportedQueues);
+        const QueueDefinition& def = dm->getDeviceDefinition().getQueueOfType(supportedQueues, requiresPresentationSupport);
+        //TODO: Better handle presentation query
         assert(def.isvalid() && "could not find a queue with required support");
         
         VkCommandPoolCreateInfo info {};
@@ -60,7 +61,7 @@ namespace Bolt { namespace vulkan
         return m_commandPool;
     }
 
-    void GraphicsContext::addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers)
+    Quaint::QArray<VkCommandBuffer> GraphicsContext::addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers)
     {
         assert(buffers != nullptr && "Need valid pointer to to the allocated command buffer");
 
@@ -70,6 +71,7 @@ namespace Bolt { namespace vulkan
 
         VkCommandBufferAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = m_commandPool.getHandle();
         info.pNext = nullptr;
         info.commandBufferCount = count;
         info.level = level;
@@ -77,6 +79,7 @@ namespace Bolt { namespace vulkan
         Quaint::QArray<VkCommandBuffer> allocatedBuffers(m_context, count);
         ASSERT_SUCCESS(vkAllocateCommandBuffers(device, &info, allocatedBuffers.getBuffer_NonConst()),
                         "Failed to allocate all the required command buffers");
+        return allocatedBuffers;
     }
 
     void GraphicsContext::removeCommandBuffer(const VkCommandBuffer* buffers, const uint32_t count)

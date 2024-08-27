@@ -42,11 +42,11 @@ namespace Bolt{namespace vulkan
         void construct();
         void destroy();
         
-        CommandPool& buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues);
+        CommandPool& buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport = false);
         
         //TODO: Maybe add and remove could be handled better
         /* Requested code is free to use the buffer as it likes */
-        void addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers = nullptr);
+        Quaint::QArray<VkCommandBuffer> addCommandBuffer(const VkCommandBufferLevel level, const uint32_t count, VkCommandBuffer* buffers = nullptr);
         void removeCommandBuffer(const VkCommandBuffer* buffers, const uint32_t count);
 
         inline bool isValid() const { return m_valid; }
