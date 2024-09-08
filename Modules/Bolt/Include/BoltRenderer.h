@@ -30,12 +30,14 @@ namespace Bolt
 
         const Window& getWindow() { return m_window; }
         IRenderer* GetRenderer() { return m_renderer_impl; }
+        IRenderObjectBuilder* getRenderObjectBuilder() { return m_renderObjectBuilder; }
     private:
         BoltRenderer();
         ~BoltRenderer();
 
-        IRenderer*                          m_renderer_impl     = nullptr;
-        Quaint::IMemoryContext*             m_context           = nullptr;
+        IRenderer*                          m_renderer_impl         = nullptr;
+        IRenderObjectBuilder*               m_renderObjectBuilder   = nullptr;
+        Quaint::IMemoryContext*             m_context               = nullptr;
 
         Window                              m_window;
 

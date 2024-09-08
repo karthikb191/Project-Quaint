@@ -1,9 +1,13 @@
 #include <GFX/Entities/RenderObject.h>
+#include <GFX/Data/ShaderInfo.h>
+#include <BoltRenderer.h>
+#include <RenderModule.h>
 #include <iostream>
 
 namespace Bolt
 {
     Geometry::Geometry(Quaint::IMemoryContext* context)
+    : RenderObject(context)
     {
         assert(context != nullptr && "Invalid memory context passed");
         m_vertices = Quaint::QArray<Quaint::QVertex>(context);
@@ -47,6 +51,16 @@ namespace Bolt
         constexpr int posOffset = vertex.getPositionOffset();
         constexpr int colorOffset = vertex.getColorOffset();
         constexpr int texOffset = vertex.getTexCoordOffset();
+    }
+
+    void RenderQuad::load()
+    {
+        ShaderInfo info{};
+        info.vertShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv";
+        info.fragShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv";
+
+        m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
+        m_impl->build(info);
     }
 
     void RenderQuad::draw()

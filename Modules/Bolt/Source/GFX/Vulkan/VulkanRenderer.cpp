@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <chrono>
 #include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
+#include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 
 namespace Bolt
 {
@@ -392,6 +393,7 @@ namespace Bolt
     , m_descriptorSets(context)
     , m_customRenderPass(context)
     , m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
+    , m_immediateContext(context)
     {
         s_Instance = this;
     }
@@ -449,6 +451,13 @@ namespace Bolt
         m_graphicsQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
         m_transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
         m_presentQueue = m_deviceManager->getDeviceDefinition().getQueueSupportingPresentation().getVulkanQueueHandle();
+
+        //setting up immediate context for simple immediate queue submit commands
+        m_immediateContext.buildCommandPool(
+            VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+            EQueueType::Transfer, false
+        );
+        m_immediateContext.construct();
 
         createScene();
 
@@ -527,6 +536,7 @@ namespace Bolt
         vkFreeMemory(m_device, m_textureGpuMemory, m_allocationPtr);
         //-----
 
+        m_immediateContext.destroy();
 
         for(const VkFramebuffer& buffer : m_frameBuffers)
         {
@@ -1053,7 +1063,7 @@ namespace Bolt
         .setType(EAttachmentType::Color)
         .setFormat(format.format)
         .setSamples(VK_SAMPLE_COUNT_1_BIT)
-        .setOps( VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE )
+        .setOps(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
         .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
         .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
         .setExtent({swapExtent.width, swapExtent.height, 1})
@@ -1909,14 +1919,14 @@ namespace Bolt
 
         //Descriptor pool info for our sample texture
         descPools[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descPools[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+        descPools[1].descriptorCount = MAX_FRAMES_IN_FLIGHT; // Max descriptors of the above the type allowed.
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = descPools.getSize();
         poolInfo.pPoolSizes = descPools.getBuffer();
 
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT); //Max number of descriptor SETS allowed.
         VkResult res = vkCreateDescriptorPool(m_device, &poolInfo, m_allocationPtr, &m_descriptorPool);
         assert(res == VK_SUCCESS && "Failed to create descriptor pool");
     }
@@ -1940,6 +1950,7 @@ namespace Bolt
             bufferInfo.buffer = m_uniformBuffers[i];
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
+            // For frame-in-flight buffer, I could try playing with offsets and assigning a single buffer
 
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2206,6 +2217,11 @@ namespace Bolt
 
         createImageViews();
         createFrameBuffers();
+    }
+
+    IRenderObjectImpl* VulkanRenderer::buildRenderObjectImplFor(RenderObject* obj)
+    {
+        return QUAINT_NEW(m_context, VulkanRenderObject, obj);
     }
 
 //----------------------------------------------------

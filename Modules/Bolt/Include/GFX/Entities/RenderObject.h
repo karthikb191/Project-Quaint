@@ -6,6 +6,7 @@
 #include <Interface/IMemoryContext.h>
 #include <Types/QArray.h>
 #include <QMath.h>
+#include "../Interface/IRenderer.h"
 #include "../Interface/IShaderGroup.h"
 
 namespace Quaint
@@ -27,14 +28,19 @@ namespace Bolt
     class RenderObject
     {
     public:
+        RenderObject(Quaint::IMemoryContext* context)
+        : m_context(context)
+        {}
+        virtual void load() = 0;
         virtual void draw() = 0;
         virtual void setShaderGroup(IShaderGroup* shaderGroup) { m_shaderGroup = shaderGroup; }
-
+        Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         const IShaderGroup* getShaderGroup() { return m_shaderGroup; }
-    
-    protected:
-        IShaderGroup* m_shaderGroup = nullptr;
 
+    protected:
+        Quaint::IMemoryContext* m_context = nullptr;
+        IShaderGroup* m_shaderGroup = nullptr;
+        IRenderObjectImpl* m_impl = nullptr;
         //TODO: Add a GPU-backed object to give renderer necessary information
     };
 
@@ -43,6 +49,7 @@ namespace Bolt
     public:
         Geometry(Quaint::IMemoryContext* context);
 
+        virtual void load() override {}
         virtual size_t getVertexCount() const { return m_vertices.getSize(); }
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
 
@@ -62,6 +69,7 @@ namespace Bolt
     {
     public:
         RenderQuad(Quaint::IMemoryContext* context);
+        virtual void load();
         virtual void draw() override;
     };
 }

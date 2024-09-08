@@ -4,19 +4,21 @@
 #include <memory>
 #include <GFX/Interface/IShaderGroup.h>
 #include <Types/QArray.h>
+#include <GFX/Helpers.h>
 #include "VulkanShader.h"
 
-namespace Bolt
-{
+namespace Bolt { namespace vulkan{
     /*
     * Should take ownership of shaders.
     * Cant be copied or assigned
     */
     class VulkanShaderGroup : public IShaderGroup
     {
+    public:
         VulkanShaderGroup();
         VulkanShaderGroup(const char* vertSprvPath, const char* fragSpirvPath);
         virtual ~VulkanShaderGroup();
+        void destroy();
 
         VulkanShaderGroup(const VulkanShaderGroup&) = delete;
         VulkanShaderGroup(VulkanShaderGroup&&) = delete;
@@ -35,13 +37,13 @@ namespace Bolt
 
         //TODO: Expand to incorporate shaders dynamically
         //TODO: Use custom unique/shared ptrs
-        std::unique_ptr<VulkanVertexShader>         m_vertShader;
-        std::unique_ptr<VulkanFragmentShader>       m_fragShader;
+        std::unique_ptr<VulkanVertexShader, Deleter<VulkanVertexShader>>            m_vertShader;
+        std::unique_ptr<VulkanFragmentShader, Deleter<VulkanFragmentShader>>        m_fragShader;
         
         Quaint::QArray<VkVertexInputBindingDescription> m_VIBs = Quaint::QArray<VkVertexInputBindingDescription>::GetInvalidPlaceholder();
         Quaint::QArray<VkVertexInputAttributeDescription> m_VIAs = Quaint::QArray<VkVertexInputAttributeDescription>::GetInvalidPlaceholder();
     
     };
-}
+}}
 
 #endif // _H_VULKAN_SHADER_GROUP

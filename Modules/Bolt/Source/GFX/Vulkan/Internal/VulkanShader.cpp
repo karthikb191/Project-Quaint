@@ -28,12 +28,18 @@ namespace Bolt
     }
     VulkanShader::~VulkanShader()
     {
+        assert(m_shaderModule == VK_NULL_HANDLE && "Shader module not destroyed. Resource leak possible");
+    }
+
+    void VulkanShader::destroy()
+    {
         if (m_shaderModule != VK_NULL_HANDLE)
         {
             vkDestroyShaderModule(VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice()
             , m_shaderModule
             , VulkanRenderer::get()->getAllocationCallbacks());
         }
+        m_shaderModule = VK_NULL_HANDLE;
     }
 
     void VulkanShader::constructShaderModule(const char* spirvPath)

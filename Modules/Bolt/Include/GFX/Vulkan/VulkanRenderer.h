@@ -21,6 +21,7 @@
 #include "Internal/ShaderManager.h"
 #include "Internal/VulkanRenderPass.h"
 #include "Internal/RenderScene.h"
+#include "Internal/VulkanGraphicsContext.h"
 
 namespace Bolt
 {
@@ -131,7 +132,7 @@ namespace Bolt
         VkFence                 m_internalFence = VK_NULL_HANDLE;
     };
 
-    class alignas(16) VulkanRenderer : public IRenderer
+    class alignas(16) VulkanRenderer : public IRenderer, public IRenderObjectBuilder
     {
         friend class BoltRenderer;
         
@@ -199,6 +200,8 @@ namespace Bolt
         static VulkanRenderer* get() { return s_Instance; }
 
         IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
+
+        IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
     
     private:
     //------ Static Allocation Functions
@@ -352,6 +355,8 @@ namespace Bolt
         vulkan::VulkanRenderPass            m_customRenderPass;
         vulkan::RenderFrameScene            m_renderScene;                     
         static VulkanRenderer*              s_Instance;
+
+        vulkan::GraphicsContext             m_immediateContext;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

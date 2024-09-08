@@ -1,0 +1,32 @@
+#ifndef _H_VULKAN_RENDER_OBJECT
+#define _H_VULKAN_RENDER_OBJECT
+
+#include <GFX/Interface/IRenderer.h>
+#include <GFX/Vulkan/Internal/VulkanShaderGroup.h>
+#include <memory>
+#include <GFX/Helpers.h>
+
+namespace Bolt{ namespace vulkan{
+
+    class Bolt::RenderObject;
+    class VulkanRenderObject : public IRenderObjectImpl
+    {
+    typedef std::unique_ptr<VulkanShaderGroup, Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
+
+    public:
+        VulkanRenderObject(RenderObject* ro);
+        virtual void build(const ShaderInfo& shaderinfo) override;
+        void destroy();
+
+    private:
+        void createShaderGroup(const ShaderInfo& shaderinfo);
+        void createVertexAttributeInformation(const ShaderInfo& shaderinfo);
+        void createDescriptorLayoutInformation(const ShaderInfo& shaderinfo);
+        void createDescriptors();
+        void createPipeline();
+
+        VulkanShaderGroupRef    m_shaderGroup;
+    };
+    
+}}
+#endif

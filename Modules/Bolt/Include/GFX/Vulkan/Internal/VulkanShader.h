@@ -25,7 +25,10 @@ namespace Bolt
         VulkanShader(const VulkanShader&) = delete;
         VulkanShader(VulkanShader&&) = delete;
         VulkanShader& operator=(const VulkanShader&) = delete;
+
+        void destroy();
         
+        VkShaderModule getHandle() { return m_shaderModule; }
     private:
         void constructShaderModule(const char* spirvPath);
         // Vertex Input Descriptions that must be bound
