@@ -28,6 +28,7 @@ namespace Bolt
         EResourceType       type = EResourceType::INVALID;
         uint32_t            set = 0;        //The set it's bound to in shader
         uint32_t            binding = 0;    //The index it's bound to in shader
+        bool                perFrame = false; // If set to true, instances could be created depending on number of frames-in-flight
     };
 
     struct ShaderInfo

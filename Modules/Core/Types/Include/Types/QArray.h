@@ -9,6 +9,10 @@
 
 namespace Quaint
 {
+    //TODO: 
+    // 1. Need clear command
+    // 2. Cleanup code..... It's pretty messy
+
     template<typename T>
     class QArray
     {
@@ -151,6 +155,12 @@ public:
         {
             m_size = size;
             reserve(((size + 8) / 4) * 4);
+        }
+
+        void clear()
+        {
+            m_size = 0;
+            reserve(4);
         }
         
         template<typename ...ARGS>
@@ -318,7 +328,10 @@ public:
             
             if(oldData != nullptr)
             {
-                memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
+                if(m_size > 0)
+                {
+                    memcpy(m_rawData, oldData, m_size * TYPE_SIZE);
+                }
                 QUAINT_DEALLOC_MEMORY(m_context, oldData); //No need to call destructor here
             }
             

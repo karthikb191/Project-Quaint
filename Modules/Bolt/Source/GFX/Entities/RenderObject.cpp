@@ -4,6 +4,9 @@
 #include <RenderModule.h>
 #include <iostream>
 
+// TODO: Remove this later once interface is ready
+#include <GFX/Vulkan/VulkanRenderer.h>
+
 namespace Bolt
 {
     Geometry::Geometry(Quaint::IMemoryContext* context)
@@ -61,6 +64,10 @@ namespace Bolt
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
         m_impl->build(info);
+
+        //TODO: Access Vulkan Renderer to create backing images and mapping memory.
+        //TODO: use proper interface once available
+
     }
 
     void RenderQuad::draw()
