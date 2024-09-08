@@ -30,7 +30,9 @@ namespace Bolt
         VulkanTexture& setWidth(const uint32_t width);
         VulkanTexture& setHeight(const uint32_t height);
         VulkanTexture& setFormat(const VkFormat format);
-        VulkanTexture& setUsage(const VkImageUsageFlagBits usage);
+        VulkanTexture& setUsage(const VkImageUsageFlags usage);
+        VulkanTexture& setInitialLayout(const VkImageLayout layout);
+        VulkanTexture& setTiling(const VkImageTiling tiling);
         VulkanTexture& setSharingMode(const VkSharingMode sharingMode);
         VulkanTexture& setQueueFamilies(const uint32_t numFamilyIndices, const uint32_t* queueFamilyIndices);
         VulkanTexture& setMemoryProperty(const VkMemoryPropertyFlags flags);
@@ -49,6 +51,7 @@ namespace Bolt
 
         VkImage* getImageRef() { return &m_image; }
         VkImageView* getImageViewRef() { return &m_imageView; }
+        VkImage getHandle() { return m_image; }
         VkImageView getImageView() { return m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
         bool isBacked() { return m_isBacked || getIsSwapchainImage(); }

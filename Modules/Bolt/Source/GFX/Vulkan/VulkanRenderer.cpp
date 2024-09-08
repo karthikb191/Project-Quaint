@@ -1664,6 +1664,65 @@ namespace Bolt
     }
     //-------
 
+    void VulkanRenderer::createTextureFromFile(const char* path)
+    {
+        int width = 0, height = 0, comp = 0;
+        stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
+
+        size_t bufferSize = width * height * 4;
+        VkBuffer stagingBuffer; 
+        VkDeviceMemory stagingBufferGpuMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBufferGpuMemory, stagingBuffer);
+
+        //This copies pixels to staging buffer
+        void* data;
+        vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &data);
+        memcpy(data, pixels, bufferSize);
+        vkUnmapMemory(m_device, stagingBufferGpuMemory);
+
+        uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
+
+        VulkanTexture texture;
+        texture.setFormat(VK_FORMAT_R8G8B8A8_SRGB)
+        .setWidth(width)
+        .setHeight(height)
+        .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+        .setTiling(VK_IMAGE_TILING_OPTIMAL)
+        .setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
+        .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        .setQueueFamilies(1, &family)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .build()
+        .createBackingMemory()
+        .createImageView();
+
+        //TODO: Handle layout transitions properly. They are really poorly hardcoded right now
+
+        // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
+        // If this Image has explicit ownership 
+        transitionImageLayout(m_device, texture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB,
+         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+         , m_renderScene.getContext()->getCommandPool().getHandle()
+         , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+
+        //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
+        copyImageFromStaging(m_device, texture.getHandle(), stagingBuffer, width, height
+        , m_renderScene.getContext()->getCommandPool().getHandle()
+        , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+
+        //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
+        transitionImageLayout(m_device, texture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        , m_renderScene.getContext()->getCommandPool().getHandle()
+        , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+
+        //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
+        vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
+        vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+        stbi_image_free(pixels);
+    }
 
     void VulkanRenderer::createSampleImage()
     {
@@ -1799,7 +1858,7 @@ namespace Bolt
             info.queueFamilyIndexCount = queueFamilies.getSize();
             info.pQueueFamilyIndices = queueFamilies.getBuffer();
         }
-
+        
         VkResult res = vkCreateBuffer(m_device, &info, m_allocationPtr, &buffer);
         assert(res == VK_SUCCESS && "Could not create a vertex buffer");
 
@@ -1834,6 +1893,86 @@ namespace Bolt
         vkCmdCopyBuffer(copyBuffer, src, dst, 1, &copyRegion);
 
         endOneTimeCommands(device, copyBuffer, srcCommandPool, transferQueue);
+    }
+
+    void VulkanRenderer::createBuffer(size_t bufferSize, void* data, VkBufferUsageFlags usageFlags,
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer)
+    {
+        // Creates a husk.
+        createBuffer2(bufferSize, usageFlags, propertyFlags, deviceMemory, buffer);
+
+        if(usageFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        {
+            //Use staging buffer to copy data to. Use Vulkan command to move data to device local memory
+            VkBuffer stagingBuffer;
+            VkDeviceMemory gpuMemory;
+            createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, gpuMemory, stagingBuffer);
+
+            void* mappedData;
+            vkMapMemory(m_device, gpuMemory, 0, bufferSize, 0, &mappedData);
+            memcpy(mappedData, data, bufferSize);
+            vkUnmapMemory(m_device, gpuMemory);
+
+            //TODO: Handle this properly
+            copyBuffer(m_device, m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle() 
+            , stagingBuffer, buffer, bufferSize, m_renderScene.getContext()->getCommandPool().getHandle());
+
+            //Free staging buffer
+            vkFreeMemory(m_device, gpuMemory, m_allocationPtr);
+            vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+        }
+        else if(usageFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        {
+            void* mappedData;
+            vkMapMemory(m_device, deviceMemory, 0, bufferSize, 0, &mappedData);
+            memcpy(mappedData, data, bufferSize);
+            vkUnmapMemory(m_device, deviceMemory);
+        }
+        else 
+        {
+            assert(false && "Unhandled");
+        }
+    }
+    void VulkanRenderer::createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer)
+    {
+        
+        //TODO: Handle this using an immediate context. If queue family is different, it should 
+        uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
+
+        VkBufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        info.size = bufferSize;
+        info.usage = usageFlags; //It is possible to specify multiple usages using bitwise OR
+        //Just like swapchain images, buffers can also be shared across queues or have unique ownership
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        info.pQueueFamilyIndices = &family;
+        
+        VkResult res = vkCreateBuffer(m_device, &info, m_allocationPtr, &buffer);
+        assert(res == VK_SUCCESS && "Could not create a vertex buffer");
+
+        VkMemoryRequirements requirements{};
+        vkGetBufferMemoryRequirements(m_device, buffer, &requirements);
+        
+        uint32_t memoryTypeIndex;
+        bool found = getMemoryTypeIndex(m_physicalDevice, requirements.memoryTypeBits, propertyFlags, &memoryTypeIndex);
+        assert(found && "Could not find suitable a memory type for device memory allocation");
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.memoryTypeIndex = memoryTypeIndex;
+        allocInfo.allocationSize = requirements.size;
+        
+        res = vkAllocateMemory(m_device, &allocInfo, m_allocationPtr, &deviceMemory);
+        assert(res == VK_SUCCESS && "Failed to allocate vertex buffer on device");
+
+        //Offset should be a multiple of alignment if it's not 0. 0 works since we are specifically binding data for a vertex
+        vkBindBufferMemory(m_device, buffer, deviceMemory, 0);   
     }
 
     void VulkanRenderer::createVertexBuffer()

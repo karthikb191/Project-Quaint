@@ -203,7 +203,23 @@ namespace Bolt
 
         IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
     
+        void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer);
+
+        void createBuffer(size_t bufferSize, void* data, VkBufferUsageFlags usageFlags,
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer);
+
+        void createTextureFromFile(const char* path);
     private:
+        void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
+        VkMemoryPropertyFlags propertyFlags,
+        VkDeviceMemory& deviceMemory,
+        VkBuffer& buffer);
+
     //------ Static Allocation Functions
         static void* VKAPI_PTR allocationFunction(void* pUserData, size_t size, size_t alignment, VkSystemAllocationScope allocationScope);
         static void VKAPI_PTR freeFunction(void* pUserData, void* pMemory);
@@ -252,10 +268,6 @@ namespace Bolt
         void createSampleImageView();
         void createSampleImageSampler();
 
-        void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
-        VkMemoryPropertyFlags propertyFlags,
-        VkDeviceMemory& deviceMemory,
-        VkBuffer& buffer);
         void createVertexBuffer();
         void createIndexBuffer();
         void createUniformBuffers();

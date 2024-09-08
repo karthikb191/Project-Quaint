@@ -135,11 +135,21 @@ namespace Bolt
         m_imageInfo.format = format;
         return *this;
     }
-    VulkanTexture& VulkanTexture::setUsage(const VkImageUsageFlagBits usage)
+    VulkanTexture& VulkanTexture::setUsage(const VkImageUsageFlags usage)
     {
         assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
         m_imageInfo.usage = usage;
         return *this;
+    }
+    VulkanTexture& VulkanTexture::setInitialLayout(const VkImageLayout layout)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.initialLayout = layout;
+    }
+    VulkanTexture& VulkanTexture::setTiling(const VkImageTiling tiling)
+    {
+        assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
+        m_imageInfo.tiling = tiling;
     }
     VulkanTexture& VulkanTexture::setSharingMode(const VkSharingMode sharingMode)
     {
