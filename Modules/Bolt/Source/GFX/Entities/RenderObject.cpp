@@ -14,7 +14,7 @@ namespace Bolt
     {
         assert(context != nullptr && "Invalid memory context passed");
         m_vertices = Quaint::QArray<Quaint::QVertex>(context);
-        m_indices = Quaint::QArray<uint32_t>(context);
+        m_indices = Quaint::QArray<uint16_t>(context);
     }
 
 // RenderQuad  ==============================================================================
@@ -56,11 +56,60 @@ namespace Bolt
         constexpr int texOffset = vertex.getTexCoordOffset();
     }
 
+    //TODO: Remove all of these from here
+    VulkanTexture texture;
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferDeviceMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferDeviceMemory;
+
     void RenderQuad::load()
     {
         ShaderInfo info{};
         info.vertShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv";
         info.fragShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv";
+        info.resources = Quaint::QArray<ShaderResource>(m_context);
+
+        // TODO: Create a different resource type inheriting from this 
+        ShaderResource resource;
+        //UBO Resource
+        resource.set = 0;
+        resource.binding = 0;
+        resource.perFrame = false;
+        resource.stage = EShaderStage::VERTEX;
+        resource.type = EResourceType::UNIFORM_BUFFER;
+        info.resources.pushBack(resource);
+
+        // Diffuse Texture resource
+        resource.set = 0;
+        resource.binding = 1;
+        resource.perFrame = false;
+        resource.stage = EShaderStage::FRAGMENT;
+        resource.type = EResourceType::COMBINED_IMAGE_SAMPLER;
+        info.resources.pushBack(resource);
+
+        // Get Backed Texture
+        // Get Backed Buffer
+        VulkanRenderer::get()->createTextureFromFile("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg", texture);
+
+        constexpr int sz = sizeof(Quaint::QVertex);
+        VulkanRenderer::get()->createBuffer(
+            sizeof(decltype(m_vertices)::value_type) * sizeof(QVertex)
+            , (void*)m_vertices.getBuffer()
+            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            , vertexBufferDeviceMemory
+            , vertexBuffer
+        );
+
+        VulkanRenderer::get()->createBuffer(
+            sizeof(decltype(m_indices)::value_type) * m_indices.getSize()
+            , (void*)m_indices.getBuffer()
+            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            , indexBufferDeviceMemory
+            , indexBuffer
+        );
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
         m_impl->build(info);
@@ -73,6 +122,20 @@ namespace Bolt
     void RenderQuad::draw()
     {
 
+    }
+
+    void RenderQuad::drawTemp(vulkan::RenderFrameScene* scene)
+    {
+        //TODO: Completely refactor this out
+
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
+        0, 1, &vertexBuffer, offsets);
+        vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        
+        m_impl->draw();
+
+        vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, m_indices.getSize(), 1, 0, 0, 0);
     }
 
 //==========================================================================================

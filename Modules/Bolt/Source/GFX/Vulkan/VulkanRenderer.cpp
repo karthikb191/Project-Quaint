@@ -15,6 +15,9 @@
 #include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 
+//TODO: Remove this from here
+#include <Gfx/Entities/RenderObject.h>
+
 namespace Bolt
 {
     using namespace vulkan;
@@ -460,6 +463,9 @@ namespace Bolt
         m_immediateContext.construct();
 
         createScene();
+
+        RenderQuad quad(m_context);
+        quad.load();
 
         //createSwapchain();
         //createImageViews();
@@ -1664,7 +1670,8 @@ namespace Bolt
     }
     //-------
 
-    void VulkanRenderer::createTextureFromFile(const char* path)
+    //TODO: Not very extensible. Moves final layout to SHADER READ ONLY. Probably best to pass on some flags
+    void VulkanRenderer::createTextureFromFile(const char* path, VulkanTexture& outTexuture)
     {
         int width = 0, height = 0, comp = 0;
         stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
@@ -1684,8 +1691,9 @@ namespace Bolt
 
         uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
 
-        VulkanTexture texture;
-        texture.setFormat(VK_FORMAT_R8G8B8A8_SRGB)
+        outTexuture
+        .defaultInit()
+        .setFormat(VK_FORMAT_R8G8B8A8_SRGB)
         .setWidth(width)
         .setHeight(height)
         .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
@@ -1702,18 +1710,18 @@ namespace Bolt
 
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
-        transitionImageLayout(m_device, texture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB,
+        transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
          , m_renderScene.getContext()->getCommandPool().getHandle()
          , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
 
         //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
-        copyImageFromStaging(m_device, texture.getHandle(), stagingBuffer, width, height
+        copyImageFromStaging(m_device, outTexuture.getHandle(), stagingBuffer, width, height
         , m_renderScene.getContext()->getCommandPool().getHandle()
         , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
-        transitionImageLayout(m_device, texture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB, 
+        transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         , m_renderScene.getContext()->getCommandPool().getHandle()
         , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
@@ -1722,6 +1730,7 @@ namespace Bolt
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
         vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
         stbi_image_free(pixels);
+
     }
 
     void VulkanRenderer::createSampleImage()
@@ -1903,7 +1912,7 @@ namespace Bolt
         // Creates a husk.
         createBuffer2(bufferSize, usageFlags, propertyFlags, deviceMemory, buffer);
 
-        if(usageFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        if(propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         {
             //Use staging buffer to copy data to. Use Vulkan command to move data to device local memory
             VkBuffer stagingBuffer;
@@ -1924,7 +1933,7 @@ namespace Bolt
             vkFreeMemory(m_device, gpuMemory, m_allocationPtr);
             vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
         }
-        else if(usageFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        else if(propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
         {
             void* mappedData;
             vkMapMemory(m_device, deviceMemory, 0, bufferSize, 0, &mappedData);

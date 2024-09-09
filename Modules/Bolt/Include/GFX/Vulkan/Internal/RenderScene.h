@@ -148,7 +148,9 @@ namespace Bolt { namespace vulkan{
 
         VulkanRenderPass& editRenderPassSetup() { return m_renderPass; }
         void setupSwapchain();
-
+        VulkanRenderPass* getRenderPass() { return &m_renderPass; }
+        const VkExtent2D& getSwapchainExtent() const { return m_swapchainExtent; }
+        FrameInfo& getCurrentFrameInfo() { return m_frameInfo[m_currentFrame]; }
     private:
 
         virtual void destroy() override;

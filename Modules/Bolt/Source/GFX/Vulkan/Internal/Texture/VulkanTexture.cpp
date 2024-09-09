@@ -145,11 +145,13 @@ namespace Bolt
     {
         assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
         m_imageInfo.initialLayout = layout;
+        return *this;
     }
     VulkanTexture& VulkanTexture::setTiling(const VkImageTiling tiling)
     {
         assert(!m_isCreated && "Texture already created. Cannot modify texture params once created");
         m_imageInfo.tiling = tiling;
+        return *this;
     }
     VulkanTexture& VulkanTexture::setSharingMode(const VkSharingMode sharingMode)
     {

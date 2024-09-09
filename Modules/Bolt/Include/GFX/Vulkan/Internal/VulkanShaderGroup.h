@@ -33,6 +33,9 @@ namespace Bolt { namespace vulkan{
         */
         void addVertexInputBindingDescription(const VkVertexInputBindingDescription& desc);
         void addAttributeInputAttributeDescription(const VkVertexInputAttributeDescription& desc);
+
+        VulkanVertexShader* getVertexShader() { return m_vertShader.get(); }
+        VulkanFragmentShader* getFragmentShader() { return m_fragShader.get(); }
     private:
 
         //TODO: Expand to incorporate shaders dynamically

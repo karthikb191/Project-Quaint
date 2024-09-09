@@ -16,6 +16,7 @@ namespace Bolt{ namespace vulkan{
     public:
         VulkanRenderObject(RenderObject* ro);
         virtual void build(const ShaderInfo& shaderinfo) override;
+        virtual void draw() override;
         void destroy();
 
     private:
@@ -29,6 +30,7 @@ namespace Bolt{ namespace vulkan{
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool                        m_descriptorPool = VK_NULL_HANDLE;
+        VkPipeline                              m_pipeline = VK_NULL_HANDLE;
     };
     
 }}

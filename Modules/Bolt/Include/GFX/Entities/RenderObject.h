@@ -25,6 +25,12 @@ namespace Quaint
 
 namespace Bolt
 {
+    //TODO: Remove this
+    namespace vulkan
+    {
+        class RenderFrameScene;
+    }
+
     class RenderObject
     {
     public:
@@ -36,6 +42,9 @@ namespace Bolt
         virtual void setShaderGroup(IShaderGroup* shaderGroup) { m_shaderGroup = shaderGroup; }
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         const IShaderGroup* getShaderGroup() { return m_shaderGroup; }
+
+        //TODO: Remove all of these once testing is done
+
 
     protected:
         Quaint::IMemoryContext* m_context = nullptr;
@@ -54,14 +63,14 @@ namespace Bolt
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
 
         virtual size_t getIndexCount() const { return m_indices.getSize(); }
-        virtual const uint32_t* getIndexBuffer() const { return m_indices.getBuffer(); }
+        virtual const uint16_t* getIndexBuffer() const { return m_indices.getBuffer(); }
 
         void transform(const Quaint::QVec3& position, const Quaint::QVec3& rotation, Quaint::QVec3& scale);
 
     protected:
         Quaint::IMemoryContext* m_memoryContext = nullptr;
         Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
-        Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
+        Quaint::QArray<uint16_t> m_indices = Quaint::QArray<uint16_t>::GetInvalidPlaceholder();
         Quaint::QMat4x4 m_transform;
     };
 
@@ -71,6 +80,9 @@ namespace Bolt
         RenderQuad(Quaint::IMemoryContext* context);
         virtual void load();
         virtual void draw() override;
+
+        //TODO: Remove this
+        void drawTemp(vulkan::RenderFrameScene* context);
     };
 }
 

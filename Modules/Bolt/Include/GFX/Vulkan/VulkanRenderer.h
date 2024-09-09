@@ -202,6 +202,7 @@ namespace Bolt
         IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
 
         IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
+        vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
     
         void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -213,7 +214,7 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
 
-        void createTextureFromFile(const char* path);
+        void createTextureFromFile(const char* path, VulkanTexture& outTexuture);
     private:
         void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
