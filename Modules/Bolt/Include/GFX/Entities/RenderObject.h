@@ -9,6 +9,9 @@
 #include "../Interface/IRenderer.h"
 #include "../Interface/IShaderGroup.h"
 
+//TODO: Remove this
+#include <vulkan/vulkan.h>
+
 namespace Quaint
 {
     struct QVertex
@@ -17,9 +20,9 @@ namespace Quaint
         Quaint::QVec4    color;
         Quaint::QVec2    texCoord;
 
-        constexpr uint32_t getPositionOffset() const { return offsetof(QVertex, position); }
-        constexpr uint32_t getColorOffset() const { return offsetof(QVertex, color); }
-        constexpr uint32_t getTexCoordOffset() const { return offsetof(QVertex, texCoord); }
+        constexpr static uint32_t getPositionOffset() { return offsetof(QVertex, position); }
+        constexpr static uint32_t getColorOffset() { return offsetof(QVertex, color); }
+        constexpr static uint32_t getTexCoordOffset() { return offsetof(QVertex, texCoord); }
     };
 }
 
@@ -84,6 +87,10 @@ namespace Bolt
         //TODO: Remove this
         void drawTemp(vulkan::RenderFrameScene* context);
     };
+
+    class VulkanTexture;
+    extern VulkanTexture* getTexture_Temp();
+    extern VkBuffer getUBOBuffer_Temp();
 }
 
 #endif //_H_BOLT_RENDER_OBJECT

@@ -63,6 +63,10 @@ namespace Bolt
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferDeviceMemory;
 
+    VkBuffer mvpBuffer;
+    VkDeviceMemory mvpBufferDeviceMemory;
+    void* mappedMVPBuffer;
+
     void RenderQuad::load()
     {
         ShaderInfo info{};
@@ -96,7 +100,7 @@ namespace Bolt
         VulkanRenderer::get()->createBuffer(
             sizeof(decltype(m_vertices)::value_type) * sizeof(QVertex)
             , (void*)m_vertices.getBuffer()
-            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            , VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             , vertexBufferDeviceMemory
             , vertexBuffer
@@ -105,11 +109,21 @@ namespace Bolt
         VulkanRenderer::get()->createBuffer(
             sizeof(decltype(m_indices)::value_type) * m_indices.getSize()
             , (void*)m_indices.getBuffer()
-            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            , VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             , indexBufferDeviceMemory
             , indexBuffer
         );
+
+        VulkanRenderer::get()->createBuffer(
+            sizeof(UniformBufferObject)
+            , (void*)m_indices.getBuffer()
+            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+            , VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+            , mvpBufferDeviceMemory
+            , mvpBuffer
+        );
+        vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
         m_impl->build(info);
@@ -127,6 +141,8 @@ namespace Bolt
     void RenderQuad::drawTemp(vulkan::RenderFrameScene* scene)
     {
         //TODO: Completely refactor this out
+        const UniformBufferObject& obj = VulkanRenderer::get()->getMVPMatrix();
+        memcpy(mappedMVPBuffer, &obj, sizeof(UniformBufferObject));
 
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
@@ -139,5 +155,15 @@ namespace Bolt
     }
 
 //==========================================================================================
+    
+    //TODO: Remove these
+    VulkanTexture* getTexture_Temp()
+    {
+        return &texture;
+    }
+    VkBuffer getUBOBuffer_Temp()
+    {
+        return mvpBuffer;
+    }
 
 }

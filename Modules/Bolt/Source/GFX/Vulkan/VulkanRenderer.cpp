@@ -401,6 +401,7 @@ namespace Bolt
         s_Instance = this;
     }
 
+RenderQuad* quadRef = nullptr; //TODO: Remove this
     void VulkanRenderer::init()
     {
         DeviceManager::Create(m_context);
@@ -465,7 +466,8 @@ namespace Bolt
         createScene();
 
         RenderQuad quad(m_context);
-        quad.load();
+        quadRef = QUAINT_NEW(m_context, RenderQuad, m_context);
+        quadRef->load();
 
         //createSwapchain();
         //createImageViews();
@@ -516,6 +518,11 @@ namespace Bolt
 
         testContext.destroy();
         testTexture.destroy();
+
+        if(quadRef != nullptr)
+        {
+            QUAINT_DELETE(m_context, quadRef);
+        }
 
         for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
@@ -1055,6 +1062,9 @@ namespace Bolt
         VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
         VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
         VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+
+        m_camera.setAspectRatio((float)swapExtent.width / (float)swapExtent.height);
+        m_swapchainExtent = swapExtent;
         
         //TODO: Maybe add some queue information here?
         VkImageSubresourceRange range{};
@@ -2249,9 +2259,39 @@ namespace Bolt
         memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
     }
 
+    void VulkanRenderer::updateUniformBufferProxy()
+    {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        m_ubo.model = Quaint::buildRotationMatrixYZX(Quaint::QVec3( 0.f, time * 10.0f, 0.0f ));
+
+        //glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+        
+        uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
+        float x = 5 * (float)std::sin(timeNow * 0.00000005);
+        
+        m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
+        Quaint::QVec4(x, 1.0f, 2.0f, 1.0f),
+        Quaint::QVec3(0.0f, 1.0f, 0.0f));
+        m_ubo.view = m_camera.getViewMatrix();
+        m_ubo.proj = m_camera.getProjectionMatrix();
+        
+        //memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
+    }
+
     void VulkanRenderer::drawFrame()
     {
+        updateUniformBufferProxy();
+
         m_renderScene.begin();
+
+        quadRef->drawTemp(&m_renderScene);
+
         m_renderScene.end();
         m_renderScene.submit();
         // vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);

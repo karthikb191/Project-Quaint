@@ -10,12 +10,15 @@ namespace Bolt { namespace vulkan {
     : IRenderObjectImpl(ro)
     , m_shaderGroup(nullptr,  Deleter<VulkanShaderGroup>(ro->getMemoryContext()))
     , m_setLayouts(ro->getMemoryContext())
+    , m_sets(ro->getMemoryContext())
     {
 
     }
 
     void VulkanRenderObject::build(const ShaderInfo& shaderinfo)
     {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         //TODO: fetch shader group
         // Create shader group
         // Create descriptor layout information
@@ -26,7 +29,77 @@ namespace Bolt { namespace vulkan {
         //TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
         createShaderGroup(shaderinfo);
         createDescriptorLayoutInformation(shaderinfo);
+        createDescriptors(shaderinfo);
         createPipeline();
+
+        //TODO: Probably move this to a texture class
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+
+        samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.maxAnisotropy = 0;
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+        //TODO: Not entirely sure of the way this functions. Need to read more on this
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0;
+        samplerInfo.minLod = 0;
+        samplerInfo.maxLod = 0;
+
+        VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &m_sampler);
+
+
+        //TODO: Remove this from here
+        VkDescriptorSetAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.descriptorSetCount = 1;
+        info.descriptorPool = m_descriptorPool;
+        info.pSetLayouts = m_setLayouts.getBuffer();
+
+        VkDescriptorSet set;
+        res = vkAllocateDescriptorSets(device, &info, &set);
+        assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
+        m_sets.pushBack(set);
+
+        //Descriptor sets are allocated, but they arent filled with approproate values        
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = getUBOBuffer_Temp(); //TODO: Remove this
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+        // For frame-in-flight buffer, I could try playing with offsets and assigning a single buffer
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = getTexture_Temp()->getImageView();
+        imageInfo.sampler = m_sampler;
+    
+        Quaint::QFastArray<VkWriteDescriptorSet, 2> writes;
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].dstSet = m_sets[0];
+        writes[0].dstBinding = 0;
+        writes[0].dstArrayElement = 0;
+        writes[0].pBufferInfo = &bufferInfo;
+
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[1].dstSet = m_sets[0];
+        writes[1].dstBinding = 1;
+        writes[1].dstArrayElement = 0;
+        writes[1].pImageInfo = &imageInfo;
+
+        vkUpdateDescriptorSets(device, writes.getSize(), writes.getBuffer(), 0, nullptr);
     }
 
     void VulkanRenderObject::destroy()
@@ -80,7 +153,6 @@ namespace Bolt { namespace vulkan {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        Quaint::QArray<VkDescriptorSetLayoutCreateInfo> layoutInfos(memContext);
         Quaint::QArray<VkDescriptorSetLayoutBinding> bindingInfos(memContext);
 
         uint32_t currentSet = -1;
@@ -92,14 +164,13 @@ namespace Bolt { namespace vulkan {
             {
                 VkDescriptorSetLayoutCreateInfo info{};
                 info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-                layoutInfos.pushBack(info);
 
                 if(bindingInfos.getSize() > 0)
                 {
-                    layoutInfos[currentSet].bindingCount = bindingInfos.getSize();
-                    layoutInfos[currentSet].pBindings = bindingInfos.getBuffer();
-                    layoutInfos[currentSet].flags = 0;
-                    layoutInfos[currentSet].pNext = nullptr;
+                    info.bindingCount = bindingInfos.getSize();
+                    info.pBindings = bindingInfos.getBuffer();
+                    info.flags = 0;
+                    info.pNext = nullptr;
 
                     VkDescriptorSetLayout layout;
                     ASSERT_SUCCESS(vkCreateDescriptorSetLayout(device, &info, callbacks, &layout), "Failed to create descriptor set layout");
@@ -121,12 +192,11 @@ namespace Bolt { namespace vulkan {
         {
             VkDescriptorSetLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            layoutInfos.pushBack(info);
 
-            layoutInfos[currentSet].bindingCount = bindingInfos.getSize();
-            layoutInfos[currentSet].pBindings = bindingInfos.getBuffer();
-            layoutInfos[currentSet].flags = 0;
-            layoutInfos[currentSet].pNext = nullptr;
+            info.bindingCount = bindingInfos.getSize();
+            info.pBindings = bindingInfos.getBuffer();
+            info.flags = 0;
+            info.pNext = nullptr;
 
             VkDescriptorSetLayout layout;
             ASSERT_SUCCESS(vkCreateDescriptorSetLayout(device, &info, callbacks, &layout), "Failed to create descriptor set layout");
@@ -279,15 +349,12 @@ namespace Bolt { namespace vulkan {
         multisamplingInfo.sampleShadingEnable = VK_FALSE;
         multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-
         //TODO: Depth and Stencil testing: We have to set up a structure for depth and stencil testing here late
-
 
         //Color Blending: 
         VkPipelineColorBlendAttachmentState blendAttachmentState{};
         blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         blendAttachmentState.blendEnable = VK_FALSE;
-
 
         VkPipelineColorBlendStateCreateInfo blendInfo{};
         blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -311,11 +378,35 @@ namespace Bolt { namespace vulkan {
 
 //-------------Vertex Shader input binding----------------------
         //TODO: Get this from some info structure or a render object
-        auto inputBindingDesc = QVertex::getBindingDescription();
+        VkVertexInputBindingDescription inputBindingDesc{};
+        inputBindingDesc.binding = 0;
+        inputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        inputBindingDesc.stride = sizeof(Quaint::QVertex);
+
+        //auto inputBindingDesc = QVertex::getBindingDescription();
         Quaint::QFastArray<VkVertexInputAttributeDescription, 3> attributeDesc;
+        constexpr auto posOff = Quaint::QVertex::getPositionOffset();
+        constexpr auto colorOff = Quaint::QVertex::getColorOffset();
+        constexpr auto texCoordOff = Quaint::QVertex::getTexCoordOffset();
+        //Position
+        attributeDesc[0].binding = 0;
+        attributeDesc[0].location = 0;
+        attributeDesc[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDesc[0].offset = Quaint::QVertex::getPositionOffset();
+
+        //Color
+        attributeDesc[1].binding = 0;
+        attributeDesc[1].location = 1;
+        attributeDesc[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDesc[1].offset = Quaint::QVertex::getColorOffset();
+
+        //Texcoord
+        attributeDesc[2].binding = 0;
+        attributeDesc[2].location = 2;
+        attributeDesc[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDesc[2].offset = Quaint::QVertex::getTexCoordOffset();
 
         //TODO: This probably doesnt get correct values
-        QVertex::getAttributeDescription(attributeDesc);
         vertexInputStateInfo.vertexBindingDescriptionCount = 1;
         vertexInputStateInfo.pVertexBindingDescriptions = &inputBindingDesc;
 
@@ -324,7 +415,6 @@ namespace Bolt { namespace vulkan {
 
         graphicsPipelineInfo.pVertexInputState = &vertexInputStateInfo;
 //---------------------------------------------------------------
-
 
         graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
         graphicsPipelineInfo.pViewportState = &viewportStateInfo;
@@ -347,14 +437,16 @@ namespace Bolt { namespace vulkan {
 
         ASSERT_SUCCESS(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, callbacks, &m_pipeline)
         , "Failed to create Graphics pipeline");
-
     }
 
     void VulkanRenderObject::draw()
     {
         FrameInfo& info = VulkanRenderer::get()->getRenderFrameScene()->getCurrentFrameInfo();
-        //vkCmdBindDescriptorSets(info.commandBuffer,
-        // VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, , 0, nullptr);
+        
+        vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+        vkCmdBindDescriptorSets(info.commandBuffer,
+         VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, m_sets.getBuffer(), 0, nullptr);
     }
 
 }}

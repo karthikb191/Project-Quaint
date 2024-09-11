@@ -203,6 +203,9 @@ namespace Bolt
 
         IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
         vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
+
+        //TODO: Fix this
+        const UniformBufferObject& getMVPMatrix() { return m_ubo; }
     
         void createBuffer(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -242,6 +245,7 @@ namespace Bolt
     //------------------------------
 
         void updateUniformBuffer(size_t index);
+        void updateUniformBufferProxy();
         void drawFrame();
 
         void createAllocationCallbacks();

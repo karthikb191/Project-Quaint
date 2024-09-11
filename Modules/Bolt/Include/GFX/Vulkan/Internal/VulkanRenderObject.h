@@ -28,9 +28,11 @@ namespace Bolt{ namespace vulkan{
 
         VulkanShaderGroupRef                    m_shaderGroup;
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts;
+        Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool                        m_descriptorPool = VK_NULL_HANDLE;
         VkPipeline                              m_pipeline = VK_NULL_HANDLE;
+        VkSampler                               m_sampler = VK_NULL_HANDLE;
     };
     
 }}
