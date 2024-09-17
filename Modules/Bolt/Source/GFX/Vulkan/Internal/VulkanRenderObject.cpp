@@ -19,12 +19,6 @@ namespace Bolt { namespace vulkan {
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        //TODO: fetch shader group
-        // Create shader group
-        // Create descriptor layout information
-        // Create vertex attribute
-        // Create descriptors
-        // Create pipeline
 
         //TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
         createShaderGroup(shaderinfo);
@@ -61,8 +55,8 @@ namespace Bolt { namespace vulkan {
         //TODO: Remove this from here
         VkDescriptorSetAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorSetCount = 1;
         info.descriptorPool = m_descriptorPool;
+        info.descriptorSetCount = m_setLayouts.getSize();
         info.pSetLayouts = m_setLayouts.getBuffer();
 
         VkDescriptorSet set;
@@ -134,74 +128,53 @@ namespace Bolt { namespace vulkan {
 
     void VulkanRenderObject::createShaderGroup(const ShaderInfo& shaderinfo)
     {
-        //TODO: Get this data from shader data
         m_shaderGroup.reset(QUAINT_NEW(m_renderObject->getMemoryContext(), VulkanShaderGroup
                             , shaderinfo.vertShaderPath.getBuffer()
                             , shaderinfo.fragShaderPath.getBuffer()));
     }
-
-    void VulkanRenderObject::createVertexAttributeInformation(const ShaderInfo& shaderinfo)
-    {
-        //TODO: Get this data from shader data
-        
-    }
     
-    //TODO: Handle layout for multiple frames-in-flight
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
     {
         Quaint::IMemoryContext* memContext = m_renderObject->getMemoryContext();
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        Quaint::QArray<VkDescriptorSetLayoutBinding> bindingInfos(memContext);
+        Quaint::QArray<
+        Quaint::QArray<VkDescriptorSetLayoutBinding>> setBindingInfos(memContext, (size_t)shaderinfo.maxResourceSets);
+        //Initialize Inner array
+        for(auto& it : setBindingInfos)
+        {
+            it = Quaint::QArray<VkDescriptorSetLayoutBinding>(memContext);
+        }
 
-        uint32_t currentSet = -1;
         for(auto& resource : shaderinfo.resources)
         {
             // TODO: Handle this better
-            assert(resource.set == currentSet || resource.set == currentSet + 1 && "Information not in order.");
-            if(resource.set == currentSet + 1)
-            {
-                VkDescriptorSetLayoutCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            assert(resource.set < shaderinfo.maxResourceSets && "Ivalid Resource set index");
+            assert(resource.count > 0 && "Invalid resouce count");
 
-                if(bindingInfos.getSize() > 0)
-                {
-                    info.bindingCount = bindingInfos.getSize();
-                    info.pBindings = bindingInfos.getBuffer();
-                    info.flags = 0;
-                    info.pNext = nullptr;
-
-                    VkDescriptorSetLayout layout;
-                    ASSERT_SUCCESS(vkCreateDescriptorSetLayout(device, &info, callbacks, &layout), "Failed to create descriptor set layout");
-                    m_setLayouts.pushBack(layout);
-                    bindingInfos.clear();
-                }
-                ++currentSet;
-            }
-
+            Quaint::QArray<VkDescriptorSetLayoutBinding>& bindings = setBindingInfos[resource.set];
             VkDescriptorSetLayoutBinding binding{};
             binding.binding = resource.binding;
-            binding.descriptorCount = 1; //TODO: Only supporting one for now
+            binding.descriptorCount = resource.count;
             binding.descriptorType = toVulkanDescriptorType(resource.type);
             binding.stageFlags = toVulkanShaderStageFlagBits(resource.stage);
-            bindingInfos.pushBack(binding);
+            bindings.pushBack(binding);
         }
 
-        if(bindingInfos.getSize() > 0)
+        //Create descriptor set layouts here
+        for(auto& bindings : setBindingInfos)
         {
-            VkDescriptorSetLayoutCreateInfo info{};
+            VkDescriptorSetLayoutCreateInfo info {};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-
-            info.bindingCount = bindingInfos.getSize();
-            info.pBindings = bindingInfos.getBuffer();
             info.flags = 0;
             info.pNext = nullptr;
+            info.bindingCount = bindings.getSize();
+            info.pBindings = bindings.getBuffer();
 
             VkDescriptorSetLayout layout;
             ASSERT_SUCCESS(vkCreateDescriptorSetLayout(device, &info, callbacks, &layout), "Failed to create descriptor set layout");
             m_setLayouts.pushBack(layout);
-            bindingInfos.clear();
         }
 
         VkPipelineLayoutCreateInfo info {};
@@ -232,11 +205,13 @@ namespace Bolt { namespace vulkan {
             }
             else
             {
-                ++numTypes[type];
+                uint8_t increment = resource.perFrame ? MAX_FRAMES_IN_FLIGHT : 1;
+                numTypes[type] += increment; 
             }
         }
 
         Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_renderObject->getMemoryContext());
+
         for(auto& entry : numTypes)
         {
             VkDescriptorPoolSize size{};
@@ -254,7 +229,7 @@ namespace Bolt { namespace vulkan {
         poolInfo.flags = 0;
         poolInfo.pNext = nullptr;
 
-        ASSERT_SUCCESS( vkCreateDescriptorPool(device, &poolInfo, callbacks, &m_descriptorPool), "Failed to create descriptor pool");
+        ASSERT_SUCCESS(vkCreateDescriptorPool(device, &poolInfo, callbacks, &m_descriptorPool), "Failed to create descriptor pool");
 
     }
 

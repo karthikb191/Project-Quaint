@@ -79,18 +79,21 @@ namespace Bolt
         //UBO Resource
         resource.set = 0;
         resource.binding = 0;
+        resource.count = 1;
         resource.perFrame = false;
         resource.stage = EShaderStage::VERTEX;
         resource.type = EResourceType::UNIFORM_BUFFER;
         info.resources.pushBack(resource);
-
+ 
         // Diffuse Texture resource
         resource.set = 0;
         resource.binding = 1;
+        resource.count = 1;
         resource.perFrame = false;
         resource.stage = EShaderStage::FRAGMENT;
         resource.type = EResourceType::COMBINED_IMAGE_SAMPLER;
         info.resources.pushBack(resource);
+        info.maxResourceSets = 1;
 
         // Get Backed Texture
         // Get Backed Buffer

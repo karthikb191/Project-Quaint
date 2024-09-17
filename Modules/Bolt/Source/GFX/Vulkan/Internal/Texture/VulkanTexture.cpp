@@ -76,11 +76,12 @@ namespace Bolt
     }
     VulkanTexture::~VulkanTexture()
     {
-        //if (isValid())
-        //{
-        //    destroy();
-        //}
+        //TODO: Is it better if this is non-copyable
+        //assert(m_imageView == VK_NULL_HANDLE
+        //&& m_image == VK_NULL_HANDLE
+        //&& m_gpuMemory == VK_NULL_HANDLE && "Texture not destroyed completely");
     }
+    
     void VulkanTexture::destroy()
     {
         VkAllocationCallbacks *callbacks = VulkanRenderer::get()->getAllocationCallbacks();

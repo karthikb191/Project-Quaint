@@ -21,7 +21,6 @@ namespace Bolt{ namespace vulkan{
 
     private:
         void createShaderGroup(const ShaderInfo& shaderinfo);
-        void createVertexAttributeInformation(const ShaderInfo& shaderinfo);
         void createDescriptorLayoutInformation(const ShaderInfo& shaderinfo);
         void createDescriptors(const ShaderInfo& shaderInfo);
         void createPipeline();

@@ -46,7 +46,7 @@ public:
             reserve(4);
             construct(args...);
         }
-        QArray(IMemoryContext* context, size_t size)
+        explicit QArray(IMemoryContext* context, size_t size)
         {
             m_context = context;
             m_size = size;
