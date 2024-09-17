@@ -39,6 +39,59 @@ namespace Bolt
         Quaint::QArray<ShaderResource>      resources;
         uint8_t                             maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
     };
+
+    
+    struct CombinedImageSamplerInfo
+    {
+        Quaint::QPath imagePath;
+    };
+
+    struct UniformBufferInputInfo
+    {
+        int test;
+    };
+
+    template<EResourceType ResourceType>
+    class ResourceTraits
+    {
+    public:
+        typedef void INPUT_INFO_TYPE;
+    };
+
+    template<>
+    class ResourceTraits<EResourceType::COMBINED_IMAGE_SAMPLER>
+    {
+    public:
+        typedef CombinedImageSamplerInfo INPUT_INFO_TYPE;
+    };
+
+    template<>
+    class ResourceTraits<EResourceType::UNIFORM_BUFFER>
+    {
+    public:
+        typedef UniformBufferInputInfo INPUT_INFO_TYPE;
+    };
+
+    //Should be implemented for specific resources on API side
+    class GFXResource
+    {
+        
+    };
+
+    template<EResourceType ResourceType
+    , typename Traits = ResourceTraits<ResourceType>>
+    class Resource
+    {
+    public:
+        Resource(typename Traits::INPUT_INFO_TYPE pInfo);
+
+        GFXResource* resource;
+    };
 }
+
+//                                    Resource 
+//    ImageResource   ImageSamplerResource    SamplerResource     UniformBufferResource
+
+//1. How to send inputs to each of these?
 
 #endif //_H_BOLT_SHADER_INFO

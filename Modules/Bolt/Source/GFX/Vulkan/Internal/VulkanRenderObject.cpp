@@ -23,6 +23,7 @@ namespace Bolt { namespace vulkan {
         //TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
         createShaderGroup(shaderinfo);
         createDescriptorLayoutInformation(shaderinfo);
+        allocateDescriptorPool(shaderinfo);
         createDescriptors(shaderinfo);
         createPipeline();
 
@@ -51,19 +52,7 @@ namespace Bolt { namespace vulkan {
 
         VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &m_sampler);
 
-
-        //TODO: Remove this from here
-        VkDescriptorSetAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorPool = m_descriptorPool;
-        info.descriptorSetCount = m_setLayouts.getSize();
-        info.pSetLayouts = m_setLayouts.getBuffer();
-
-        VkDescriptorSet set;
-        res = vkAllocateDescriptorSets(device, &info, &set);
-        assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
-        m_sets.pushBack(set);
-
+        //TODO: These should come from some resource class in association with shader info
         //Descriptor sets are allocated, but they arent filled with approproate values        
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = getUBOBuffer_Temp(); //TODO: Remove this
@@ -189,7 +178,7 @@ namespace Bolt { namespace vulkan {
         ASSERT_SUCCESS(vkCreatePipelineLayout(device, &info, callbacks, &m_pipelineLayout), "Failed to create pipeline layout");
     }
 
-    void VulkanRenderObject::createDescriptors(const ShaderInfo& shaderInfo)
+    void VulkanRenderObject::allocateDescriptorPool(const ShaderInfo& shaderInfo)
     {
         Quaint::IMemoryContext* memContext = m_renderObject->getMemoryContext();
         VkDevice device = VulkanRenderer::get()->getDevice();
@@ -230,6 +219,31 @@ namespace Bolt { namespace vulkan {
         poolInfo.pNext = nullptr;
 
         ASSERT_SUCCESS(vkCreateDescriptorPool(device, &poolInfo, callbacks, &m_descriptorPool), "Failed to create descriptor pool");
+    }
+
+    void VulkanRenderObject::createDescriptors(const ShaderInfo& shaderInfo)
+    {
+        assert(m_descriptorPool != VK_NULL_HANDLE && "descriptor pool not allocated");
+        
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        //Allocating Descriptor sets from descriptor pool
+        VkDescriptorSetAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.descriptorPool = m_descriptorPool;
+        info.descriptorSetCount = m_setLayouts.getSize();
+        info.pSetLayouts = m_setLayouts.getBuffer();
+
+        //Creating descriptor Sets
+        m_sets.resize(m_setLayouts.getSize());
+        VkResult res = vkAllocateDescriptorSets(device, &info, m_sets.getBuffer_NonConst());
+        assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
+    }
+
+    //TODO: how to handle this?
+    void VulkanRenderObject::writeDescriptorSets()
+    {
 
     }
 

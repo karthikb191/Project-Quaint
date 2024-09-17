@@ -22,11 +22,13 @@ namespace Bolt{ namespace vulkan{
     private:
         void createShaderGroup(const ShaderInfo& shaderinfo);
         void createDescriptorLayoutInformation(const ShaderInfo& shaderinfo);
+        void allocateDescriptorPool(const ShaderInfo& shaderInfo);
         void createDescriptors(const ShaderInfo& shaderInfo);
+        void writeDescriptorSets();
         void createPipeline();
 
         VulkanShaderGroupRef                    m_shaderGroup;
-        Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts;
+        Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts; //Represents layout for the respective set
         Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool                        m_descriptorPool = VK_NULL_HANDLE;
