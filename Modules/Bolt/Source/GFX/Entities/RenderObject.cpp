@@ -72,17 +72,17 @@ namespace Bolt
         ShaderInfo info{};
         info.vertShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv";
         info.fragShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv";
-        info.resources = Quaint::QArray<ShaderResource>(m_context);
+        info.resources = Quaint::QArray<ShaderResourceInfo>(m_context);
 
         // TODO: Create a different resource type inheriting from this 
-        ShaderResource resource;
+        ShaderResourceInfo resource;
         //UBO Resource
         resource.set = 0;
         resource.binding = 0;
         resource.count = 1;
         resource.perFrame = false;
         resource.stage = EShaderStage::VERTEX;
-        resource.type = EResourceType::UNIFORM_BUFFER;
+        resource.type = EShaderResourceType::UNIFORM_BUFFER;
         info.resources.pushBack(resource);
  
         // Diffuse Texture resource
@@ -91,7 +91,7 @@ namespace Bolt
         resource.count = 1;
         resource.perFrame = false;
         resource.stage = EShaderStage::FRAGMENT;
-        resource.type = EResourceType::COMBINED_IMAGE_SAMPLER;
+        resource.type = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
         info.resources.pushBack(resource);
         info.maxResourceSets = 1;
 

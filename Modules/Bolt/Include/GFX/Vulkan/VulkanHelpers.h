@@ -4,15 +4,15 @@
 
 namespace Bolt{ namespace vulkan{
     
-    inline VkDescriptorType toVulkanDescriptorType(const EResourceType type)
+    inline VkDescriptorType toVulkanDescriptorType(const EShaderResourceType type)
     {
         switch(type)
         {
-            case EResourceType::COMBINED_IMAGE_SAMPLER:
+            case EShaderResourceType::COMBINED_IMAGE_SAMPLER:
                 return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            case EResourceType::UNIFORM_BUFFER:
+            case EShaderResourceType::UNIFORM_BUFFER:
                 return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            case EResourceType::INVALID:
+            case EShaderResourceType::INVALID:
             default:
                 assert(false && "Not handled yet!");
         }

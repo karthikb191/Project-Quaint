@@ -15,17 +15,23 @@ namespace Bolt
         INVALID
     };
 
-    enum class EResourceType
+    enum class EShaderResourceType
     {
         COMBINED_IMAGE_SAMPLER,
         UNIFORM_BUFFER,
         INVALID
     };
+
+    enum class EResourceType
+    {
+        ShaderResource,
+        Invalid
+    };
     
-    struct ShaderResource
+    struct ShaderResourceInfo
     {
         EShaderStage        stage = EShaderStage::INVALID;
-        EResourceType       type = EResourceType::INVALID;
+        EShaderResourceType       type = EShaderResourceType::INVALID;
         uint32_t            set = 0; // The set it's bound to in shader
         uint32_t            binding = 0; // The index it's bound to in shader
         uint16_t            count = 1; // Anything greater than 1 represents an array
@@ -36,56 +42,8 @@ namespace Bolt
     {
         Quaint::QPath                       vertShaderPath;
         Quaint::QPath                       fragShaderPath;
-        Quaint::QArray<ShaderResource>      resources;
+        Quaint::QArray<ShaderResourceInfo>      resources;
         uint8_t                             maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
-    };
-
-    
-    struct CombinedImageSamplerInfo
-    {
-        Quaint::QPath imagePath;
-    };
-
-    struct UniformBufferInputInfo
-    {
-        int test;
-    };
-
-    template<EResourceType ResourceType>
-    class ResourceTraits
-    {
-    public:
-        typedef void INPUT_INFO_TYPE;
-    };
-
-    template<>
-    class ResourceTraits<EResourceType::COMBINED_IMAGE_SAMPLER>
-    {
-    public:
-        typedef CombinedImageSamplerInfo INPUT_INFO_TYPE;
-    };
-
-    template<>
-    class ResourceTraits<EResourceType::UNIFORM_BUFFER>
-    {
-    public:
-        typedef UniformBufferInputInfo INPUT_INFO_TYPE;
-    };
-
-    //Should be implemented for specific resources on API side
-    class GFXResource
-    {
-        
-    };
-
-    template<EResourceType ResourceType
-    , typename Traits = ResourceTraits<ResourceType>>
-    class Resource
-    {
-    public:
-        Resource(typename Traits::INPUT_INFO_TYPE pInfo);
-
-        GFXResource* resource;
     };
 }
 

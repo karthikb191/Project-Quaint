@@ -3,6 +3,7 @@
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/RenderScene.h>
+#include <GFX/Entities/Resources.h>
 #include <Types/QMap.h>
 
 namespace Bolt { namespace vulkan {
@@ -26,6 +27,14 @@ namespace Bolt { namespace vulkan {
         allocateDescriptorPool(shaderinfo);
         createDescriptors(shaderinfo);
         createPipeline();
+
+        CombinedImageSamplerInfo info{};
+        ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER> imageSamplerResource(info);
+        Resource* resource = &imageSamplerResource;
+
+        ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER>* shRes = resource
+                                    ->get<EResourceType::ShaderResource>()
+                                    ->get<EShaderResourceType::COMBINED_IMAGE_SAMPLER>();
 
         //TODO: Probably move this to a texture class
         VkSamplerCreateInfo samplerInfo{};
