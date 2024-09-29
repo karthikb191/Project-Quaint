@@ -2,6 +2,10 @@
     //Engine Root
     "folders": [
       {
+        "name": "Root",
+        "path": "./",
+      },
+      {
         "name": "Quaint Engine",
         "path": "./Engine"
       },
@@ -23,21 +27,31 @@
         "path": "./Shaders"
       }
     ],
-    
+
+    "tasks": {
+      "version": "2.0.0",
+      "tasks": [
+        {
+          "label": "Print Folders Task",
+          "type": "shell",
+          "command": "echo WorkspaceFolder: ${workspaceFolder}"
+        }
+      ]
+    },
     //TODO: Populate these using a build script
     //CMake Kits will set compiler information, along with useful PLATFORM DEFINES
     "settings": {
       "cmake.configureSettings": { 
-        "WORKSPACE_ROOT": "D:\\Works\\Project-Quaint" 
+        "WORKSPACE_ROOT": "${workspaceFolder}"
       },
-      "cmake.additionalKits": ["D:\\Works\\Project-Quaint\\cmake-kits.json"],
+      "cmake.additionalKits": ["${workspaceFolder}\\cmake-kits.json"],
       "cmake.ignoreKitEnv": false,
       "cmake.showSystemKits": true,
 
       "cmake.autoSelectActiveFolder": false,
       "cmake.options.statusBarVisibility": "compact",
-      "cmake.sourceDirectory":"D:\\Works\\Project-Quaint\\Build\\Intermediates\\CMakeLists.txt",
-      "cmake.buildDirectory": "D:\\Works\\Project-Quaint\\Build\\Output",
+      "cmake.sourceDirectory":"${workspaceFolder}\\Build\\Intermediates",
+      "cmake.buildDirectory": "${workspaceFolder}\\Build\\Output",
       "files.associations": {
         "system_error": "cpp",
         "xlocale": "cpp",
