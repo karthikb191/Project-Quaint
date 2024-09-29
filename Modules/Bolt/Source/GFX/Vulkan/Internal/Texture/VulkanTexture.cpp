@@ -209,7 +209,7 @@ namespace Bolt
         info.samples = VK_SAMPLE_COUNT_1_BIT;
         info.tiling = VK_IMAGE_TILING_LINEAR;
         // Setting default usage to be used by transfer operations
-        info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
+        info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT; 
         info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         uint32_t queues[] = { deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily() };

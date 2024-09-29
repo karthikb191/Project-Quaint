@@ -4,11 +4,11 @@
         "visualStudio": "Visual Studio Build Tools 2019",
         "visualStudioArchitecture": "windows_x86",
         "compilers": {
-            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe",
-            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe"
+            "CC":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe",
+            "CXX":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x86\\cl.exe"
         },
         "preferredGenerator": {
-            "name": "Visual Studio 16 2019",
+            "name": "Visual Studio 17 2022",
             "platform": "Win32",
             "toolset": "v142"
         },
@@ -21,11 +21,11 @@
         "visualStudio": "Visual Studio Build Tools 2019",
         "visualStudioArchitecture": "windows_x64",
         "compilers": {
-            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe",
-            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
+            "CC":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe",
+            "CXX":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
         },
         "preferredGenerator": {
-            "name": "Visual Studio 16 2019",
+            "name": "Visual Studio 17 2022",
             "platform": "x64",
             "toolset": "v142"
         },
@@ -38,11 +38,11 @@
         "visualStudio": "Visual Studio Build Tools 2019",
         "visualStudioArchitecture": "ARM",
         "compilers": {
-            "CC":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe",
-            "CXX":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe"
+            "CC":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe",
+            "CXX":"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\arm\\cl.exe"
         },
         "preferredGenerator": {
-            "name": "Visual Studio 16 2019",
+            "name": "Visual Studio 17 2022",
             "platform": "ARM",
             "toolset": "v142"
         },
