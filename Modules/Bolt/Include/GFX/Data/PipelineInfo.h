@@ -86,7 +86,7 @@ namespace Bolt
     {
         PipelineInfo                pipelineInfo;
         ShaderInfo                  shaderInfo;
-        Quaint::QArray<Resource*>   resources;
+        //Quaint::QArray<Resource*>   resources; //Uncomment if this is necessary
     };
 }
 

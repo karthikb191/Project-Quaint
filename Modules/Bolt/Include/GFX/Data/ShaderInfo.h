@@ -42,7 +42,7 @@ namespace Bolt
     {
         Quaint::QPath                       vertShaderPath;
         Quaint::QPath                       fragShaderPath;
-        Quaint::QArray<ShaderResourceInfo>      resources;
+        Quaint::QArray<ShaderResourceInfo>  resources; //TODO: Should refactor to use Resource* 
         uint8_t                             maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
     };
 }

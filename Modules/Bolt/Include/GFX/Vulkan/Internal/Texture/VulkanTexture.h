@@ -10,6 +10,12 @@ namespace Bolt
 {
     class VulkanRenderer;
 
+    class VulkanTextureBuilder
+    {
+    public:
+        
+    };
+
     class VulkanTexture : public BoltTextureBase
     {
     public:

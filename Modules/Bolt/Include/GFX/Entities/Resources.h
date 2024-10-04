@@ -3,9 +3,11 @@
 
 #include "../Data/ResourceInfo.h"
 #include "../Data/ShaderInfo.h"
+#include <assert.h>
 
 namespace Bolt
 {
+
 // Forward Declarations ================================================================    
     class ShaderResourceBase;
     class Resource;
@@ -71,33 +73,49 @@ namespace Bolt
 
         const EResourceType getResourceType() { return m_resourceType; }
 
-        template<EResourceType Type>
-        typename ResourceTraits<Type>::TYPE* get()
+        template<EResourceType _Type>
+        constexpr typename ResourceTraits<_Type>::TYPE* get()
         {
-            return static_cast<typename ResourceTraits<Type>::TYPE*>(this);
+            assert(_Type == m_resourceType && "Invalid type cast");
+            return static_cast<typename ResourceTraits<_Type>::TYPE*>(this);
         }
 
     private:
         const EResourceType m_resourceType = EResourceType::Invalid;
     };
 
-    class ShaderResourceBase : public Resource
+    class GraphicsResource : public Resource
+    {
+    public:
+
+    protected:
+        GraphicsResource(EResourceType type)
+        : Resource(type)
+        {}
+
+        GPUResourceProxy*   gpuProxy = nullptr;
+    };
+
+    class ShaderResourceBase : public GraphicsResource
     {
     public:
         ShaderResourceBase(EShaderResourceType type)
-        : Resource(EResourceType::ShaderResource)
+        : GraphicsResource(EResourceType::ShaderResource)
         , m_type(type)
         {}
 
+
         const EShaderResourceType getShaderResourceType() { return m_type; }
         
-        template<EShaderResourceType Type>
-        typename ShaderResourceTraits<Type>::RESOURCE_TYPE* get()
+        template<EShaderResourceType _Type>
+        typename ShaderResourceTraits<_Type>::RESOURCE_TYPE* get()
         {
-            return static_cast<typename ShaderResourceTraits<Type>::RESOURCE_TYPE*>(this);
+            assert(_Type == m_type && "Invalid type cast");
+            return static_cast<typename ShaderResourceTraits<_Type>::RESOURCE_TYPE*>(this);
         }
 
     private:
+
         const EShaderResourceType m_type = EShaderResourceType::INVALID;
     };
 
