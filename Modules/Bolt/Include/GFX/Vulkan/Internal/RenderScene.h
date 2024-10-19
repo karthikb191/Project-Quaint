@@ -42,6 +42,7 @@ namespace Bolt { namespace vulkan{
         }
         inline AttachmentInfo& setExtent(const VkExtent3D& pExtent) { extent = pExtent; return *this; }
         inline AttachmentInfo& setMemoryPropertyFlags(const VkMemoryPropertyFlags pFlags) { memoryPropertyFlags = pFlags; return *this; }
+        inline AttachmentInfo& setImageUsage(const VkImageUsageFlags pFlags) { imageUsage = pFlags; return *this; }
 
         /* Image view is constructed from a few settings above and the ones below*/
         inline AttachmentInfo& setImageViewType(const VkImageViewType pType) { viewType = pType; return*this; }
@@ -62,7 +63,7 @@ namespace Bolt { namespace vulkan{
         inline const VkComponentMapping& getImageViewComponentMapping() const { return viewComponentMapping; }
         inline const VkImageSubresourceRange& getImageViewSubresourceRange() const { return subresourceRange; }
         inline bool getIsSwapchainImage() const { return isSwapchainImage; }
- 
+        inline const VkImageUsageFlags getImageUsage() const { return imageUsage; }
 
         inline const VkAttachmentDescription& getDescription() const { return desc; }
         inline RenderScene& finalizeAttachmentInfo() { return *scene; }
@@ -85,6 +86,7 @@ namespace Bolt { namespace vulkan{
         VkFormat                    viewFormat = VK_FORMAT_R8G8B8A8_SRGB;
         VkComponentMapping          viewComponentMapping = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY };
         VkImageSubresourceRange     subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        VkImageUsageFlags           imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     };
 
     class RenderScene

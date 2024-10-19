@@ -7,6 +7,8 @@
 
 namespace Bolt
 {
+    class GraphicsResource;
+
     class IRenderer
     {
     public:
@@ -42,6 +44,14 @@ namespace Bolt
     {
     public:
         virtual IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) = 0;
+    };
+
+    class ResourceGPUProxy
+    {
+    public:
+        ResourceGPUProxy() {}
+        
+        virtual void destroy() = 0;
     };
 }
 

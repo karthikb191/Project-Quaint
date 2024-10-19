@@ -32,9 +32,9 @@ namespace Bolt { namespace vulkan {
         ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER> imageSamplerResource(info);
         Resource* resource = &imageSamplerResource;
 
-        ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER>* shRes = resource
-                                    ->get<EResourceType::ShaderResource>()
-                                    ->get<EShaderResourceType::COMBINED_IMAGE_SAMPLER>();
+        //ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER>* shRes = resource
+        //                            ->get<EResourceType::ShaderResource>()
+        //                            ->get<EShaderResourceType::COMBINED_IMAGE_SAMPLER>();
 
         //TODO: Probably move this to a texture class
         VkSamplerCreateInfo samplerInfo{};

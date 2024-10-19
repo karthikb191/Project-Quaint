@@ -217,7 +217,7 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
 
-        void createTextureFromFile(const char* path, VulkanTexture& outTexuture);
+        void createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
     private:
         void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,

@@ -71,6 +71,7 @@ namespace Bolt{ namespace vulkan{
         .setWidth(info->getExtent().width)
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setQueueFamilies(queueFamilies.getSize(), queueFamilies.getBuffer())
+        .setUsage(info->getImageUsage())
         .setMemoryProperty(info->getMemoryPropertyFlags())
         .setImageViewInfo(viewInfo)
         .setIsSwapchainImage(info->getIsSwapchainImage());

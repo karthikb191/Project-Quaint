@@ -6,6 +6,11 @@
 
 // TODO: Remove this later once interface is ready
 #include <GFX/Vulkan/VulkanRenderer.h>
+#include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
+
+
+#include <GFX/ResourceBuilder.h>
+#include <GFX/Entities/Resources.h>
 
 namespace Bolt
 {
@@ -97,7 +102,17 @@ namespace Bolt
 
         // Get Backed Texture
         // Get Backed Buffer
-        VulkanRenderer::get()->createTextureFromFile("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg", texture);
+        CombinedImageSamplerTextureBuilder imageBuilder = ResourceBuilderFactory::createBuilder<CombinedImageSamplerTextureBuilder>(m_context);
+
+        //TODO: Have a way to pass along flags
+        GraphicsResource* texResource = imageBuilder.buildFromPath("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
+        
+        vulkan::VulkanCombinedImageSamplerResource* vkTexRes 
+        = static_cast<vulkan::VulkanCombinedImageSamplerResource*>(texResource->getGpuResourcProxy());
+        texture = vkTexRes->getTexture();
+        //VulkanRenderer::get()->createTextureFromFile("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg"
+        //, texture
+        //, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
         constexpr int sz = sizeof(Quaint::QVertex);
         VulkanRenderer::get()->createBuffer(

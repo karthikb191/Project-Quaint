@@ -496,6 +496,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         .defaultInit()
         .setWidth(128)
         .setHeight(128)
+        .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        //.setTiling(VK_IMAGE_TILING_OPTIMAL)
         .build()
         .createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         .createImageView();
@@ -1085,6 +1087,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         .setExtent({swapExtent.width, swapExtent.height, 1})
         .setMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         .setImageViewType(VK_IMAGE_VIEW_TYPE_2D)
+        .setImageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
         .setImageViewFormat(format.format)
         .setImageViewComponentMapping({ VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY })
         .setImageViewSubresourceRange(range)
@@ -1681,7 +1684,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     //-------
 
     //TODO: Not very extensible. Moves final layout to SHADER READ ONLY. Probably best to pass on some flags
-    void VulkanRenderer::createTextureFromFile(const char* path, VulkanTexture& outTexuture)
+    void VulkanRenderer::createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags)
     {
         int width = 0, height = 0, comp = 0;
         stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
@@ -1708,7 +1711,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         .setHeight(height)
         .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
         .setTiling(VK_IMAGE_TILING_OPTIMAL)
-        .setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
+        .setUsage(flags)
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setQueueFamilies(1, &family)
         .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)

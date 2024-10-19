@@ -3,6 +3,7 @@
 
 #include "../Data/ResourceInfo.h"
 #include "../Data/ShaderInfo.h"
+#include "../Interface/IRenderer.h"
 #include <assert.h>
 
 namespace Bolt
@@ -29,7 +30,7 @@ namespace Bolt
     };
 
     template<>
-    class ResourceTraits<EResourceType::ShaderResource>
+    class ResourceTraits<EResourceType::SHADER>
     {
     public:
         typedef ShaderResourceBase TYPE;
@@ -87,20 +88,49 @@ namespace Bolt
     class GraphicsResource : public Resource
     {
     public:
-
-    protected:
         GraphicsResource(EResourceType type)
         : Resource(type)
         {}
 
-        GPUResourceProxy*   gpuProxy = nullptr;
+        //TODO: move these to a cpp file
+        static GraphicsResource* create(Quaint::IMemoryContext* context, EResourceType type, ResourceGPUProxy* gpuResource)
+        {
+            assert(gpuResource != nullptr && "Graphics resource needs a valid GPU resource");
+            GraphicsResource* resource = QUAINT_NEW(context, GraphicsResource, type);
+            resource->assignGpuProxyResource(gpuResource);
+            //TODO: Add a log
+            return resource;
+        }
+        ResourceGPUProxy* getGpuResourcProxy() { return m_gpuProxy; }
+
+        void destroy()
+        {
+            if(m_gpuProxy)
+            {
+                //TODO: Add a log
+                m_gpuProxy-> destroy();
+            }
+        }
+
+    protected:
+        GraphicsResource() = delete;
+        void assignGpuProxyResource(ResourceGPUProxy* gpuResource)
+        {
+            if(m_gpuProxy)
+            {
+                m_gpuProxy->destroy();
+            }
+            m_gpuProxy = gpuResource;
+        }
+
+        ResourceGPUProxy*   m_gpuProxy = nullptr;
     };
 
     class ShaderResourceBase : public GraphicsResource
     {
     public:
         ShaderResourceBase(EShaderResourceType type)
-        : GraphicsResource(EResourceType::ShaderResource)
+        : GraphicsResource(EResourceType::SHADER)
         , m_type(type)
         {}
 

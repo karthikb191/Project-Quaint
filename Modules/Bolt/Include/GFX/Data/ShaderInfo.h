@@ -24,18 +24,20 @@ namespace Bolt
 
     enum class EResourceType
     {
-        ShaderResource,
+        SHADER,
+        COMBINED_IMAGE_SAMPLER,
+        UNIFORM_BUFFER,
         Invalid
     };
     
     struct ShaderResourceInfo
     {
-        EShaderStage        stage = EShaderStage::INVALID;
-        EShaderResourceType       type = EShaderResourceType::INVALID;
-        uint32_t            set = 0; // The set it's bound to in shader
-        uint32_t            binding = 0; // The index it's bound to in shader
-        uint16_t            count = 1; // Anything greater than 1 represents an array
-        bool                perFrame = false; // If set to true, instances could be created depending on number of frames-in-flight
+        EShaderStage                stage = EShaderStage::INVALID;
+        EShaderResourceType         type = EShaderResourceType::INVALID;
+        uint32_t                    set = 0; // The set it's bound to in shader
+        uint32_t                    binding = 0; // The index it's bound to in shader
+        uint16_t                    count = 1; // Anything greater than 1 represents an array
+        bool                        perFrame = false; // If set to true, instances could be created depending on number of frames-in-flight
     };
 
     struct ShaderInfo

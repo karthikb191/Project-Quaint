@@ -16,6 +16,7 @@ namespace Bolt
         
     };
 
+    /* TODO: Should be copy-able */
     class VulkanTexture : public BoltTextureBase
     {
     public:
