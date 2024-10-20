@@ -3,34 +3,42 @@
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/RenderScene.h>
+#include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Entities/Resources.h>
 #include <Types/QMap.h>
 
 namespace Bolt { namespace vulkan {
     VulkanRenderObject::VulkanRenderObject(RenderObject* ro)
     : IRenderObjectImpl(ro)
-    , m_shaderGroup(nullptr,  Deleter<VulkanShaderGroup>(ro->getMemoryContext()))
+    //, m_shaderGroup(nullptr,  Deleter<VulkanShaderGroup>(ro->getMemoryContext()))
     , m_setLayouts(ro->getMemoryContext())
     , m_sets(ro->getMemoryContext())
     {
 
     }
 
-    void VulkanRenderObject::build(const ShaderInfo& shaderinfo)
+    void VulkanRenderObject::build(const GeometryRenderInfo& renderInfo)
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        
+        m_shaderGroupResource = static_cast<VulkanShaderGroupResource*>(renderInfo.shaderGroupResource->getGpuResourceProxy());
 
+        ShaderInfo shaderInfo{};
+        
+        shaderInfo.maxResourceSets = 1;
+        shaderInfo.resources = m_shaderGroupResource->getAttachmentRefs();
         //TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
-        createShaderGroup(shaderinfo);
-        createDescriptorLayoutInformation(shaderinfo);
-        allocateDescriptorPool(shaderinfo);
-        createDescriptors(shaderinfo);
+        //createShaderGroup(shaderinfo); // Probably not needed as shader group would've already been created
+        
+        createDescriptorLayoutInformation(shaderInfo);
+        allocateDescriptorPool(shaderInfo);
+        createDescriptors(shaderInfo);
         createPipeline();
 
-        CombinedImageSamplerInfo info{};
-        ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER> imageSamplerResource(info);
-        Resource* resource = &imageSamplerResource;
+        //CombinedImageSamplerInfo info{};
+        //ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER> imageSamplerResource(info);
+        //Resource* resource = &imageSamplerResource;
 
         //ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER>* shRes = resource
         //                            ->get<EResourceType::ShaderResource>()
@@ -98,11 +106,11 @@ namespace Bolt { namespace vulkan {
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        if(m_shaderGroup.get())
-        {
-            m_shaderGroup->destroy();
-            m_shaderGroup.release();
-        }
+        //if(m_shaderGroup.get())
+        //{
+        //    m_shaderGroup->destroy();
+        //    m_shaderGroup.release();
+        //}
 
         //Destroying pipeline layouts
         for(auto& layout : m_setLayouts)
@@ -124,12 +132,12 @@ namespace Bolt { namespace vulkan {
         }
     }
 
-    void VulkanRenderObject::createShaderGroup(const ShaderInfo& shaderinfo)
-    {
-        m_shaderGroup.reset(QUAINT_NEW(m_renderObject->getMemoryContext(), VulkanShaderGroup
-                            , shaderinfo.vertShaderPath.getBuffer()
-                            , shaderinfo.fragShaderPath.getBuffer()));
-    }
+    //void VulkanRenderObject::createShaderGroup(const ShaderInfo& shaderinfo)
+    //{
+    //    m_shaderGroup.reset(QUAINT_NEW(m_renderObject->getMemoryContext(), VulkanShaderGroup
+    //                        , shaderinfo.vertShaderPath.getBuffer()
+    //                        , shaderinfo.fragShaderPath.getBuffer()));
+    //}
     
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
     {
@@ -155,8 +163,8 @@ namespace Bolt { namespace vulkan {
             VkDescriptorSetLayoutBinding binding{};
             binding.binding = resource.binding;
             binding.descriptorCount = resource.count;
-            binding.descriptorType = toVulkanDescriptorType(resource.type);
-            binding.stageFlags = toVulkanShaderStageFlagBits(resource.stage);
+            binding.descriptorType = toVulkanDescriptorType(resource.resourceType);
+            binding.stageFlags = toVulkanShaderStageFlagBits(resource.shaderStage);
             bindings.pushBack(binding);
         }
 
@@ -196,14 +204,14 @@ namespace Bolt { namespace vulkan {
         Quaint::QMap<VkDescriptorType, uint32_t> numTypes(m_renderObject->getMemoryContext());
         for(auto& resource : shaderInfo.resources)
         {
-            VkDescriptorType type = toVulkanDescriptorType(resource.type);
+            VkDescriptorType type = toVulkanDescriptorType(resource.resourceType);
             if(!numTypes.contains(type))
             {
                 numTypes.insert({type, 1});
             }
             else
             {
-                uint8_t increment = resource.perFrame ? MAX_FRAMES_IN_FLIGHT : 1;
+                uint8_t increment = 1; // !!TODO: resource.perFrame ? MAX_FRAMES_IN_FLIGHT : 1;
                 numTypes[type] += increment; 
             }
         }
@@ -260,18 +268,19 @@ namespace Bolt { namespace vulkan {
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VulkanShaderGroup& shaderGroup = m_shaderGroupResource->getShaderGroup();
 
         VkPipelineShaderStageCreateInfo vertStageInfo{};
         vertStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vertStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertStageInfo.module = m_shaderGroup->getVertexShader()->getHandle();
+        vertStageInfo.module = shaderGroup.getVertexShader()->getHandle();
         vertStageInfo.pName = "main"; //TODO: Pass from shader info
         //vertStageInfo.pSpecializationInfo = //This lets us specify values for shader constants. TODO: Read more on this later 
 
         VkPipelineShaderStageCreateInfo fragStageInfo{};
         fragStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragStageInfo.module = m_shaderGroup->getFragmentShader()->getHandle();
+        fragStageInfo.module = shaderGroup.getFragmentShader()->getHandle();
         fragStageInfo.pName = "main"; // TODO: 
 
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
@@ -375,6 +384,8 @@ namespace Bolt { namespace vulkan {
         graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
 
 //-------------Vertex Shader input binding----------------------
+        //TODO: Generate this information from a string
+
         //TODO: Get this from some info structure or a render object
         VkVertexInputBindingDescription inputBindingDesc{};
         inputBindingDesc.binding = 0;

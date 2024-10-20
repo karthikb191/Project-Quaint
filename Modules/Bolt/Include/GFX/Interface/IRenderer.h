@@ -32,7 +32,7 @@ namespace Bolt
         : m_renderObject(ro)
         {}
 
-        virtual void build(const ShaderInfo& shaderinfo) = 0;
+        virtual void build(const GeometryRenderInfo& shaderinfo) = 0;
         virtual void draw() = 0;
 
         RenderObject* getRenderObject() { return m_renderObject; }
@@ -49,9 +49,14 @@ namespace Bolt
     class ResourceGPUProxy
     {
     public:
-        ResourceGPUProxy() {}
+        ResourceGPUProxy(Quaint::IMemoryContext* context)
+        : m_context(context)
+        {}
         
         virtual void destroy() = 0;
+        Quaint::IMemoryContext* getMemoryContext() { return m_context; }
+    private:
+        Quaint::IMemoryContext* m_context = nullptr;
     };
 }
 

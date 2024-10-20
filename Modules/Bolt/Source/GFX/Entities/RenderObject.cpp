@@ -74,36 +74,10 @@ namespace Bolt
 
     void RenderQuad::load()
     {
-        ShaderInfo info{};
-        info.vertShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv";
-        info.fragShaderPath = "D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv";
-        info.resources = Quaint::QArray<ShaderResourceInfo>(m_context);
-
-        // TODO: Create a different resource type inheriting from this 
-        ShaderResourceInfo resource;
-        //UBO Resource
-        resource.set = 0;
-        resource.binding = 0;
-        resource.count = 1;
-        resource.perFrame = false;
-        resource.stage = EShaderStage::VERTEX;
-        resource.type = EShaderResourceType::UNIFORM_BUFFER;
-        info.resources.pushBack(resource);
- 
-        // Diffuse Texture resource
-        resource.set = 0;
-        resource.binding = 1;
-        resource.count = 1;
-        resource.perFrame = false;
-        resource.stage = EShaderStage::FRAGMENT;
-        resource.type = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
-        info.resources.pushBack(resource);
-        info.maxResourceSets = 1;
-
-        // Get Backed Texture
-        // Get Backed Buffer
         CombinedImageSamplerTextureBuilder imageBuilder = ResourceBuilderFactory::createBuilder<CombinedImageSamplerTextureBuilder>(m_context);
         BufferResourceBuilder bufferBuilder = ResourceBuilderFactory::createBuilder<BufferResourceBuilder>(m_context);
+        ShaderGroupResourceBuilder sgBuilder = ResourceBuilderFactory::createBuilder<ShaderGroupResourceBuilder>(m_context);
+
         //TODO: Have a way to pass along flags
         GraphicsResource* texResource = imageBuilder.buildFromPath("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
 
@@ -138,48 +112,48 @@ namespace Bolt
         = static_cast<vulkan::VulkanCombinedImageSamplerResource*>(texResource->getGpuResourceProxy());
         texture = vkTexRes->getTexture();
 
-
         vertexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(vertResource->getGpuResourceProxy())->getBufferhandle(); 
         indexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(indexResource->getGpuResourceProxy())->getBufferhandle();
         mvpBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getBufferhandle();
         mvpBufferDeviceMemory = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getDeviceMemoryHandle();
 
-        //VulkanRenderer::get()->createTextureFromFile("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg"
-        //, texture
-        //, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        ShaderAttachmentInfo uboAttachInfo;
+        ShaderAttachmentInfo diffuseTexInfo;
+        //UBO Resource
+        uboAttachInfo.set = 0;
+        uboAttachInfo.binding = 0;
+        uboAttachInfo.count = 1;
+        uboAttachInfo.shaderStage = EShaderStage::VERTEX;
+        uboAttachInfo.resourceType = EShaderResourceType::UNIFORM_BUFFER;
+        uboAttachInfo.resource = uboResource;
 
-        //constexpr int sz = sizeof(Quaint::QVertex);
-        //VulkanRenderer::get()->createBuffer(
-        //    sizeof(decltype(m_vertices)::value_type) * sizeof(QVertex)
-        //    , (void*)m_vertices.getBuffer()
-        //    , VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-        //    , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        //    , vertexBufferDeviceMemory
-        //    , vertexBuffer
-        //);
-//
-        //VulkanRenderer::get()->createBuffer(
-        //    sizeof(decltype(m_indices)::value_type) * m_indices.getSize()
-        //    , (void*)m_indices.getBuffer()
-        //    , VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-        //    , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        //    , indexBufferDeviceMemory
-        //    , indexBuffer
-        //);
-//
-        //VulkanRenderer::get()->createBuffer(
-        //    sizeof(UniformBufferObject)
-        //    , nullptr
-        //    , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-        //    , VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        //    , mvpBufferDeviceMemory
-        //    , mvpBuffer
-        //);
+        // Diffuse Texture resource
+        diffuseTexInfo.set = 0;
+        diffuseTexInfo.binding = 1;
+        diffuseTexInfo.count = 1;
+        diffuseTexInfo.shaderStage = EShaderStage::FRAGMENT;
+        diffuseTexInfo.resourceType = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
+        diffuseTexInfo.resource = texResource;
+
+        GraphicsResource* shaderGroupResource = 
+        sgBuilder
+        .setVertShaderPath("D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
+        .setFragShaderPath("D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
+        .addAttchmentRef(uboAttachInfo)
+        .addAttchmentRef(diffuseTexInfo)
+        .build();
+        
+        GeometryRenderInfo renderInfo;
+        renderInfo.drawType = EPrimitiveDrawType::INDEXED;
+        renderInfo.vertBufferResource = vertResource;
+        renderInfo.indexBufferResource = indexResource;
+        renderInfo.shaderGroupResource = shaderGroupResource;
+        
 
         vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
-        m_impl->build(info);
+        m_impl->build(renderInfo);
 
         //TODO: Access Vulkan Renderer to create backing images and mapping memory.
         //TODO: use proper interface once available

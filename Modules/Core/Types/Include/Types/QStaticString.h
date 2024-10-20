@@ -60,7 +60,7 @@ public:
 
     QStaticString& operator=(const char* other)
     {
-        uint32_t size = strlen(other);
+        uint32_t size = strlen(other) + 1;
         assert(size < N && "character sequence doesn't fit in this object");
         memset(m_rawData, '\0', N);
         strcpy_s(m_rawData, size, other);

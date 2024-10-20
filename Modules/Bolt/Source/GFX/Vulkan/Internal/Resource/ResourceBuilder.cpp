@@ -13,7 +13,7 @@ namespace Bolt {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        VulkanCombinedImageSamplerResource* proxy = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource);
+        VulkanCombinedImageSamplerResource* proxy = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context);
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
@@ -94,7 +94,7 @@ namespace Bolt {
         VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
 
-        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
         proxy->wrap(deviceMemory, buffer, usage, memFlags);
         return proxy;
     }
@@ -106,7 +106,7 @@ namespace Bolt {
         VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
 
-        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
         proxy->wrap(deviceMemory, buffer, usage, memFlags);
         return proxy;
     }
@@ -118,9 +118,30 @@ namespace Bolt {
         VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         VulkanRenderer::get()->createBuffer(m_dataSize, usage, memFlags, deviceMemory, buffer);
 
-        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
         proxy->wrap(deviceMemory, buffer, usage, memFlags);
+
+        //TODO:
+        if(m_initiallyMapped)
+        {
+
+        }
+
         return proxy;
+    }
+
+    ShaderGroupResourceBuilder& ShaderGroupResourceBuilder::addAttchmentRef(const ShaderAttachmentInfo& info)
+    {
+        m_attachmentsRefs.pushBack(info);
+        return *this;
+    }
+
+    GraphicsResource* ShaderGroupResourceBuilder::build()
+    {
+        VulkanShaderGroupResource* proxy = QUAINT_NEW(m_context, VulkanShaderGroupResource, m_context);
+        proxy->wrap(m_attachmentsRefs, VulkanShaderGroup(m_vertShaderPath.getBuffer(), m_fragShaderPath.getBuffer()));
+
+        return GraphicsResource::create<ShaderGroupResource>(m_context, proxy);
     }
 
 }

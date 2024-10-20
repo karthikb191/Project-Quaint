@@ -26,6 +26,14 @@ namespace Bolt { namespace vulkan{
 
         bool isValid() const;
 
+        void moveFrom(VulkanShaderGroup& other)
+        {
+            m_vertShader.swap(other.m_vertShader);
+            m_fragShader.swap(other.m_fragShader);
+            m_VIAs = other.m_VIAs;
+            m_VIBs = other.m_VIBs;
+        }
+
         /*
         Vertex shader associates "Vertex Input Attribute" number to each variable in shader
         "Vertex Input Attributes" are associated to "Vertex Input Bindings" on a per-pipeline basis (basically VIAs are indexed as per the shader variables)

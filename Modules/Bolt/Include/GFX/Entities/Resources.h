@@ -11,6 +11,8 @@ namespace Bolt
 
 // Forward Declarations ================================================================    
     class ShaderResourceBase;
+    class BufferResourceBase;
+    class ShaderGroupResource;
     class Resource;
 
     template<EShaderResourceType ResourceType>
@@ -29,7 +31,7 @@ namespace Bolt
     class ResourceTraits
     {
     public:
-        typedef void TYPE;
+        typedef GraphicsResource TYPE;
     };
 
     template<>
@@ -37,6 +39,20 @@ namespace Bolt
     {
     public:
         typedef ShaderResourceBase TYPE;
+    };
+
+    template<>
+    class ResourceTraits<EResourceType::SHADER_GROUP>
+    {
+    public:
+        typedef ShaderGroupResource TYPE;
+    };
+
+    template<>
+    class ResourceTraits<EResourceType::BUFFER>
+    {
+    public:
+        typedef BufferResourceBase TYPE;
     };
 //=======================================================================================
 //Buffer Resource Traits ================================================================
@@ -76,12 +92,15 @@ namespace Bolt
 //=======================================================================================
 //=======================================================================================
 
+    //!!!! TODO: This probably has a terrible memory leak problem. Use unique, shared ptr structures later
+
     //Should be implemented for specific resources on API side
     class Resource
     {
     public:
-        Resource(EResourceType type)
+        Resource(Quaint::IMemoryContext* context, EResourceType type)
         : m_resourceType(type)
+        , m_context(context)
         {}
 
         const EResourceType getResourceType() { return m_resourceType; }
@@ -92,16 +111,18 @@ namespace Bolt
             assert(_Type == m_resourceType && "Invalid type cast");
             return static_cast<typename ResourceTraits<_Type>::TYPE*>(this);
         }
+        Quaint::IMemoryContext* getMemoryContext() { return m_context; }
 
     private:
         const EResourceType m_resourceType = EResourceType::Invalid;
+        Quaint::IMemoryContext* m_context = nullptr;
     };
 
     class GraphicsResource : public Resource
     {
     public:
-        GraphicsResource(EResourceType type)
-        : Resource(type)
+        GraphicsResource(Quaint::IMemoryContext* context, EResourceType type)
+        : Resource(context, type)
         {}
 
         //TODO: move these to a cpp file
@@ -109,7 +130,7 @@ namespace Bolt
         static _T* create(Quaint::IMemoryContext* context, EResourceType type, ResourceGPUProxy* gpuResource)
         {
             assert(gpuResource != nullptr && "Graphics resource needs a valid GPU resource");
-            _T* resource = QUAINT_NEW(context, _T, type);
+            _T* resource = QUAINT_NEW(context, _T, context, type);
             resource->assignGpuProxyResource(gpuResource);
             //TODO: Add a log
             return resource;
@@ -118,19 +139,20 @@ namespace Bolt
         static _T* create(Quaint::IMemoryContext* context, ResourceGPUProxy* gpuResource, ARGS... args)
         {
             assert(gpuResource != nullptr && "Graphics resource needs a valid GPU resource");
-            _T* resource = QUAINT_NEW(context, _T, args...);
+            _T* resource = QUAINT_NEW(context, _T, context, args...);
             resource->assignGpuProxyResource(gpuResource);
             //TODO: Add a log
             return resource;
         }
         ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
-        void destroy()
+        void destroy(Quaint::IMemoryContext* context)
         {
             if(m_gpuProxy)
             {
                 //TODO: Add a log
-                m_gpuProxy-> destroy();
+                m_gpuProxy->destroy();
+                QUAINT_DELETE(m_gpuProxy->getMemoryContext(), m_gpuProxy);
             }
         }
 
@@ -141,6 +163,7 @@ namespace Bolt
             if(m_gpuProxy)
             {
                 m_gpuProxy->destroy();
+                QUAINT_DELETE(m_gpuProxy->getMemoryContext(), m_gpuProxy);
             }
             m_gpuProxy = gpuResource;
         }
@@ -151,8 +174,8 @@ namespace Bolt
     class BufferResourceBase : public GraphicsResource
     {
     public:
-        BufferResourceBase(const EBufferType type)
-        : GraphicsResource(EResourceType::BUFFER)
+        BufferResourceBase(Quaint::IMemoryContext* context, const EBufferType type)
+        : GraphicsResource(context, EResourceType::BUFFER)
         , m_type(type)
         {}
 
@@ -172,8 +195,8 @@ namespace Bolt
     class BufferResource : public BufferResourceBase
     {
     public:
-        BufferResource()
-        : BufferResourceBase(_BufferType)
+        BufferResource(Quaint::IMemoryContext* context)
+        : BufferResourceBase(context, _BufferType)
         {}
 
         template<EBufferType BufferType>
@@ -184,16 +207,22 @@ namespace Bolt
         }
     };
 
+    class ShaderGroupResource : public GraphicsResource
+    {
+    public:
+        ShaderGroupResource(Quaint::IMemoryContext* context)
+        : GraphicsResource(context, EResourceType::SHADER)
+        {}
 
+    };
 
     class ShaderResourceBase : public GraphicsResource
     {
     public:
-        ShaderResourceBase(EShaderResourceType type)
-        : GraphicsResource(EResourceType::SHADER)
+        ShaderResourceBase(Quaint::IMemoryContext* context, EShaderResourceType type)
+        : GraphicsResource(context, EResourceType::SHADER)
         , m_type(type)
         {}
-
 
         const EShaderResourceType getShaderResourceType() { return m_type; }
         
@@ -214,8 +243,8 @@ namespace Bolt
     class ShaderResource : public ShaderResourceBase
     {
     public:
-        ShaderResource(typename Traits::INPUT_INFO_TYPE pInfo)
-        : ShaderResourceBase(ResourceType)
+        ShaderResource(Quaint::IMemoryContext* context, typename Traits::INPUT_INFO_TYPE pInfo)
+        : ShaderResourceBase(context, ResourceType)
         , m_info(pInfo)
         {}
 

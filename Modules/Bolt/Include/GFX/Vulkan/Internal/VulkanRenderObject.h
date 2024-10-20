@@ -9,13 +9,15 @@
 namespace Bolt{ namespace vulkan{
 
     class Bolt::RenderObject;
+    class VulkanShaderGroupResource;
+
     class VulkanRenderObject : public IRenderObjectImpl
     {
     typedef std::unique_ptr<VulkanShaderGroup, Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
 
     public:
         VulkanRenderObject(RenderObject* ro);
-        virtual void build(const ShaderInfo& shaderinfo) override;
+        virtual void build(const GeometryRenderInfo& renderInfo) override;
         virtual void draw() override;
         void destroy();
 
@@ -27,13 +29,15 @@ namespace Bolt{ namespace vulkan{
         void writeDescriptorSets();
         void createPipeline();
 
-        VulkanShaderGroupRef                    m_shaderGroup;
+        //VulkanShaderGroupRef                    m_shaderGroup;
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts; //Represents layout for the respective set
         Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool                        m_descriptorPool = VK_NULL_HANDLE;
         VkPipeline                              m_pipeline = VK_NULL_HANDLE;
         VkSampler                               m_sampler = VK_NULL_HANDLE;
+        
+        VulkanShaderGroupResource*              m_shaderGroupResource = nullptr;
     };
     
 }}

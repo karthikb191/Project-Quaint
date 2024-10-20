@@ -7,15 +7,16 @@
 namespace Bolt
 {
     class GraphicsResource;
-    
-    enum class EShaderStage
+
+    enum class EShaderStage : uint32_t
     {
-        VERTEX,
-        FRAGMENT,
-        GEOMETRY,
-        COMPUTE,
-        INVALID
+        VERTEX = 0,
+        FRAGMENT = 1,
+        GEOMETRY = 2,
+        COMPUTE = 4,
+        INVALID = 0xffffff
     };
+    typedef uint32_t ShaderStageFlags;
 
     enum class EShaderResourceType
     {
@@ -27,6 +28,7 @@ namespace Bolt
     enum class EResourceType
     {
         SHADER,
+        SHADER_GROUP,
         COMBINED_IMAGE_SAMPLER,
         BUFFER,
         Invalid
@@ -47,7 +49,7 @@ namespace Bolt
         INDIRECT,
         INVALID
     };
-    
+
     struct ShaderResourceInfo
     {
         EShaderStage                stage = EShaderStage::INVALID;
@@ -58,20 +60,34 @@ namespace Bolt
         bool                        perFrame = false; // If set to true, instances could be created depending on number of frames-in-flight
     };
 
-    struct ShaderInfo
+    struct ShaderAttachmentInfo
     {
-        Quaint::QPath                       vertShaderPath;
-        Quaint::QPath                       fragShaderPath;
-        Quaint::QArray<ShaderResourceInfo>  resources; //TODO: Should refactor to use Resource* 
-        uint8_t                             maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
+        uint32_t                set = 0;
+        uint32_t                binding = 0;
+        uint16_t                count = 1; //Greater than 1 for arrays
+        EShaderStage            shaderStage;
+        EShaderResourceType     resourceType;
+        GraphicsResource*       resource = nullptr;
     };
 
+    struct ShaderInfo
+    {
+        Quaint::QPath                           vertShaderPath;
+        Quaint::QPath                           fragShaderPath;
+        Quaint::QArray<ShaderAttachmentInfo>    resources; //TODO: Should refactor to use Resource* 
+        uint8_t                                 maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
+    };
     struct GeometryRenderInfo
     {
         EPrimitiveDrawType              drawType;
         GraphicsResource*               vertBufferResource;
         GraphicsResource*               indexBufferResource;
         GraphicsResource*               shaderGroupResource;
+    };
+
+    struct VertexInputAttribute
+    {
+
     };
 }
 
