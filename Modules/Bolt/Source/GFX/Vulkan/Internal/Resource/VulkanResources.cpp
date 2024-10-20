@@ -21,9 +21,28 @@ namespace Bolt { namespace vulkan{
         m_sampler = VK_NULL_HANDLE;
     }
 
-
-    void VulkanUniformBufferObjectResource::destroy()
+    void VulkanBufferObjectResource::wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memFlags)
     {
-        //TODO:
+        m_gpuMemoryHandle = deviceMemory;
+        m_buffer = buffer;
+        m_usageFlags = usageFlags;
+        m_memFlags = memFlags;
+    }
+
+    void VulkanBufferObjectResource::destroy()
+    {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        
+        if(m_gpuMemoryHandle != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, m_gpuMemoryHandle, callbacks);
+        }
+        if(m_buffer != VK_NULL_HANDLE)
+        {
+            vkDestroyBuffer(device, m_buffer, callbacks);
+        }
+        m_gpuMemoryHandle = VK_NULL_HANDLE;
+        m_buffer = VK_NULL_HANDLE;
     }
 }}

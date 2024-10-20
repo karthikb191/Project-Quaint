@@ -20,6 +20,9 @@ namespace Bolt
     , typename Traits = ShaderResourceTraits<ResourceType>>
     class ShaderResource;
 
+    template<EBufferType _BufferType>
+    class BufferResource;
+
 //=======================================================================================
 // Resource traits =====================================================================
     template<EResourceType Resource>
@@ -35,6 +38,15 @@ namespace Bolt
     public:
         typedef ShaderResourceBase TYPE;
     };
+//=======================================================================================
+//Buffer Resource Traits ================================================================
+    template<EBufferType _ResourceType>
+    class BufferResourceTraits
+    {
+    public:
+        typedef BufferResource<_ResourceType> RESOURCE_TYPE;
+    };
+
 //=======================================================================================
 //Shader Resource Traits ================================================================
     template<EShaderResourceType ResourceType>
@@ -93,15 +105,25 @@ namespace Bolt
         {}
 
         //TODO: move these to a cpp file
-        static GraphicsResource* create(Quaint::IMemoryContext* context, EResourceType type, ResourceGPUProxy* gpuResource)
+        template<typename _T = GraphicsResource> 
+        static _T* create(Quaint::IMemoryContext* context, EResourceType type, ResourceGPUProxy* gpuResource)
         {
             assert(gpuResource != nullptr && "Graphics resource needs a valid GPU resource");
-            GraphicsResource* resource = QUAINT_NEW(context, GraphicsResource, type);
+            _T* resource = QUAINT_NEW(context, _T, type);
             resource->assignGpuProxyResource(gpuResource);
             //TODO: Add a log
             return resource;
         }
-        ResourceGPUProxy* getGpuResourcProxy() { return m_gpuProxy; }
+        template<typename _T = GraphicsResource, typename ...ARGS>
+        static _T* create(Quaint::IMemoryContext* context, ResourceGPUProxy* gpuResource, ARGS... args)
+        {
+            assert(gpuResource != nullptr && "Graphics resource needs a valid GPU resource");
+            _T* resource = QUAINT_NEW(context, _T, args...);
+            resource->assignGpuProxyResource(gpuResource);
+            //TODO: Add a log
+            return resource;
+        }
+        ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
         void destroy()
         {
@@ -125,6 +147,44 @@ namespace Bolt
 
         ResourceGPUProxy*   m_gpuProxy = nullptr;
     };
+
+    class BufferResourceBase : public GraphicsResource
+    {
+    public:
+        BufferResourceBase(const EBufferType type)
+        : GraphicsResource(EResourceType::BUFFER)
+        , m_type(type)
+        {}
+
+        const EBufferType getBufferType() { return m_type; }
+        template<EBufferType _Type>
+        typename BufferResourceTraits<_Type>::RESOURCE_TYPE* get()
+        {
+            assert(_Type == m_type && "Invalid type cast");
+            return static_cast<typename BufferResourceTraits<_Type>::RESOURCE_TYPE*>(this);
+        }
+
+     private:
+        const EBufferType       m_type;
+    };
+
+    template<EBufferType _BufferType>
+    class BufferResource : public BufferResourceBase
+    {
+    public:
+        BufferResource()
+        : BufferResourceBase(_BufferType)
+        {}
+
+        template<EBufferType BufferType>
+        typename BufferResource<BufferType>* get()
+        {
+            assert(_Type == m_type && "Invalid type cast");
+            return static_cast<typename ShaderResourceTraits<_Type>::RESOURCE_TYPE*>(this);
+        }
+    };
+
+
 
     class ShaderResourceBase : public GraphicsResource
     {

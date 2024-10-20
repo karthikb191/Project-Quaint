@@ -46,13 +46,81 @@ namespace Bolt {
 
         proxy->wrap(sampler, texture);
 
-        GraphicsResource* resource = GraphicsResource::create(m_context, EResourceType::COMBINED_IMAGE_SAMPLER, proxy);
+        GraphicsResource* resource = GraphicsResource::create<GraphicsResource>(m_context, EResourceType::COMBINED_IMAGE_SAMPLER, proxy);
         return resource;
     }
 
     //UB resource builder
-    GraphicsResource* UniformBufferResourceBuilder::buildFromData(void* data, uint32_t size)
+    GraphicsResource* BufferResourceBuilder::build()
     {
-        return nullptr;
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        EBufferType resourcetype = EBufferType::INVALID;
+
+        ResourceGPUProxy* proxy = nullptr;
+        GraphicsResource* resource = nullptr;
+        switch(m_bufferType)
+        {
+            case EBufferType::VERTEX:
+                proxy = buildVertexBuffer();
+                resource = GraphicsResource::create<BufferResource<EBufferType::VERTEX>>(m_context, proxy);
+            break;
+            
+            case EBufferType::INDEX:
+                proxy = buildIndexBuffer();
+                resource = GraphicsResource::create<BufferResource<EBufferType::INDEX>>(m_context, proxy);
+            break;
+            
+            case EBufferType::UNIFORM:
+                proxy = buildUniformBuffer();
+                resource = GraphicsResource::create<BufferResource<EBufferType::UNIFORM>>(m_context, proxy);
+            break;
+
+            default:
+                assert(false && "Unsupported buffer type provided");
+                return nullptr;
+            break;
+        }
+        assert(proxy != nullptr && "could not build graphics proxy buffer object");
+
+        return resource;
     }
+
+    ResourceGPUProxy* BufferResourceBuilder::buildVertexBuffer()
+    {
+        VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VkBufferUsageFlags usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
+
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        return proxy;
+    }
+    ResourceGPUProxy* BufferResourceBuilder::buildIndexBuffer()
+    {
+        VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VkBufferUsageFlags usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
+
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        return proxy;
+    }
+    ResourceGPUProxy* BufferResourceBuilder::buildUniformBuffer()
+    {
+        VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        VulkanRenderer::get()->createBuffer(m_dataSize, usage, memFlags, deviceMemory, buffer);
+
+        VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource);
+        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        return proxy;
+    }
+
 }

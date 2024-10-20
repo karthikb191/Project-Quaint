@@ -1925,6 +1925,11 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         // Creates a husk.
         createBuffer2(bufferSize, usageFlags, propertyFlags, deviceMemory, buffer);
 
+        if(data == nullptr)
+        {
+            return;
+        }
+
         if(propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         {
             //Use staging buffer to copy data to. Use Vulkan command to move data to device local memory

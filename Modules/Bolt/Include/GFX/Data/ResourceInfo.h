@@ -5,6 +5,7 @@
 
 namespace Bolt
 {
+    
     struct CombinedImageSamplerInfo
     {
         Quaint::QPath imagePath;

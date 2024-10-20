@@ -42,24 +42,44 @@ namespace Bolt
     };
 //====================================================================================
 //====================================================================================
-    class UniformBufferResourceBuilder : public GraphicsResourceBuilderBase
+    class BufferResourceBuilder : public GraphicsResourceBuilderBase
     {
     public:
-        UniformBufferResourceBuilder(Quaint::IMemoryContext* context)
+        BufferResourceBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
         {}
+        BufferResourceBuilder& setBufferType(const EBufferType type) { m_bufferType = type; return *this; }
+        BufferResourceBuilder& setBuffer(void* data) { m_data = data; return *this;}
+        BufferResourceBuilder& setDataSize(const uint32_t size) { m_dataSize = size; return *this; }
+        BufferResourceBuilder& setInitiallymapped(const bool map) { m_initiallyMapped = map; return *this; }
+        BufferResourceBuilder& copyDataToBuffer(const bool shouldCopy) { m_copyDataTobuffer = shouldCopy; return *this; }
 
-        GraphicsResource* buildFromData(void* data, uint32_t size);
-    private:
+        GraphicsResource* build();
 
+    protected:
+        ResourceGPUProxy* buildBuffer();
+        ResourceGPUProxy* buildVertexBuffer();
+        ResourceGPUProxy* buildIndexBuffer();
+        ResourceGPUProxy* buildUniformBuffer();
+
+        EBufferType         m_bufferType = EBufferType::INVALID;
+        void*               m_data = nullptr;
+        uint32_t            m_dataSize = 0;
+        bool                m_initiallyMapped = false;
+        bool                m_copyDataTobuffer = false;
     };
 //====================================================================================
 //====================================================================================
     class ShaderGroupResourceBuilder
     {
     public:
+        ShaderGroupResourceBuilder& setVertShaderPath(const char* path) { vertShaderPath = path; return *this; }
+        ShaderGroupResourceBuilder& setFragShaderPath(const char* path) { fragShaderPath = path; return *this; }
 
     private:
+        Quaint::QPath       vertShaderPath;
+        Quaint::QPath       fragShaderPath;
+        //TODO: Add attachment resources somehow
     };
 //====================================================================================
 }

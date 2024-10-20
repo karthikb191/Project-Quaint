@@ -6,6 +6,8 @@
 
 namespace Bolt
 {
+    class GraphicsResource;
+    
     enum class EShaderStage
     {
         VERTEX,
@@ -26,8 +28,24 @@ namespace Bolt
     {
         SHADER,
         COMBINED_IMAGE_SAMPLER,
-        UNIFORM_BUFFER,
+        BUFFER,
         Invalid
+    };
+    
+    enum EBufferType
+    {
+        VERTEX,
+        INDEX,
+        UNIFORM,
+        INVALID
+    };
+
+    enum class EPrimitiveDrawType
+    {
+        SIMPLE,
+        INDEXED,
+        INDIRECT,
+        INVALID
     };
     
     struct ShaderResourceInfo
@@ -46,6 +64,14 @@ namespace Bolt
         Quaint::QPath                       fragShaderPath;
         Quaint::QArray<ShaderResourceInfo>  resources; //TODO: Should refactor to use Resource* 
         uint8_t                             maxResourceSets; //TODO: Might not be the best way to keep track of max sets, but this should do for now
+    };
+
+    struct GeometryRenderInfo
+    {
+        EPrimitiveDrawType              drawType;
+        GraphicsResource*               vertBufferResource;
+        GraphicsResource*               indexBufferResource;
+        GraphicsResource*               shaderGroupResource;
     };
 }
 

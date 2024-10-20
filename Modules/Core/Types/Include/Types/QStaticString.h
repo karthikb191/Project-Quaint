@@ -58,6 +58,14 @@ public:
         return true;
     }
 
+    QStaticString& operator=(const char* other)
+    {
+        uint32_t size = strlen(other);
+        assert(size < N && "character sequence doesn't fit in this object");
+        memset(m_rawData, '\0', N);
+        strcpy_s(m_rawData, size, other);
+        return *this;
+    }
     template<size_t SZ>
     QStaticString& operator=(const char (&str)[SZ])
     {

@@ -27,15 +27,20 @@ namespace Bolt{
         VulkanTexture       m_texture;
     };
 
-    class VulkanUniformBufferObjectResource : public ResourceGPUProxy
+    class VulkanBufferObjectResource : public ResourceGPUProxy
     {
     public:
-        void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer);
+        void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memFlags);
         virtual void destroy() override;
+        VkBuffer getBufferhandle() { return m_buffer; }
+        VkDeviceMemory getDeviceMemoryHandle() { return m_gpuMemoryHandle; }
 
     private:
-        VkDeviceMemory      m_gpuMemoryHandle = VK_NULL_HANDLE;
-        VkBuffer            m_buffer = VK_NULL_HANDLE;
+        //TODO: Maybe encapsulate into a buffer obejct?
+        VkDeviceMemory          m_gpuMemoryHandle = VK_NULL_HANDLE;
+        VkBuffer                m_buffer = VK_NULL_HANDLE;
+        VkBufferUsageFlags      m_usageFlags;
+        VkMemoryPropertyFlags   m_memFlags;
     };
 }}
 

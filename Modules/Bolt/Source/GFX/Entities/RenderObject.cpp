@@ -103,44 +103,79 @@ namespace Bolt
         // Get Backed Texture
         // Get Backed Buffer
         CombinedImageSamplerTextureBuilder imageBuilder = ResourceBuilderFactory::createBuilder<CombinedImageSamplerTextureBuilder>(m_context);
-
+        BufferResourceBuilder bufferBuilder = ResourceBuilderFactory::createBuilder<BufferResourceBuilder>(m_context);
         //TODO: Have a way to pass along flags
         GraphicsResource* texResource = imageBuilder.buildFromPath("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
+
+        GraphicsResource* uboResource = 
+        bufferBuilder
+        .setBuffer(nullptr)
+        .setDataSize(sizeof(UniformBufferObject))
+        .copyDataToBuffer(false)
+        .setBufferType(EBufferType::UNIFORM)
+        .setInitiallymapped(true)
+        .build();
+
+        GraphicsResource* vertResource = 
+        bufferBuilder
+        .setBuffer((void*)m_vertices.getBuffer())
+        .setDataSize(m_vertices.getSize() * sizeof(decltype(m_vertices)::value_type))
+        .copyDataToBuffer(true)
+        .setBufferType(EBufferType::VERTEX)
+        .setInitiallymapped(false)
+        .build();
         
+        GraphicsResource* indexResource = 
+        bufferBuilder
+        .setBuffer((void*)m_indices.getBuffer())
+        .setDataSize(m_indices.getSize() * sizeof(decltype(m_indices)::value_type))
+        .copyDataToBuffer(true)
+        .setBufferType(EBufferType::INDEX)
+        .setInitiallymapped(false)
+        .build();
+
         vulkan::VulkanCombinedImageSamplerResource* vkTexRes 
-        = static_cast<vulkan::VulkanCombinedImageSamplerResource*>(texResource->getGpuResourcProxy());
+        = static_cast<vulkan::VulkanCombinedImageSamplerResource*>(texResource->getGpuResourceProxy());
         texture = vkTexRes->getTexture();
+
+
+        vertexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(vertResource->getGpuResourceProxy())->getBufferhandle(); 
+        indexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(indexResource->getGpuResourceProxy())->getBufferhandle();
+        mvpBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getBufferhandle();
+        mvpBufferDeviceMemory = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getDeviceMemoryHandle();
+
         //VulkanRenderer::get()->createTextureFromFile("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg"
         //, texture
         //, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-        constexpr int sz = sizeof(Quaint::QVertex);
-        VulkanRenderer::get()->createBuffer(
-            sizeof(decltype(m_vertices)::value_type) * sizeof(QVertex)
-            , (void*)m_vertices.getBuffer()
-            , VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-            , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            , vertexBufferDeviceMemory
-            , vertexBuffer
-        );
+        //constexpr int sz = sizeof(Quaint::QVertex);
+        //VulkanRenderer::get()->createBuffer(
+        //    sizeof(decltype(m_vertices)::value_type) * sizeof(QVertex)
+        //    , (void*)m_vertices.getBuffer()
+        //    , VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        //    , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        //    , vertexBufferDeviceMemory
+        //    , vertexBuffer
+        //);
+//
+        //VulkanRenderer::get()->createBuffer(
+        //    sizeof(decltype(m_indices)::value_type) * m_indices.getSize()
+        //    , (void*)m_indices.getBuffer()
+        //    , VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        //    , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        //    , indexBufferDeviceMemory
+        //    , indexBuffer
+        //);
+//
+        //VulkanRenderer::get()->createBuffer(
+        //    sizeof(UniformBufferObject)
+        //    , nullptr
+        //    , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+        //    , VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        //    , mvpBufferDeviceMemory
+        //    , mvpBuffer
+        //);
 
-        VulkanRenderer::get()->createBuffer(
-            sizeof(decltype(m_indices)::value_type) * m_indices.getSize()
-            , (void*)m_indices.getBuffer()
-            , VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-            , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            , indexBufferDeviceMemory
-            , indexBuffer
-        );
-
-        VulkanRenderer::get()->createBuffer(
-            sizeof(UniformBufferObject)
-            , (void*)m_indices.getBuffer()
-            , VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-            , VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-            , mvpBufferDeviceMemory
-            , mvpBuffer
-        );
         vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
@@ -168,7 +203,7 @@ namespace Bolt
         vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
         m_impl->draw();
-
+        
         vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, m_indices.getSize(), 1, 0, 0, 0);
     }
 
