@@ -8,9 +8,7 @@
 #include <QMath.h>
 #include "../Interface/IRenderer.h"
 #include "../Interface/IShaderGroup.h"
-
-//TODO: Remove this
-#include <vulkan/vulkan.h>
+#include "../Data/ShaderInfo.h"
 
 namespace Quaint
 {
@@ -28,12 +26,6 @@ namespace Quaint
 
 namespace Bolt
 {
-    //TODO: Remove this
-    namespace vulkan
-    {
-        class RenderFrameScene;
-    }
-
     class RenderObject
     {
     public:
@@ -42,6 +34,7 @@ namespace Bolt
         {}
         virtual void load() = 0;
         virtual void draw() = 0;
+        virtual void destroy() = 0;
         virtual void setShaderGroup(IShaderGroup* shaderGroup) { m_shaderGroup = shaderGroup; }
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
         const IShaderGroup* getShaderGroup() { return m_shaderGroup; }
@@ -62,6 +55,7 @@ namespace Bolt
         Geometry(Quaint::IMemoryContext* context);
 
         virtual void load() override {}
+        virtual void destroy() {} //TODO:
         virtual size_t getVertexCount() const { return m_vertices.getSize(); }
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
 
@@ -75,6 +69,7 @@ namespace Bolt
         Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
         Quaint::QArray<uint16_t> m_indices = Quaint::QArray<uint16_t>::GetInvalidPlaceholder();
         Quaint::QMat4x4 m_transform;
+        GeometryRenderInfo  m_RenderInfo;
     };
 
     class RenderQuad : public Geometry
@@ -83,14 +78,11 @@ namespace Bolt
         RenderQuad(Quaint::IMemoryContext* context);
         virtual void load();
         virtual void draw() override;
+        virtual void destroy() override;
 
         //TODO: Remove this
-        void drawTemp(vulkan::RenderFrameScene* context);
+        //void drawTemp(vulkan::RenderFrameScene* context);
     };
-
-    class VulkanTexture;
-    extern VulkanTexture* getTexture_Temp();
-    extern VkBuffer getUBOBuffer_Temp();
 }
 
 #endif //_H_BOLT_RENDER_OBJECT

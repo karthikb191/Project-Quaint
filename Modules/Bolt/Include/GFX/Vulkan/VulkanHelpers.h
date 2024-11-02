@@ -39,5 +39,4 @@ namespace Bolt{ namespace vulkan{
         }
         return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
     }
-
 }}

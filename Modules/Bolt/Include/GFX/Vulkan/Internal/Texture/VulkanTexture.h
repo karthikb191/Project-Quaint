@@ -59,7 +59,7 @@ namespace Bolt
         VkImage* getImageRef() { return &m_image; }
         VkImageView* getImageViewRef() { return &m_imageView; }
         VkImage getHandle() { return m_image; }
-        VkImageView getImageView() { return m_imageView; }
+        VkImageView getImageView() const { return m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
         bool isBacked() { return m_isBacked || getIsSwapchainImage(); }
         uint32_t getWidth() { return m_imageInfo.extent.width; }

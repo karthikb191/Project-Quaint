@@ -51,6 +51,7 @@ namespace Bolt
         BufferResourceBuilder& setBufferType(const EBufferType type) { m_bufferType = type; return *this; }
         BufferResourceBuilder& setBuffer(void* data) { m_data = data; return *this;}
         BufferResourceBuilder& setDataSize(const uint32_t size) { m_dataSize = size; return *this; }
+        BufferResourceBuilder& setDataOffset(const uint32_t offset) { m_dataOffset = offset; return *this; }
         BufferResourceBuilder& setInitiallymapped(const bool map) { m_initiallyMapped = map; return *this; }
         BufferResourceBuilder& copyDataToBuffer(const bool shouldCopy) { m_copyDataTobuffer = shouldCopy; return *this; }
 
@@ -65,6 +66,7 @@ namespace Bolt
         EBufferType         m_bufferType = EBufferType::INVALID;
         void*               m_data = nullptr;
         uint32_t            m_dataSize = 0;
+        uint32_t            m_dataOffset = 0;
         bool                m_initiallyMapped = false;
         bool                m_copyDataTobuffer = false;
     };

@@ -14,9 +14,11 @@
 #include <chrono>
 #include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
+#include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 
 //TODO: Remove this from here
 #include <Gfx/Entities/RenderObject.h>
+#include <Gfx/Entities/Resources.h>
 
 namespace Bolt
 {
@@ -1746,6 +1748,11 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
     }
 
+    void VulkanRenderer::mapBufferToMemory()
+    {
+        //vkMapMemory(getDevice(), )
+    }
+
     void VulkanRenderer::createSampleImage()
     {
         QueueFamilies families;
@@ -2294,12 +2301,12 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
     void VulkanRenderer::drawFrame()
     {
-        updateUniformBufferProxy();
+        //updateUniformBufferProxy();
 
         m_renderScene.begin();
 
-        quadRef->drawTemp(&m_renderScene);
-
+        quadRef->draw();
+        
         m_renderScene.end();
         m_renderScene.submit();
         // vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
@@ -2418,6 +2425,28 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     IRenderObjectImpl* VulkanRenderer::buildRenderObjectImplFor(RenderObject* obj)
     {
         return QUAINT_NEW(m_context, VulkanRenderObject, obj);
+    }
+
+    void mapBufferResource(GraphicsResource* resource, void** out)
+    {
+        assert(resource->getResourceType() == EResourceType::BUFFER && "Invalid Resource type");
+        assert(resource->get<EResourceType::BUFFER>()->getBufferType() == EBufferType::UNIFORM && "Not a uniform buffer resource");
+        VulkanBufferObjectResource* res = static_cast<VulkanBufferObjectResource*>(resource->getGpuResourceProxy());
+
+        auto& bufferInfo = res->getBufferInfo();
+        assert((bufferInfo.memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && "buffer doesnt have host-visible memory attached");
+        assert((bufferInfo.usageFlags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) && "Trying to map a non-uniform buffer");
+
+        vkMapMemory(VulkanRenderer::get()->getDevice(), 
+        res->getDeviceMemoryHandle(), bufferInfo.offset, bufferInfo.size, 0, out);
+
+    }
+
+    void unmapBufferResource(GraphicsResource* resource)
+    {
+        VulkanBufferObjectResource* res = static_cast<VulkanBufferObjectResource*>(resource->getGpuResourceProxy());
+
+        vkUnmapMemory(VulkanRenderer::get()->getDevice(), res->getDeviceMemoryHandle());
     }
 
 //----------------------------------------------------

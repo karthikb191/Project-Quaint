@@ -35,82 +35,13 @@ namespace Bolt { namespace vulkan {
         allocateDescriptorPool(shaderInfo);
         createDescriptors(shaderInfo);
         createPipeline();
-
-        //CombinedImageSamplerInfo info{};
-        //ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER> imageSamplerResource(info);
-        //Resource* resource = &imageSamplerResource;
-
-        //ShaderResource<EShaderResourceType::COMBINED_IMAGE_SAMPLER>* shRes = resource
-        //                            ->get<EResourceType::ShaderResource>()
-        //                            ->get<EShaderResourceType::COMBINED_IMAGE_SAMPLER>();
-
-        //TODO: Probably move this to a texture class
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.maxAnisotropy = 0;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-
-        //TODO: Not entirely sure of the way this functions. Need to read more on this
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0;
-        samplerInfo.minLod = 0;
-        samplerInfo.maxLod = 0;
-
-        VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &m_sampler);
-
-        //TODO: These should come from some resource class in association with shader info
-        //Descriptor sets are allocated, but they arent filled with approproate values        
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = getUBOBuffer_Temp(); //TODO: Remove this
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-        // For frame-in-flight buffer, I could try playing with offsets and assigning a single buffer
-
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = getTexture_Temp()->getImageView();
-        imageInfo.sampler = m_sampler;
-    
-        Quaint::QFastArray<VkWriteDescriptorSet, 2> writes;
-        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].descriptorCount = 1;
-        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writes[0].dstSet = m_sets[0];
-        writes[0].dstBinding = 0;
-        writes[0].dstArrayElement = 0;
-        writes[0].pBufferInfo = &bufferInfo;
-
-        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].descriptorCount = 1;
-        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[1].dstSet = m_sets[0];
-        writes[1].dstBinding = 1;
-        writes[1].dstArrayElement = 0;
-        writes[1].pImageInfo = &imageInfo;
-
-        vkUpdateDescriptorSets(device, writes.getSize(), writes.getBuffer(), 0, nullptr);
+        writeDescriptorSets();
     }
 
     void VulkanRenderObject::destroy()
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        //if(m_shaderGroup.get())
-        //{
-        //    m_shaderGroup->destroy();
-        //    m_shaderGroup.release();
-        //}
 
         //Destroying pipeline layouts
         for(auto& layout : m_setLayouts)
@@ -132,13 +63,6 @@ namespace Bolt { namespace vulkan {
         }
     }
 
-    //void VulkanRenderObject::createShaderGroup(const ShaderInfo& shaderinfo)
-    //{
-    //    m_shaderGroup.reset(QUAINT_NEW(m_renderObject->getMemoryContext(), VulkanShaderGroup
-    //                        , shaderinfo.vertShaderPath.getBuffer()
-    //                        , shaderinfo.fragShaderPath.getBuffer()));
-    //}
-    
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
     {
         Quaint::IMemoryContext* memContext = m_renderObject->getMemoryContext();
@@ -258,10 +182,67 @@ namespace Bolt { namespace vulkan {
         assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
     }
 
-    //TODO: how to handle this?
     void VulkanRenderObject::writeDescriptorSets()
     {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
+        Quaint::QArray<VkWriteDescriptorSet> writes(m_renderObject->getMemoryContext());
+        assert(m_shaderGroupResource != nullptr && "Invalis shader group resource available to write to descriptor sets");
+        auto& attachments = m_shaderGroupResource->getAttachmentRefs();
+
+        Quaint::QArray<VkDescriptorImageInfo> imageWrites(m_renderObject->getMemoryContext());
+        Quaint::QArray<VkDescriptorBufferInfo> bufferWrites(m_renderObject->getMemoryContext());
+        for(auto& attachment : attachments)
+        {
+            uint32_t imageInfoStartIdx = imageWrites.getSize();
+            uint32_t bufferInfoStartIdx = bufferWrites.getSize();
+
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = m_sets[attachment.set];
+            write.dstBinding = attachment.binding;
+            write.descriptorCount = attachment.count;
+            write.descriptorType = toVulkanDescriptorType(attachment.resourceType);
+            //TODO: get layout info from resource
+            if(attachment.resourceType == EShaderResourceType::COMBINED_IMAGE_SAMPLER)
+            {
+                EResourceType type = attachment.resource->getResourceType();
+                //TODO: A helper function to get sampler reource type from resource type
+                VulkanCombinedImageSamplerResource* res 
+                = static_cast<VulkanCombinedImageSamplerResource*>(attachment.resource->getGpuResourceProxy());
+
+                VkDescriptorImageInfo imageInfo{};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView = res->getTexture().getImageView();
+                imageInfo.sampler = res->getSampler();
+                
+                imageWrites.pushBack(imageInfo);
+            }
+            else if(attachment.resourceType == EShaderResourceType::UNIFORM_BUFFER)
+            {
+                VkDescriptorBufferInfo bufferInfo{};
+                VulkanBufferObjectResource* res 
+                = static_cast<VulkanBufferObjectResource*>(attachment.resource->getGpuResourceProxy());
+                
+                bufferInfo.buffer = res->getBufferhandle();
+                bufferInfo.range = res->getBufferInfo().size;
+                bufferInfo.offset = res->getBufferInfo().offset;
+                bufferWrites.pushBack(bufferInfo);
+            }
+            else
+            {
+                assert(false && "unsupported resource type passed");
+            }
+
+            write.pImageInfo = imageWrites.getBuffer() + imageInfoStartIdx;
+            write.pBufferInfo = bufferWrites.getBuffer() + bufferInfoStartIdx;
+            write.pTexelBufferView = nullptr;
+
+            writes.pushBack(write);
+        }
+
+        vkUpdateDescriptorSets(device, writes.getSize(), writes.getBuffer(), 0, nullptr);
     }
 
     void VulkanRenderObject::createPipeline()
@@ -448,14 +429,31 @@ namespace Bolt { namespace vulkan {
         , "Failed to create Graphics pipeline");
     }
 
-    void VulkanRenderObject::draw()
+    void VulkanRenderObject::draw(const GeometryRenderInfo& info)
     {
-        FrameInfo& info = VulkanRenderer::get()->getRenderFrameScene()->getCurrentFrameInfo();
-        
-        vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+        RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
+        VkDeviceSize offsets[] = {0};
+        VulkanBufferObjectResource* vertRes = static_cast<VulkanBufferObjectResource*> (info.vertBufferResource->getGpuResourceProxy());
+        VulkanBufferObjectResource* indexRes = static_cast<VulkanBufferObjectResource*> (info.indexBufferResource->getGpuResourceProxy());
 
-        vkCmdBindDescriptorSets(info.commandBuffer,
+        VkBuffer vertBuffer = vertRes->getBufferhandle();
+        VkBuffer indexBuffer = indexRes->getBufferhandle();
+
+        vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
+        0, 1, &vertBuffer, offsets);
+
+        vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        
+        FrameInfo& frameInfo = VulkanRenderer::get()->getRenderFrameScene()->getCurrentFrameInfo();
+        
+        vkCmdBindPipeline(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+        vkCmdBindDescriptorSets(frameInfo.commandBuffer,
          VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, m_sets.getBuffer(), 0, nullptr);
+
+        Geometry* geo = static_cast<Geometry*>(m_renderObject);
+        auto& bufferInfo = indexRes->getBufferInfo();
+        vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, geo->getIndexCount(), 1, 0, 0, 0);
     }
 
 }}

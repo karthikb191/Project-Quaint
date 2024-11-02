@@ -53,6 +53,8 @@ namespace Bolt {
     //UB resource builder
     GraphicsResource* BufferResourceBuilder::build()
     {
+        assert(m_dataSize > 0 && "invalid data");
+
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         EBufferType resourcetype = EBufferType::INVALID;
@@ -95,7 +97,13 @@ namespace Bolt {
         VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
 
         VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
-        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        VulkanBufferObjectResource::BufferInfo info{};
+        info.memFlags = memFlags;
+        info.usageFlags = usage;
+        info.size = m_dataSize;
+        info.offset = m_dataOffset;
+
+        proxy->wrap(deviceMemory, buffer, info);
         return proxy;
     }
     ResourceGPUProxy* BufferResourceBuilder::buildIndexBuffer()
@@ -107,7 +115,13 @@ namespace Bolt {
         VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
 
         VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
-        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        VulkanBufferObjectResource::BufferInfo info{};
+        info.memFlags = memFlags;
+        info.usageFlags = usage;
+        info.size = m_dataSize;
+        info.offset = m_dataOffset;
+
+        proxy->wrap(deviceMemory, buffer, info);
         return proxy;
     }
     ResourceGPUProxy* BufferResourceBuilder::buildUniformBuffer()
@@ -119,7 +133,13 @@ namespace Bolt {
         VulkanRenderer::get()->createBuffer(m_dataSize, usage, memFlags, deviceMemory, buffer);
 
         VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
-        proxy->wrap(deviceMemory, buffer, usage, memFlags);
+        VulkanBufferObjectResource::BufferInfo info{};
+        info.memFlags = memFlags;
+        info.usageFlags = usage;
+        info.size = m_dataSize;
+        info.offset = m_dataOffset;
+
+        proxy->wrap(deviceMemory, buffer, info);
 
         //TODO:
         if(m_initiallyMapped)

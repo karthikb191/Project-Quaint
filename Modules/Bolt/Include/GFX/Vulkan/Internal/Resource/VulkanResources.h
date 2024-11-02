@@ -20,7 +20,7 @@ namespace Bolt{
         virtual void destroy() override;
         
         VkSampler getSampler() const { return m_sampler; }
-        const VulkanTexture& getTexture() const { return m_texture; }
+        const VulkanTexture& getTexture() { return m_texture; }
 
     private:
         friend class CombinedImageSamplerTextureBuilder;
@@ -34,19 +34,29 @@ namespace Bolt{
     class VulkanBufferObjectResource : public ResourceGPUProxy
     {
     public:
+        struct BufferInfo
+        {
+            uint32_t size;
+            uint32_t offset;
+            VkBufferUsageFlags usageFlags;
+            VkMemoryPropertyFlags memFlags;
+        };
+
         VulkanBufferObjectResource(Quaint::IMemoryContext* context)
         : ResourceGPUProxy(context)
         {}
 
-        void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memFlags);
+        void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, const BufferInfo& info);
         virtual void destroy() override;
         VkBuffer getBufferhandle() { return m_buffer; }
         VkDeviceMemory getDeviceMemoryHandle() { return m_gpuMemoryHandle; }
+        const BufferInfo& getBufferInfo() { return m_info; }
 
     private:
         //TODO: Maybe encapsulate into a buffer obejct?
         VkDeviceMemory          m_gpuMemoryHandle = VK_NULL_HANDLE;
         VkBuffer                m_buffer = VK_NULL_HANDLE;
+        BufferInfo              m_info;
         VkBufferUsageFlags      m_usageFlags;
         VkMemoryPropertyFlags   m_memFlags;
     };
@@ -66,6 +76,8 @@ namespace Bolt{
         Quaint::QArray<ShaderAttachmentInfo>& getAttachmentRefs() { return m_attachmentRefs; }
     private:
         VulkanShaderGroup                       m_shaderGroup;
+        
+        /*This class is not responsible for destroying the dependent resources*/
         Quaint::QArray<ShaderAttachmentInfo>    m_attachmentRefs;
     };
 }}

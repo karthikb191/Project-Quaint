@@ -33,7 +33,8 @@ namespace Bolt
         {}
 
         virtual void build(const GeometryRenderInfo& shaderinfo) = 0;
-        virtual void draw() = 0;
+        virtual void draw(const GeometryRenderInfo& info) = 0;
+        virtual void destroy() = 0;
 
         RenderObject* getRenderObject() { return m_renderObject; }
     protected:

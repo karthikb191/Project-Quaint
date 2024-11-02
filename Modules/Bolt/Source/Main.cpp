@@ -59,7 +59,37 @@ int main()
     Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
     
     //TODO: Loop through application module 
-    Bolt::RenderModule::get().getBoltRenderer()->update();
+    //TODO: Move this to Application Module
+    MSG msg = { };
+    while (true)
+    {
+        bool quitApplication = false;
+
+        while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            switch (msg.message)
+            {
+            case WM_DESTROY:
+                PostQuitMessage(0);
+                break;
+            case WM_QUIT:
+                quitApplication = true;
+                break;
+            case WM_PAINT:
+                std::cout << "Painting!!!!\n"; 
+                break; 
+            
+            default:
+                break;
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        if(quitApplication) break;
+
+        Bolt::RenderModule::get().getBoltRenderer()->update();
+    }
 
     Bolt::RenderModule::get().stop();
     Bolt::RenderModule::shutdown();

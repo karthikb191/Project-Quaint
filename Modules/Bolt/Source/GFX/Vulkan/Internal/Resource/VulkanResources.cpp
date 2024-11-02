@@ -21,12 +21,11 @@ namespace Bolt { namespace vulkan{
         m_sampler = VK_NULL_HANDLE;
     }
 
-    void VulkanBufferObjectResource::wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memFlags)
+    void VulkanBufferObjectResource::wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, const BufferInfo& info)
     {
         m_gpuMemoryHandle = deviceMemory;
         m_buffer = buffer;
-        m_usageFlags = usageFlags;
-        m_memFlags = memFlags;
+        m_info = info;
     }
 
     void VulkanBufferObjectResource::destroy()

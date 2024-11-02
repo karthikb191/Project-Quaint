@@ -18,8 +18,8 @@ namespace Bolt{ namespace vulkan{
     public:
         VulkanRenderObject(RenderObject* ro);
         virtual void build(const GeometryRenderInfo& renderInfo) override;
-        virtual void draw() override;
-        void destroy();
+        virtual void draw(const GeometryRenderInfo& info) override;
+        virtual void destroy() override;
 
     private:
         void createShaderGroup(const ShaderInfo& shaderinfo);

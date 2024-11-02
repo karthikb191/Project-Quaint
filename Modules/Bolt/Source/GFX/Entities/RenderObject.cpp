@@ -4,13 +4,9 @@
 #include <RenderModule.h>
 #include <iostream>
 
-// TODO: Remove this later once interface is ready
-#include <GFX/Vulkan/VulkanRenderer.h>
-#include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
-
-
 #include <GFX/ResourceBuilder.h>
 #include <GFX/Entities/Resources.h>
+#include <BridgeFunctions.h>
 
 namespace Bolt
 {
@@ -61,15 +57,21 @@ namespace Bolt
         constexpr int texOffset = vertex.getTexCoordOffset();
     }
 
-    //TODO: Remove all of these from here
-    VulkanTexture texture;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferDeviceMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferDeviceMemory;
+    void RenderQuad::destroy()
+    {
+        if(m_impl != nullptr)
+        {
+            m_impl->destroy();
+        }
 
-    VkBuffer mvpBuffer;
-    VkDeviceMemory mvpBufferDeviceMemory;
+        //Clear resources
+        m_RenderInfo.shaderGroupResource->destroy(m_context);
+        m_RenderInfo.indexBufferResource->destroy(m_context);
+        m_RenderInfo.vertBufferResource->destroy(m_context);
+
+    }
+
+    //TODO: Remove all of these from here
     void* mappedMVPBuffer;
 
     void RenderQuad::load()
@@ -84,7 +86,8 @@ namespace Bolt
         GraphicsResource* uboResource = 
         bufferBuilder
         .setBuffer(nullptr)
-        .setDataSize(sizeof(UniformBufferObject))
+        .setDataSize(sizeof(Quaint::UniformBufferObject))
+        .setDataOffset(0)
         .copyDataToBuffer(false)
         .setBufferType(EBufferType::UNIFORM)
         .setInitiallymapped(true)
@@ -94,6 +97,7 @@ namespace Bolt
         bufferBuilder
         .setBuffer((void*)m_vertices.getBuffer())
         .setDataSize(m_vertices.getSize() * sizeof(decltype(m_vertices)::value_type))
+        .setDataOffset(0)
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::VERTEX)
         .setInitiallymapped(false)
@@ -103,19 +107,11 @@ namespace Bolt
         bufferBuilder
         .setBuffer((void*)m_indices.getBuffer())
         .setDataSize(m_indices.getSize() * sizeof(decltype(m_indices)::value_type))
+        .setDataOffset(0)
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::INDEX)
         .setInitiallymapped(false)
         .build();
-
-        vulkan::VulkanCombinedImageSamplerResource* vkTexRes 
-        = static_cast<vulkan::VulkanCombinedImageSamplerResource*>(texResource->getGpuResourceProxy());
-        texture = vkTexRes->getTexture();
-
-        vertexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(vertResource->getGpuResourceProxy())->getBufferhandle(); 
-        indexBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(indexResource->getGpuResourceProxy())->getBufferhandle();
-        mvpBuffer = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getBufferhandle();
-        mvpBufferDeviceMemory = static_cast<vulkan::VulkanBufferObjectResource*>(uboResource->getGpuResourceProxy())->getDeviceMemoryHandle();
 
         ShaderAttachmentInfo uboAttachInfo;
         ShaderAttachmentInfo diffuseTexInfo;
@@ -143,54 +139,27 @@ namespace Bolt
         .addAttchmentRef(diffuseTexInfo)
         .build();
         
-        GeometryRenderInfo renderInfo;
-        renderInfo.drawType = EPrimitiveDrawType::INDEXED;
-        renderInfo.vertBufferResource = vertResource;
-        renderInfo.indexBufferResource = indexResource;
-        renderInfo.shaderGroupResource = shaderGroupResource;
+        m_RenderInfo.drawType = EPrimitiveDrawType::INDEXED;
+        m_RenderInfo.vertBufferResource = vertResource;
+        m_RenderInfo.indexBufferResource = indexResource;
+        m_RenderInfo.shaderGroupResource = shaderGroupResource;
         
 
-        vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
+        //TODO: Application map interface
+        mapBufferResource(uboResource, &mappedMVPBuffer);
+        //vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
 
         m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
-        m_impl->build(renderInfo);
-
-        //TODO: Access Vulkan Renderer to create backing images and mapping memory.
-        //TODO: use proper interface once available
-
+        m_impl->build(m_RenderInfo);
     }
 
     void RenderQuad::draw()
     {
+        //TODO: This should probably be moved to VulkanRenderer
+        const Quaint::UniformBufferObject& obj = RenderModule::get().getBoltRenderer()->getMVPMatrix();
+        memcpy(mappedMVPBuffer, &obj, sizeof(Quaint::UniformBufferObject));
 
-    }
-
-    void RenderQuad::drawTemp(vulkan::RenderFrameScene* scene)
-    {
-        //TODO: Completely refactor this out
-        const UniformBufferObject& obj = VulkanRenderer::get()->getMVPMatrix();
-        memcpy(mappedMVPBuffer, &obj, sizeof(UniformBufferObject));
-
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
-        0, 1, &vertexBuffer, offsets);
-        vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-        
-        m_impl->draw();
-        
-        vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, m_indices.getSize(), 1, 0, 0, 0);
-    }
-
-//==========================================================================================
-    
-    //TODO: Remove these
-    VulkanTexture* getTexture_Temp()
-    {
-        return &texture;
-    }
-    VkBuffer getUBOBuffer_Temp()
-    {
-        return mvpBuffer;
+        m_impl->draw(m_RenderInfo);
     }
 
 }
