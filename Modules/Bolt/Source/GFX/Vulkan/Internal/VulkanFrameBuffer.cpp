@@ -46,7 +46,7 @@ namespace Bolt{ namespace vulkan{
             assert(attachment.isBacked() && "Could not back attachment to GPU Memory.");
             views.pushBack(attachment.getImageView());
         }
-        m_info.attachmentCount = views.getSize();
+        m_info.attachmentCount = (uint32_t)views.getSize();
         m_info.pAttachments = views.getBuffer();
 
         ASSERT_SUCCESS(vkCreateFramebuffer(device, &m_info, callbacks, &m_framebuffer), "Failed to create framebuffer!!");
@@ -65,16 +65,18 @@ namespace Bolt{ namespace vulkan{
         //subresource range selects mipmap levels and array layers to be accessible to the view
         viewInfo.subresourceRange = info->getImageViewSubresourceRange();
 
-        VulkanTexture texture(swapchainImage);
-        texture.setFormat(info->getFormat())
+        VulkanTextureBuilder builder;
+        VulkanTexture texture = builder.setFormat(info->getFormat())
         .setHeight(info->getExtent().height)
         .setWidth(info->getExtent().width)
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
-        .setQueueFamilies(queueFamilies.getSize(), queueFamilies.getBuffer())
+        .setQueueFamilies((uint32_t)queueFamilies.getSize(), queueFamilies.getBuffer())
         .setUsage(info->getImageUsage())
         .setMemoryProperty(info->getMemoryPropertyFlags())
         .setImageViewInfo(viewInfo)
-        .setIsSwapchainImage(info->getIsSwapchainImage());
+        .setSwapchainImage(swapchainImage)
+        //.setIsSwapchainImage(info->getIsSwapchainImage())
+        .build();
 
         m_attachments.pushBack(texture);
         return *this;

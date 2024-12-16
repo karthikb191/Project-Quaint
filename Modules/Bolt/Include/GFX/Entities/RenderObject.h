@@ -56,10 +56,10 @@ namespace Bolt
 
         virtual void load() override {}
         virtual void destroy() {} //TODO:
-        virtual size_t getVertexCount() const { return m_vertices.getSize(); }
+        virtual uint32_t getVertexCount() const { return (uint32_t)m_vertices.getSize(); }
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
 
-        virtual size_t getIndexCount() const { return m_indices.getSize(); }
+        virtual uint32_t getIndexCount() const { return (uint32_t)m_indices.getSize(); }
         virtual const uint16_t* getIndexBuffer() const { return m_indices.getBuffer(); }
 
         void transform(const Quaint::QVec3& position, const Quaint::QVec3& rotation, Quaint::QVec3& scale);

@@ -81,7 +81,7 @@ namespace Bolt
         ShaderGroupResourceBuilder sgBuilder = ResourceBuilderFactory::createBuilder<ShaderGroupResourceBuilder>(m_context);
 
         //TODO: Have a way to pass along flags
-        GraphicsResource* texResource = imageBuilder.buildFromPath("D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
+        GraphicsResource* texResource = imageBuilder.buildFromPath("C:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
 
         GraphicsResource* uboResource = 
         bufferBuilder
@@ -96,7 +96,7 @@ namespace Bolt
         GraphicsResource* vertResource = 
         bufferBuilder
         .setBuffer((void*)m_vertices.getBuffer())
-        .setDataSize(m_vertices.getSize() * sizeof(decltype(m_vertices)::value_type))
+        .setDataSize((uint32_t)m_vertices.getSize() * (uint32_t)sizeof(decltype(m_vertices)::value_type))
         .setDataOffset(0)
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::VERTEX)
@@ -106,7 +106,7 @@ namespace Bolt
         GraphicsResource* indexResource = 
         bufferBuilder
         .setBuffer((void*)m_indices.getBuffer())
-        .setDataSize(m_indices.getSize() * sizeof(decltype(m_indices)::value_type))
+        .setDataSize((uint32_t)m_indices.getSize() * (uint32_t)sizeof(decltype(m_indices)::value_type))
         .setDataOffset(0)
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::INDEX)
@@ -133,8 +133,8 @@ namespace Bolt
 
         GraphicsResource* shaderGroupResource = 
         sgBuilder
-        .setVertShaderPath("D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
-        .setFragShaderPath("D:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
+        .setVertShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
+        .setFragShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
         .addAttchmentRef(uboAttachInfo)
         .addAttchmentRef(diffuseTexInfo)
         .build();

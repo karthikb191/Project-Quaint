@@ -12,7 +12,7 @@
 #include <fstream>
 #include <algorithm>
 #include <chrono>
-#include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 
@@ -494,17 +494,23 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //createCommandBuffer();
         //createSyncObjects();
 
-        testTexture
-        .defaultInit()
+        VulkanTextureBuilder builder;
+        VulkanTexture testTexture = builder
         .setWidth(128)
         .setHeight(128)
         .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
         //.setTiling(VK_IMAGE_TILING_OPTIMAL)
-        .build()
-        .createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        .createImageView();
+        //.build()
+        //.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        //.createImageView();
         //testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         //testTexture.createImageView();
+
         testContext.setup(this);
         testContext.initializeCommandRecordCapability(EQueueType::Graphics);
         testContext.initialize(testTexture.getWidth(), testTexture.getHeight(), &testTexture);
@@ -735,7 +741,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             //, "VK_KHR_portability_enumeration", //OPTIONAL! This extension allows applications to control whether devices that expose the VK_KHR_portability_subset extension are included in the results of physical device enumeration.
         });
 
-        instanceInfo.enabledExtensionCount = instanceExtensions.getSize();
+        instanceInfo.enabledExtensionCount = (uint32_t)instanceExtensions.getSize();
         instanceInfo.ppEnabledExtensionNames = instanceExtensions.getBuffer();
 
         //Uncomment to print available instances
@@ -995,7 +1001,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             // If queue indices are different, enalble concurrent access to swapchain.
             // Images can be used without explicit transfer of ownership from one queue to another
             createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = indexArray.getSize();
+            createInfo.queueFamilyIndexCount = (uint32_t)indexArray.getSize();
             createInfo.pQueueFamilyIndices = indexArray.getBuffer();
         }
         else
@@ -1148,7 +1154,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
 //TODO: Access this through application module
 
-    #define DATA_PATH "D:\\Works\\Project-Quaint\\Data\\"
+    #define DATA_PATH "C:\\Works\\Project-Quaint\\Data\\"
     void getShaderCode(Quaint::IMemoryContext* context, const char* relFilePath, Quaint::QArray<char>& outCode)
     {
         Quaint::QPath filePath(DATA_PATH);
@@ -1157,7 +1163,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //open file as binary and read from end
         std::ifstream stream(filePath.getBuffer(), std::ios::ate | std::ios::binary);
         assert(stream.is_open() && "Given file could not be opened");
-        size_t fileSize = (size_t)stream.tellg();
+        uint32_t fileSize = (uint32_t)stream.tellg();
         outCode.resize(fileSize);
         stream.seekg(0);    //Go to beginning of file
         stream.read(outCode.getBuffer_NonConst(), fileSize);
@@ -1491,7 +1497,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
         bool found = false;
-        for(size_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        for(uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
         {
             // memoryTypeBits is bit field of memory types that are suitable for buffer
             // Also, we are not just interested in memory type that's suitable to the buffer. We should also be able to write to it
@@ -1526,7 +1532,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         if(queueFamilies.getSize() > 1)
         {
             info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-            info.queueFamilyIndexCount = queueFamilies.getSize();
+            info.queueFamilyIndexCount = (uint32_t)queueFamilies.getSize();
             info.pQueueFamilyIndices = queueFamilies.getBuffer();
         }
 
@@ -1706,8 +1712,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
         uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
 
-        outTexuture
-        .defaultInit()
+        VulkanTextureBuilder builder;
+        outTexuture = builder
         .setFormat(VK_FORMAT_R8G8B8A8_SRGB)
         .setWidth(width)
         .setHeight(height)
@@ -1717,9 +1723,10 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setQueueFamilies(1, &family)
         .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        .build()
-        .createBackingMemory()
-        .createImageView();
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
 
         //TODO: Handle layout transitions properly. They are really poorly hardcoded right now
 
@@ -1765,7 +1772,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         }
 
         //TODO: This is obviously temporary till we have a file system in place
-        const char* path = "D:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg";
+        const char* path = "C:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg";
 
         int width = 0, height = 0, comp = 0;
         stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
@@ -1884,7 +1891,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         if(queueFamilies.getSize() > 1)
         {
             info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-            info.queueFamilyIndexCount = queueFamilies.getSize();
+            info.queueFamilyIndexCount = (uint32_t)queueFamilies.getSize();
             info.pQueueFamilyIndices = queueFamilies.getBuffer();
         }
         
@@ -2106,7 +2113,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     void VulkanRenderer::createDescriptorSets()
     {
         m_descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        Quaint::QArray<VkDescriptorSetLayout> layouts(m_context, (size_t)MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+        Quaint::QArray<VkDescriptorSetLayout> layouts(m_context, (uint32_t)MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -2118,7 +2125,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         assert(res == VK_SUCCESS && "Could not allocate descriptor sets");
 
         //Descriptor sets are allocated, but they arent filled with approproate values
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = m_uniformBuffers[i];
             bufferInfo.offset = 0;
@@ -2248,7 +2255,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         }
     }
 
-    void VulkanRenderer::updateUniformBuffer(size_t index)
+    void VulkanRenderer::updateUniformBuffer(uint32_t index)
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -2303,12 +2310,13 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     {
         //updateUniformBufferProxy();
 
-        m_renderScene.begin();
-
-        quadRef->draw();
-        
-        m_renderScene.end();
-        m_renderScene.submit();
+        if(m_renderScene.begin())
+        {
+            quadRef->draw();
+            
+            m_renderScene.end();
+            m_renderScene.submit();
+        }
         // vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
         
         // uint32_t imageIndex;

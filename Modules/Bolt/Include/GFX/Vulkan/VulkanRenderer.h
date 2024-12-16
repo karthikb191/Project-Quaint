@@ -25,7 +25,9 @@
 
 namespace Bolt
 {
+    using namespace vulkan;
     class BoltRenderer;
+    class VulkanRenderer;
     
     #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -249,7 +251,7 @@ namespace Bolt
 
     //------------------------------
 
-        void updateUniformBuffer(size_t index);
+        void updateUniformBuffer(uint32_t index);
         void updateUniformBufferProxy();
         void drawFrame();
 

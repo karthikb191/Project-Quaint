@@ -12,7 +12,7 @@ namespace Bolt
         //open file as binary and read from end
         std::ifstream stream(path, std::ios::ate | std::ios::binary);
         assert(stream.is_open() && "Given file could not be opened");
-        size_t fileSize = (size_t)stream.tellg();
+        uint32_t fileSize = (uint32_t)stream.tellg();
         outCode.resize(fileSize);
         stream.seekg(0);    //Go to beginning of file
         stream.read(outCode.getBuffer_NonConst(), fileSize);

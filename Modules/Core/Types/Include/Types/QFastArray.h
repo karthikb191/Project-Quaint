@@ -2,20 +2,21 @@
 #define _H_Q_FAST_ARRAY
 
 #include <assert.h>
+#include <cstdint>
 
 namespace Quaint
 {
 /*
 * Array of static size with minimal operations
 */
-template<typename T, size_t N>
+template<typename T, uint32_t N>
 class QFastArray
 {
 public:
     using value_type        = T;
     using reference         = const T&;
     using const_reference   = const T&;
-    using size_type         = size_t;
+    using size_type         = uint32_t;
     using Iterator          = T*;
     using Const_Iterator    = const T*;
 
@@ -25,12 +26,12 @@ public:
         static_assert(N > 0, "Expected a positive non empty array size");
     }
     
-    template<size_t SZ>
+    template<uint32_t SZ>
     explicit constexpr QFastArray(const T(&list)[SZ])
     : QFastArray()
     {
         static_assert(SZ == N, "Value initalizer list did not match with declared array size");
-        for(size_t i = 0; i < N; i++)
+        for(uint32_t i = 0; i < N; i++)
         {
             m_data[i] = list[i];
         }
@@ -52,18 +53,18 @@ public:
 
     constexpr void operator=(const T(&list)[N])
     {
-        for(size_t i = 0; i < N; i++)
+        for(uint32_t i = 0; i < N; i++)
         {
             m_data[i] = list[i];
         }
     }
 
-    constexpr T& operator[](size_t index)
+    constexpr T& operator[](uint32_t index)
     {
         return m_data[index];
     }
     
-    constexpr size_t getSize()
+    constexpr uint32_t getSize()
     {
         return N;
     }
@@ -73,7 +74,7 @@ public:
     T* getBuffer_NonConst() { return m_data; }
     
     //Explicit copy
-    template<size_t SZ>
+    template<uint32_t SZ>
     void copyFrom(const QFastArray<T, SZ>& src)
     {
         static_assert(N >= SZ, "Copy to destination array of smaller size not supported");
@@ -91,7 +92,7 @@ private:
 };
 
 //This throws an internal compiler error when initializing global const char* array
-template<typename T, size_t SZ>
+template<typename T, uint32_t SZ>
 constexpr QFastArray<T,SZ> createFastArray(const T(&list)[SZ])
 {
     return QFastArray<T, SZ>(list);

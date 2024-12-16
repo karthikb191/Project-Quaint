@@ -93,7 +93,7 @@ namespace Bolt { namespace vulkan
     //, m_scene(scene)
     {
         m_attchmentInfos = Quaint::QArray<VulkanRenderPass::AttachmentInfo>(m_context);
-        m_subPasses = Quaint::QArray<VulkanRenderPass::Subpass>(m_context, m_context);
+        m_subPasses = Quaint::QArray<VulkanRenderPass::Subpass>(m_context);
         m_subPassDependencies = Quaint::QArray<VkSubpassDependency>(m_context);
     }
 
@@ -126,7 +126,7 @@ namespace Bolt { namespace vulkan
     VulkanRenderPass::AttachmentInfo& VulkanRenderPass::addEmptyAttachment()
     {
         AttachmentInfo info;
-        info.index = m_attchmentInfos.getSize();
+        info.index = (uint32_t)m_attchmentInfos.getSize();
         m_attchmentInfos.pushBack(info);
         return m_attchmentInfos[info.index];
     }
@@ -135,7 +135,7 @@ namespace Bolt { namespace vulkan
     VulkanRenderPass::Subpass& VulkanRenderPass::addEmptySubpass()
     {
         Subpass subpass(m_context);
-        subpass.m_index = m_subPasses.getSize();
+        subpass.m_index = (uint32_t)m_subPasses.getSize();
         m_subPasses.pushBack(subpass);
         return m_subPasses[subpass.m_index];
     }
@@ -143,7 +143,7 @@ namespace Bolt { namespace vulkan
     VulkanRenderPass::Subpass& VulkanRenderPass::beginSubpassSetup()
     {
         Subpass subpass(m_context);
-        subpass.m_index = m_subPasses.getSize();
+        subpass.m_index = (uint32_t)m_subPasses.getSize();
         m_subPasses.pushBack(subpass);
         return m_subPasses[subpass.m_index];
     }
@@ -189,7 +189,7 @@ namespace Bolt { namespace vulkan
         info.flags = 0; //Not used for now. TODO: Check back later
         
         // populating Attachments information
-        uint32_t numAttachments = m_attchmentInfos.getSize();
+        uint32_t numAttachments = (uint32_t)m_attchmentInfos.getSize();
         Quaint::QArray<VkAttachmentDescription> attachDescs(m_context, numAttachments);
         if(numAttachments > 0)
         {
@@ -197,12 +197,12 @@ namespace Bolt { namespace vulkan
             {
                 attachDescs[i] = m_attchmentInfos[i].desc;
             }
-            info.attachmentCount = m_attchmentInfos.getSize();
+            info.attachmentCount = (uint32_t)m_attchmentInfos.getSize();
             info.pAttachments = attachDescs.getBuffer();
         }
 
         //Populating subpass information
-        uint32_t numSubpasses = m_subPasses.getSize();
+        uint32_t numSubpasses = (uint32_t)m_subPasses.getSize();
         Quaint::QArray<VkSubpassDescription> subpassDescs(m_context, numSubpasses);
         assert(numSubpasses > 0 && "RenderPass needs atleast a single subpass!!");
         for(uint32_t i = 0; i < numSubpasses; ++i)
@@ -213,10 +213,10 @@ namespace Bolt { namespace vulkan
         info.pSubpasses = subpassDescs.getBuffer();
 
         //Populating subpass dependency information
-        uint32_t numDependencies = m_subPassDependencies.getSize();
+        uint32_t numDependencies = (uint32_t)m_subPassDependencies.getSize();
         if(numDependencies > 0)
         {
-            info.dependencyCount = m_subPassDependencies.getSize();
+            info.dependencyCount = (uint32_t)m_subPassDependencies.getSize();
             info.pDependencies = m_subPassDependencies.getBuffer();
         }
         
@@ -241,7 +241,7 @@ namespace Bolt { namespace vulkan
         // populating Attachments information
         const auto& attachmentInfos = scene->getAttachmentInfos();
 
-        uint32_t numAttachments = attachmentInfos.getSize();
+        uint32_t numAttachments = (uint32_t)attachmentInfos.getSize();
         Quaint::QArray<VkAttachmentDescription> attachDescs(m_context, numAttachments);
         if(numAttachments > 0)
         {
@@ -249,12 +249,12 @@ namespace Bolt { namespace vulkan
             {
                 attachDescs[i] = attachmentInfos[i].getDescription();
             }
-            info.attachmentCount = attachmentInfos.getSize();
+            info.attachmentCount = (uint32_t)attachmentInfos.getSize();
             info.pAttachments = attachDescs.getBuffer();
         }
 
         //Populating subpass information
-        uint32_t numSubpasses = m_subPasses.getSize();
+        uint32_t numSubpasses = (uint32_t)m_subPasses.getSize();
         Quaint::QArray<VkSubpassDescription> subpassDescs(m_context, numSubpasses);
         assert(numSubpasses > 0 && "RenderPass needs atleast a single subpass!!");
         for(uint32_t i = 0; i < numSubpasses; ++i)
@@ -265,10 +265,10 @@ namespace Bolt { namespace vulkan
         info.pSubpasses = subpassDescs.getBuffer();
 
         //Populating subpass dependency information
-        uint32_t numDependencies = m_subPassDependencies.getSize();
+        uint32_t numDependencies = (uint32_t)m_subPassDependencies.getSize();
         if(numDependencies > 0)
         {
-            info.dependencyCount = m_subPassDependencies.getSize();
+            info.dependencyCount = (uint32_t)m_subPassDependencies.getSize();
             info.pDependencies = m_subPassDependencies.getBuffer();
         }
         

@@ -70,7 +70,7 @@ namespace Bolt { namespace vulkan {
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
         Quaint::QArray<
-        Quaint::QArray<VkDescriptorSetLayoutBinding>> setBindingInfos(memContext, (size_t)shaderinfo.maxResourceSets);
+        Quaint::QArray<VkDescriptorSetLayoutBinding>> setBindingInfos(memContext, shaderinfo.maxResourceSets);
         //Initialize Inner array
         for(auto& it : setBindingInfos)
         {
@@ -99,7 +99,7 @@ namespace Bolt { namespace vulkan {
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             info.flags = 0;
             info.pNext = nullptr;
-            info.bindingCount = bindings.getSize();
+            info.bindingCount = (uint32_t)bindings.getSize();
             info.pBindings = bindings.getBuffer();
 
             VkDescriptorSetLayout layout;
@@ -109,7 +109,7 @@ namespace Bolt { namespace vulkan {
 
         VkPipelineLayoutCreateInfo info {};
         info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        info.setLayoutCount = m_setLayouts.getSize();
+        info.setLayoutCount = (uint32_t)m_setLayouts.getSize();
         info.pSetLayouts = m_setLayouts.getBuffer();
 
         info.pushConstantRangeCount = 0; //TODO: Not handling it for now 
@@ -153,8 +153,8 @@ namespace Bolt { namespace vulkan {
         //TODO: Get this data from shader data
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.maxSets = m_setLayouts.getSize();
-        poolInfo.poolSizeCount = poolSizes.getSize();
+        poolInfo.maxSets = (uint32_t)m_setLayouts.getSize();
+        poolInfo.poolSizeCount = (uint32_t)poolSizes.getSize();
         poolInfo.pPoolSizes = poolSizes.getBuffer();
         poolInfo.flags = 0;
         poolInfo.pNext = nullptr;
@@ -173,7 +173,7 @@ namespace Bolt { namespace vulkan {
         VkDescriptorSetAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         info.descriptorPool = m_descriptorPool;
-        info.descriptorSetCount = m_setLayouts.getSize();
+        info.descriptorSetCount = (uint32_t)m_setLayouts.getSize();
         info.pSetLayouts = m_setLayouts.getBuffer();
 
         //Creating descriptor Sets
@@ -195,8 +195,8 @@ namespace Bolt { namespace vulkan {
         Quaint::QArray<VkDescriptorBufferInfo> bufferWrites(m_renderObject->getMemoryContext());
         for(auto& attachment : attachments)
         {
-            uint32_t imageInfoStartIdx = imageWrites.getSize();
-            uint32_t bufferInfoStartIdx = bufferWrites.getSize();
+            uint32_t imageInfoStartIdx = (uint32_t)imageWrites.getSize();
+            uint32_t bufferInfoStartIdx = (uint32_t)bufferWrites.getSize();
 
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -242,7 +242,7 @@ namespace Bolt { namespace vulkan {
             writes.pushBack(write);
         }
 
-        vkUpdateDescriptorSets(device, writes.getSize(), writes.getBuffer(), 0, nullptr);
+        vkUpdateDescriptorSets(device, (uint32_t)writes.getSize(), writes.getBuffer(), 0, nullptr);
     }
 
     void VulkanRenderObject::createPipeline()

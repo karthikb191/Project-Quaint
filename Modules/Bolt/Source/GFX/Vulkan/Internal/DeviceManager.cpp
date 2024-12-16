@@ -103,7 +103,7 @@ namespace Bolt
         uint32_t score = 0;
         for(const VkPhysicalDevice& device : physicalDevices)
         {
-            size_t deviceScore = getDeviceSuitabilityScore(device, phyDevReq);
+            uint32_t deviceScore = getDeviceSuitabilityScore(device, phyDevReq);
             if(deviceScore > score)
             {
                 score = deviceScore;
@@ -169,7 +169,7 @@ namespace Bolt
 
         //Broad check to see if a device has suitable queues
         uint32_t foundOpMask = 0;
-        for(size_t i = 0; i < queueFamilyCount; ++i)
+        for(uint32_t i = 0; i < queueFamilyCount; ++i)
         {
             const VkQueueFamilyProperties& property = queueFamilyProps[i];
             
@@ -242,7 +242,7 @@ namespace Bolt
         uint32_t numComputeRequired = phyDevReq.compute.numRequired;
         uint32_t numTransferRequired = phyDevReq.transfer.numRequired;
         uint32_t foundOpMask = 0;
-        for(size_t i = 0; i < queueFamilyCount; ++i)
+        for(uint32_t i = 0; i < queueFamilyCount; ++i)
         {
             const VkQueueFamilyProperties& property = queueFamilyProps[i];
             QueueDefinition queueDefinition;
@@ -318,7 +318,7 @@ namespace Bolt
         VkDeviceCreateInfo info {};
         info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-        info.enabledExtensionCount = phyDevReq.extensions.getSize();
+        info.enabledExtensionCount = (uint32_t)phyDevReq.extensions.getSize();
         Quaint::QArray<const char*> extensionPtrs(m_context);
         for(const Quaint::QString256& extension : phyDevReq.extensions)
         {
@@ -327,7 +327,7 @@ namespace Bolt
         info.ppEnabledExtensionNames = extensionPtrs.getBuffer();
 
 
-        info.enabledLayerCount = phyDevReq.layers.getSize();
+        info.enabledLayerCount = (uint32_t)phyDevReq.layers.getSize();
         Quaint::QArray<const char*> layerPtrs(m_context);
         for(const Quaint::QString256& layer : phyDevReq.layers)
         {
@@ -336,7 +336,7 @@ namespace Bolt
         info.ppEnabledLayerNames = layerPtrs.getBuffer();
 
 
-        info.queueCreateInfoCount = m_deviceDefinition.m_queueDefinitions.getSize();
+        info.queueCreateInfoCount = (uint32_t)m_deviceDefinition.m_queueDefinitions.getSize();
         Quaint::QArray<VkDeviceQueueCreateInfo> queueCreateInfos(m_context);
         for(const QueueDefinition& def : m_deviceDefinition.m_queueDefinitions)
         {

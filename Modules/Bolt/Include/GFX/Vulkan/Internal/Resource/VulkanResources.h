@@ -2,7 +2,7 @@
 #define _H_VULKAN_RESOURCES
 #include <vulkan/vulkan.h>
 #include <GFX/Interface/IRenderer.h>
-#include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 #include "../VulkanShaderGroup.h"
 
 namespace Bolt{ 

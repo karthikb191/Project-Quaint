@@ -38,21 +38,29 @@ public:
         };
         static QArray<T> GetInvalidPlaceholder() { return QArray<T>(); }
 
-        template<typename ...ARGS>
-        QArray(IMemoryContext* context, ARGS... args)
+        QArray(IMemoryContext* context)
         {
             m_context = context;
             m_size = 0;
-            reserve(4);
-            construct(args...);
+            reserve(((m_size + 8) / 4) * 4);
         }
-        explicit QArray(IMemoryContext* context, size_t size)
+
+        template<typename ...ARGS>
+        QArray(IMemoryContext* context, size_t size = 0, ARGS... args)
         {
             m_context = context;
             m_size = size;
             reserve(((size + 8) / 4) * 4);
-            defConstruct();
+            construct(args...);
         }
+        //template<typename ...ARGS>
+        //QArray(IMemoryContext* context, ARGS... args)
+        //{
+        //    m_context = context;
+        //    m_size = 0;
+        //    reserve(4);
+        //    construct(args...);
+        //}
         
         QArray(IMemoryContext* context, size_t size, const T& defVal)
         {
@@ -185,6 +193,20 @@ public:
 
             //memcpy((m_rawData + m_size), &t, TYPE_SIZE);
             new(m_rawData + m_size)T(t);
+            ++m_size;
+        }
+
+        /* Currently only emplaces at the end */
+        template<typename ...ARGS>
+        void emplace(ARGS... args)
+        {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
+            if(m_size >= m_reservedSize)
+            {
+                reserve(INC_RESERVE_FROM(m_size));
+            }
+            new(m_rawData + m_size)T(args...);
+
             ++m_size;
         }
         //TODO: insert range; insert other array

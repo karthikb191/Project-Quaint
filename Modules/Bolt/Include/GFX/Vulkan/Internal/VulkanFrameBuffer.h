@@ -3,7 +3,7 @@
 
 #include "Interface/IMemoryContext.h"
 #include <Types/QArray.h>
-#include <GFX/Vulkan/Internal/Texture/VulkanTexture.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 
 namespace Bolt{ namespace vulkan{
 

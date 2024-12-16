@@ -40,7 +40,6 @@ namespace Bolt {
         VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &sampler);
 
         VulkanTexture texture;
-        texture.defaultInit();
         //TODO: Hardcoding flag for now. Create a comming enum for that later
         VulkanRenderer::get()->createTextureFromFile(path, texture, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 

@@ -1,5 +1,7 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/RenderScene.h>
+#include <RenderModule.h>
+#include <BoltRenderer.h>
 
 namespace Bolt { namespace vulkan{
     RenderScene::RenderScene(Quaint::IMemoryContext* context)
@@ -12,7 +14,7 @@ namespace Bolt { namespace vulkan{
     {
         AttachmentInfo info;
         info.scene = this;
-        info.index = m_attchmentInfos.getSize();
+        info.index = (uint32_t)m_attchmentInfos.getSize();
         m_attchmentInfos.pushBack(info);
         return m_attchmentInfos[info.index];
     }
@@ -22,7 +24,7 @@ namespace Bolt { namespace vulkan{
     , m_framesInFlight(framesInFlight)
     , m_nextFrameIndex(0)
     , m_renderPass(context)
-    , m_framebuffers(context, context)
+    , m_framebuffers(context)
     , m_frameInfo(context)
     {}
 
@@ -57,6 +59,7 @@ namespace Bolt { namespace vulkan{
         VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(supportInfo);
         VkPresentModeKHR presentMode = choosePresentationMode(m_context, supportInfo);
         VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+        m_swapchainExtent = swapExtent;
         
         uint32_t imageCount = supportInfo.surfaceCapabilities.minImageCount + 1;
         if (supportInfo.surfaceCapabilities.maxImageCount > 0 && imageCount > supportInfo.surfaceCapabilities.maxImageCount) {
@@ -74,13 +77,15 @@ namespace Bolt { namespace vulkan{
         }
         assert(swapchainInfo != nullptr && "could not find swapchain in the attachments setup");
 
+        const Bolt::Window& window = RenderModule::get().getBoltRenderer()->getWindow();
+        
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = VulkanRenderer::get()->getSurface() ;
+        createInfo.surface = VulkanRenderer::get()->getSurface();
         createInfo.minImageCount = imageCount;
         createInfo.imageFormat = swapchainInfo->getFormat();
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = {swapchainInfo->getExtent().width, swapchainInfo->getExtent().height}; //Should match with the one setup in attachment
+        createInfo.imageExtent = {m_swapchainExtent.width, m_swapchainExtent.height}; //Should match with the one setup in attachment
         createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
         //TODO: Change this later if we are using a memory command to transfer images to swapchain
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -98,8 +103,6 @@ namespace Bolt { namespace vulkan{
         createInfo.oldSwapchain = m_outOfDateSwapchain; //This will eventually have a null handle 
         createInfo.presentMode = presentMode;
 
-        //Registering swapchain extent for easier access
-        m_swapchainExtent = createInfo.imageExtent;
         VkResult res = vkCreateSwapchainKHR(VulkanRenderer::get()->getDevice(), &createInfo, VulkanRenderer::get()->getAllocationCallbacks(), &m_swapchain);
         assert(res == VK_SUCCESS && "Swapchain creation failed! Application will terminate");
     }
@@ -114,6 +117,11 @@ namespace Bolt { namespace vulkan{
 
     void RenderFrameScene::buildFrameBuffer()
     {
+        VulkanRenderer::SwapchainSupportInfo supportInfo = 
+        querySwapchainSupport(m_context, VulkanRenderer::get()->getPhysicalDevice(), VulkanRenderer::get()->getSurface());
+
+        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+
         uint32_t swapchainImageCount = 0;
         vkGetSwapchainImagesKHR(VulkanRenderer::get()->getDevice(), m_swapchain, &swapchainImageCount, nullptr);
         assert(swapchainImageCount != 0 && "No images were retrieved from swapchain.");
@@ -142,7 +150,7 @@ namespace Bolt { namespace vulkan{
             FrameBuffer buffer(m_context);
             m_framebuffers[i]
             .addAttachment(swapchainImages[i], swapchainInfo, families)
-            .setExtent(swapchainInfo->getExtent())
+            .setExtent({m_swapchainExtent.width, m_swapchainExtent.height, 1})
             .setRenderpass(m_renderPass.getRenderPass())
             .construct(this);
         }
@@ -176,7 +184,7 @@ namespace Bolt { namespace vulkan{
         }
     }
 
-    void RenderFrameScene::begin()
+    bool RenderFrameScene::begin()
     {
         m_currentFrame = (m_currentFrame + 1) % m_framesInFlight;
 
@@ -188,10 +196,13 @@ namespace Bolt { namespace vulkan{
         VkResult res = vkAcquireNextImageKHR(device, m_swapchain, UINT64_MAX, frameInfo.scImageAvailableSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
 
         //if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-        //{
-        //    recreateSwapchain();
-        //    return;
-        //}
+        if(res != VK_SUCCESS)
+        {
+            //recreateSwapchain();
+            int i = 100;
+            i -= 100;
+            return false;
+        }
         assert(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR && "Failed to acquire swapchain image");
         vkResetFences(device, 1, &frameInfo.renderFence);
 
@@ -219,6 +230,7 @@ namespace Bolt { namespace vulkan{
         renderPassInfo.pClearValues = &clearColor;
 
         vkCmdBeginRenderPass(frameInfo.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        return true;
     }
 
     void RenderFrameScene::end()
@@ -259,7 +271,17 @@ namespace Bolt { namespace vulkan{
         presentInfo.pSwapchains = &m_swapchain;
         presentInfo.pImageIndices = &m_currentImageIndex;
 
-       ASSERT_SUCCESS(vkQueuePresentKHR(handle, &presentInfo), "Failed to submit to present queue");
+        VkResult res = vkQueuePresentKHR(handle, &presentInfo);
+        if(res == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            vkDeviceWaitIdle(VulkanRenderer::get()->getDevice());
+            m_outOfDateSwapchain = m_swapchain;
+            setupSwapchain();
+
+            buildFrameBuffer();
+            return;
+        }
+        ASSERT_SUCCESS(res, "Failed to submit to present queue");
     }
 
 }}

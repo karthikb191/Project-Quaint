@@ -6,7 +6,7 @@
 #include <Types/QArray.h>
 #include "VulkanGraphicsContext.h"
 #include "VulkanFrameBuffer.h"
-#include "Texture/VulkanTexture.h"
+#include "Entities/VulkanTexture.h"
 
 namespace Bolt { namespace vulkan{
     
@@ -99,7 +99,7 @@ namespace Bolt { namespace vulkan{
 
     public:
     
-        virtual void begin() = 0;
+        virtual bool begin() = 0;
         virtual void end() = 0;
         virtual void submit() = 0;
 
@@ -144,7 +144,7 @@ namespace Bolt { namespace vulkan{
         /* Should be called once all the required information has been set*/
         virtual void construct() override;
 
-        virtual void begin() override;
+        virtual bool begin() override;
         virtual void end() override;
         virtual void submit() override;
 
