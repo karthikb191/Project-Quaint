@@ -1,11 +1,12 @@
-#ifndef _H_PIPELINE_INFO
-#define _H_PIPELINE_INFO
+#ifndef _H_RENDER_INFO
+#define _H_RENDER_INFO
 
 #include <cstdint>
 #include <Math/QMat.h>
 #include <Types/QArray.h>
-#include "ShaderInfo.h"
-#include "../Entities/Resources.h"
+#include <Types/QStaticString.h>
+#include "../Interface/IRenderer.h"
+//#include "ShaderInfo.h"
 
 namespace Bolt
 {
@@ -40,8 +41,21 @@ namespace Bolt
     {
         R32G32B32A32,
         R32G32B32A32_SFLOAT,
+        R8G8B8A8_SRGB,
         INVALID = 0x7FFFFFFF
     };
+
+    enum EImageUsage : uint32_t
+    {
+        COLOR_ATTACHMENT = 0,
+        DEPTH_ATTACHMENT = 1 << 0,
+        INPUT_ATTACHMENT = 1 << 1,
+        SAMPLED = 1 << 2,
+        COMBINED_IMAGE_SAMPLER = 1 << 3,
+        COPY_SRC = 1 << 4, // Used as source of copy operations
+        COPY_DST = 1 << 5, // Used as destination of copy operations
+    }EImageUsage;
+    typedef uint32_t EImageUsageFlags; 
 
     enum class EVertexInputRate
     {
@@ -70,24 +84,34 @@ namespace Bolt
         Quaint::QArray<VertexInputAttributeInfo> attributes;
     };
 
-    struct PipelineInfo
+    struct ImageDefinition
     {
-        Quaint::QVec2                               extents {256, 256};
-        Quaint::QVec2                               scissor {256, 256};
-        EPrimitiveTopology                          topology = EPrimitiveTopology::LINE_LIST;
-        EPolygonMode                                polygonMode = EPolygonMode::FILL;
-        EBlendMode                                  blendMode = EBlendMode::DISABLED;
-        CustomBlendParams                           colorBlend = {}; //Should only be handled if blendMode is CUSTOM_BLEND
-        CustomBlendParams                           alphaBlend = {}; //Should only be handled if blendMode is CUSTOM_BLEND
-        Quaint::QArray<VertexInputBindingInfo>      inputBindings;
+
+    };
+
+    struct AttachmentDefinition
+    {
+        enum class Type { Image, Depth, Swapchain };
+
+        Quaint::QName name = "";
+        uint32_t binding = 0;
+        Type type = Type::Image;
+        EFormat format = EFormat::R8G8B8A8_SRGB;
+        EImageUsageFlags usage = EImageUsage::COLOR_ATTACHMENT;
+        Quaint::QVec4 color = {255, 255, 255, 255};
     };
 
     struct RenderInfo
     {
-        PipelineInfo                pipelineInfo;
-        ShaderInfo                  shaderInfo;
-        //Quaint::QArray<Resource*>   resources; //Uncomment if this is necessary
+        Quaint::QVec2                               extents {256, 256};
+        Quaint::QVec2                               scissor {256, 256};
+        EPrimitiveTopology                          topology = EPrimitiveTopology::TRIANGLE_LIST;
+        EPolygonMode                                polygonMode = EPolygonMode::FILL;
+        EBlendMode                                  blendMode = EBlendMode::DISABLED;
+        CustomBlendParams                           colorBlend = {}; //Should only be handled if blendMode is CUSTOM_BLEND
+        CustomBlendParams                           alphaBlend = {}; //Should only be handled if blendMode is CUSTOM_BLEND
+        Quaint::QArray<AttachmentDefinition>        attachments;
     };
 }
 
-#endif //_H_PIPELINE_INFO
+#endif //_H_RENDER_INFO

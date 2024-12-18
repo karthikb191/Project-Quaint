@@ -9,7 +9,7 @@
     #include <memory>
 #endif
 
-namespace Bolt
+namespace Quaint
 {
 #if USE_CUSTOM_MEMORY_PTRS
     class QUniquePtr

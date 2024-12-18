@@ -8,6 +8,7 @@
 namespace Bolt
 {
     class GraphicsResource;
+    class RenderScene;
 
     class IRenderer
     {
@@ -18,7 +19,10 @@ namespace Bolt
         virtual ~IRenderer(){}
 
         virtual IShaderGroupConstructor* getShaderGroupConstructor() = 0;
-        
+
+        //TODO: Implement these
+        /* Adds and builds the render scenes */
+        virtual void addRenderStage(const RenderScene& scene);
         //TODO:
         //virtual void mapBuffer() = 0;
         //virtual void unmapBuffer() = 0;

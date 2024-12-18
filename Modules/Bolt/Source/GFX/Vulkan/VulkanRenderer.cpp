@@ -458,6 +458,10 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
         m_presentQueue = m_deviceManager->getDeviceDefinition().getQueueSupportingPresentation().getVulkanQueueHandle();
 
+        //Create Swapchain
+        m_vulkanSwapchain.reset(QUAINT_NEW(m_context, VulkanSwapchain));
+        m_vulkanSwapchain->construct();
+
         //setting up immediate context for simple immediate queue submit commands
         m_immediateContext.buildCommandPool(
             VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
@@ -585,6 +589,9 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_customRenderPass.destroy();
         //vkDestroyRenderPass(m_device, m_renderPass, m_allocationPtr);
         vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocationPtr);
+
+        m_vulkanSwapchain.release();
+
         for(const VkImageView& view : m_swapchainImageViews)
         {
             vkDestroyImageView(m_device, view, m_allocationPtr);

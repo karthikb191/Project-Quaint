@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <QMath.h>
 #include <Types/QArray.h>
+#include "../../Entities/RenderScene.h"
 #include "VulkanGraphicsContext.h"
 #include "VulkanFrameBuffer.h"
 #include "Entities/VulkanTexture.h"
@@ -89,11 +90,11 @@ namespace Bolt { namespace vulkan{
         VkImageUsageFlags           imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     };
 
-    class RenderScene
+    class VulkanRenderScene
     {
     protected:
-        RenderScene(Quaint::IMemoryContext* context);
-        virtual ~RenderScene() noexcept = default;
+        VulkanRenderScene(Quaint::IMemoryContext* context);
+        virtual ~VulkanRenderScene() noexcept = default;
         virtual void construct() = 0;
         virtual void destroy() = 0;
 
@@ -135,7 +136,7 @@ namespace Bolt { namespace vulkan{
     };
 
     /* Renders to a swapchain */
-    class RenderFrameScene : public RenderScene
+    class RenderFrameScene : public VulkanRenderScene
     {
     public:
         RenderFrameScene(Quaint::IMemoryContext* context, const uint32_t framesInFlight = 1);

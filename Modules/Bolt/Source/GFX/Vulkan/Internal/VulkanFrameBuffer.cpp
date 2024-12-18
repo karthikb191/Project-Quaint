@@ -1,6 +1,6 @@
 #include <GFX/Vulkan/Internal/VulkanFrameBuffer.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
-#include <GFX/Vulkan/Internal/RenderScene.h>
+#include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 
 namespace Bolt{ namespace vulkan{
 

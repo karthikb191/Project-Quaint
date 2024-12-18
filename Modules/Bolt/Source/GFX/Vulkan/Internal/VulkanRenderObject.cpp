@@ -2,7 +2,7 @@
 #include <GFX/Entities/RenderObject.h>
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
-#include <GFX/Vulkan/Internal/RenderScene.h>
+#include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Entities/Resources.h>
 #include <Types/QMap.h>

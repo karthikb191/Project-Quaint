@@ -8,6 +8,7 @@
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <Types/QArray.h>
 #include <Types/QFastArray.h>
+#include <Types/QUniquePtr.h>
 
 #include <QMath.h>
 #include <Core/Camera.h>
@@ -17,11 +18,11 @@
 
 #include "Internal/DeviceManager.h"
 #include "Internal/PipelineManager.h"
-#include "Internal/TextureManager.h"
 #include "Internal/ShaderManager.h"
 #include "Internal/VulkanRenderPass.h"
-#include "Internal/RenderScene.h"
+#include "Internal/VulkanRenderScene.h"
 #include "Internal/VulkanGraphicsContext.h"
+#include "Internal/Entities/VulkanSwapchain.h"
 
 namespace Bolt
 {
@@ -381,6 +382,7 @@ namespace Bolt
         static VulkanRenderer*              s_Instance;
 
         vulkan::GraphicsContext             m_immediateContext;
+        Quaint::QUniquePtr<VulkanSwapchain> m_vulkanSwapchain = nullptr;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

@@ -11,11 +11,11 @@ namespace Bolt{
     namespace vulkan {
     
     // Resource would own the enclosing API onbject created
-    class VulkanCombinedImageSamplerResource : public ResourceGPUProxy
+    class VulkanCombinedImageSamplerResource : public Bolt::ResourceGPUProxy
     {
     public:
         VulkanCombinedImageSamplerResource(Quaint::IMemoryContext* context)
-        : ResourceGPUProxy(context)
+        : Bolt::ResourceGPUProxy(context)
         {}
         virtual void destroy() override;
         
@@ -31,7 +31,7 @@ namespace Bolt{
         VulkanTexture       m_texture;
     };
 
-    class VulkanBufferObjectResource : public ResourceGPUProxy
+    class VulkanBufferObjectResource : public Bolt::ResourceGPUProxy
     {
     public:
         struct BufferInfo
@@ -43,7 +43,7 @@ namespace Bolt{
         };
 
         VulkanBufferObjectResource(Quaint::IMemoryContext* context)
-        : ResourceGPUProxy(context)
+        : Bolt::ResourceGPUProxy(context)
         {}
 
         void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, const BufferInfo& info);
@@ -61,11 +61,11 @@ namespace Bolt{
         VkMemoryPropertyFlags   m_memFlags;
     };
 
-    class VulkanShaderGroupResource : public ResourceGPUProxy
+    class VulkanShaderGroupResource : public Bolt::ResourceGPUProxy
     {
     public:
         VulkanShaderGroupResource(Quaint::IMemoryContext* context)
-        : ResourceGPUProxy(context)
+        : Bolt::ResourceGPUProxy(context)
         , m_attachmentRefs(context)
         {}
 

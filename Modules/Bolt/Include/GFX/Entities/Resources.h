@@ -1,9 +1,9 @@
 #ifndef _H_RESOURCES
 #define _H_RESOURCES
-
+#include "../Interface/IRenderer.h"
 #include "../Data/ResourceInfo.h"
 #include "../Data/ShaderInfo.h"
-#include "../Interface/IRenderer.h"
+
 #include <assert.h>
 
 namespace Bolt

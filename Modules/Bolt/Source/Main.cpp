@@ -12,7 +12,7 @@
 #include <RenderModule.h>
 #include <Core/Camera.h>
 #include <GFX/Entities/RenderObject.h>
-#include <GFX/Data/PipelineInfo.h>
+#include <GFX/Entities/RenderScene.h>
 
 namespace Quaint
 {

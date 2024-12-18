@@ -1,9 +1,15 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
-#include <GFX/Vulkan/Internal/RenderScene.h>
+#include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
 
-namespace Bolt { namespace vulkan{
+namespace Bolt { 
+    RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
+    {
+
+    }
+    
+    namespace vulkan{
     RenderScene::RenderScene(Quaint::IMemoryContext* context)
     : m_context(context)
     , m_graphicsContext(context)
@@ -89,7 +95,7 @@ namespace Bolt { namespace vulkan{
         createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
         //TODO: Change this later if we are using a memory command to transfer images to swapchain
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
+        
         // Only allowing exclusive sharing mode for now. 
         // TODO: Handle this once we support multiple queue operations
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
