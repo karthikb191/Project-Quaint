@@ -22,13 +22,18 @@
 #include "Internal/VulkanRenderPass.h"
 #include "Internal/VulkanRenderScene.h"
 #include "Internal/VulkanGraphicsContext.h"
-#include "Internal/Entities/VulkanSwapchain.h"
 
 namespace Bolt
 {
     using namespace vulkan;
     class BoltRenderer;
     class VulkanRenderer;
+    class Bolt::RenderScene;
+
+    namespace vulkan
+    {
+        class VulkanSwapchain;
+    }
     
     #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -207,6 +212,8 @@ namespace Bolt
         IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
         vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
 
+        VulkanSwapchain* getSwapchain() { return m_vulkanSwapchain.get(); }
+
         //TODO: Fix this
         const UniformBufferObject& getMVPMatrix() { return m_ubo; }
     
@@ -226,6 +233,9 @@ namespace Bolt
         void crateShaderInputTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
 
         void mapBufferToMemory();
+
+        void addRenderScene(RenderScene* scene);
+        void constructPendingRenderScenes();
     private:
         void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -383,6 +393,7 @@ namespace Bolt
 
         vulkan::GraphicsContext             m_immediateContext;
         Quaint::QUniquePtr<VulkanSwapchain> m_vulkanSwapchain = nullptr;
+        Quaint::QArray<RenderScene*>        m_renderScenes;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

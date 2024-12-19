@@ -54,8 +54,9 @@ namespace Bolt {
         VkImageView getImageView() const { return m_imageView; }
         bool isValid() { return m_image != VK_NULL_HANDLE; }
         bool isBacked() { return m_isBacked || getIsSwapchainImage(); }
-        uint32_t getWidth() { return m_createInfo.imageInfo.extent.width; }
-        uint32_t getHeight() { return m_createInfo.imageInfo.extent.height; }
+        uint32_t getWidth() const { return m_createInfo.imageInfo.extent.width; }
+        uint32_t getHeight() const { return m_createInfo.imageInfo.extent.height; }
+        const VulkanImageCreateInfo& getCreateInfo() { return m_createInfo; }
         bool getIsSwapchainImage() { return m_isSwapchainImage; }
         VkAttachmentDescription buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout,
                                                             VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,

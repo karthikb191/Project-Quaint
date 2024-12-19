@@ -4,15 +4,22 @@
 #include <vulkan/vulkan.h>
 #include <QMath.h>
 #include <Types/QArray.h>
-#include "../../Entities/RenderScene.h"
 #include "VulkanGraphicsContext.h"
 #include "VulkanFrameBuffer.h"
 #include "Entities/VulkanTexture.h"
+#include "../../../GFX/Data/RenderInfo.h"
 
-namespace Bolt { namespace vulkan{
-    
+namespace Bolt { 
     class RenderScene;
+    class RenderSceneImpl
+    {
+    public:
 
+    protected:
+    };
+    
+    namespace vulkan{
+    
     enum EAttachmentType
     {
         Input = 0,
@@ -90,15 +97,64 @@ namespace Bolt { namespace vulkan{
         VkImageUsageFlags           imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     };
 
-    class VulkanRenderScene
+    struct Attachment
     {
+        Attachment(const Bolt::AttachmentDefinition& info)
+        {
+            buildAttachmentDescription();
+        };
+        template<typename _T>
+        _T* As() { return static_cast<_T*>(this); }
+        
+        const AttachmentDefinition& getInfo() const { return info; }
+        const VkAttachmentDescription& getAttachmentDescription() const { return attachmentDescription; }
+        const VkAttachmentReference& getAttachmentReference() const { return attachmentReference; } 
+
     protected:
+        virtual void buildAttachmentDescription() = 0;
+        virtual void buildAttachmentReference() = 0;
+        
+        VkAttachmentDescription attachmentDescription = {};
+        VkAttachmentReference attachmentReference  = {};
+        AttachmentDefinition info;
+    };
+    struct ImageAttachment : public Attachment
+    {
+        ImageAttachment(const Bolt::AttachmentDefinition& info, VulkanTexture tex)
+        : Attachment(info)
+        , texture(tex)
+        {}
+        virtual void buildAttachmentReference() override;
+        virtual void buildAttachmentDescription() override;
+
+        VulkanTexture texture;
+    };
+    struct DepthAttachment : public Attachment
+    {
+        DepthAttachment(const Bolt::AttachmentDefinition& info)
+        : Attachment(info)
+        {}
+        virtual void buildAttachmentReference() override {}
+        virtual void buildAttachmentDescription() override {}
+        //TODO:
+    };
+    struct SwapchainAttachment : public Attachment
+    {
+        SwapchainAttachment(const Bolt::AttachmentDefinition& info)
+        : Attachment(info)
+        {}
+        VulkanSwapchain* getSwapchain() { return VulkanRenderer::get()->getSwapchain(); }
+        virtual void buildAttachmentReference() override;
+        virtual void buildAttachmentDescription() override;
+    };
+
+    class VulkanRenderScene : public Bolt::RenderSceneImpl
+    {
+    public:
         VulkanRenderScene(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderScene() noexcept = default;
-        virtual void construct() = 0;
-        virtual void destroy() = 0;
-
-    public:
+        virtual void construct(const Bolt::RenderScene* scene);
+        virtual void destroy();
     
         virtual bool begin() = 0;
         virtual void end() = 0;
@@ -108,15 +164,22 @@ namespace Bolt { namespace vulkan{
         
         AttachmentInfo&     beginAttachmentSetup();
 
-        const Quaint::QArray<AttachmentInfo>& getAttachmentInfos() const { return m_attchmentInfos; }
+        //const Quaint::QArray<AttachmentInfo>& getAttachmentInfos() const { return m_attchmentInfos; }
+        const Quaint::QArray<Quaint::QUniquePtr<Attachment>>& getAttachments() const { return m_attachments; }
 
     protected:
+        void constructAttachments(const Bolt::RenderInfo& info);
+        VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);
+
+        void constructSubpasses(const Bolt::RenderScene* scene);
         virtual void buildFrameBuffer() = 0;
 
-        Quaint::IMemoryContext*                 m_context = nullptr;
-        GraphicsContext                         m_graphicsContext;
-        VkCommandPool                           m_commandPool;
-        Quaint::QArray<AttachmentInfo>          m_attchmentInfos;
+        Quaint::IMemoryContext*                                     m_context = nullptr;
+        GraphicsContext                                             m_graphicsContext;
+        VkCommandPool                                               m_commandPool;
+        Quaint::QArray<Quaint::QUniquePtr<Attachment>>              m_attachments;
+        Quaint::QArray<VkSubpassDescription>                        m_subpassDesc;
+        Quaint::QArray<VkSubpassDependency>                         m_subpassDependencies;                     
     };
 
     struct MVP

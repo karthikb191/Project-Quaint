@@ -7,7 +7,7 @@
 namespace Bolt { namespace vulkan 
 {
     class VulkanRenderPass;
-    class RenderScene;
+    class Bolt::RenderScene;
 
     /* TODO: Should take a reference to FrameBuffer to create attachments*/
     class VulkanRenderPass

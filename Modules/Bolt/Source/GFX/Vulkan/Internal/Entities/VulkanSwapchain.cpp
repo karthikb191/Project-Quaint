@@ -180,6 +180,7 @@ namespace Bolt { namespace vulkan {
 
         m_extent = info.imageExtent;
         m_valid = true;
+        m_format = format.format;
     }
 
     void VulkanSwapchain::destroy()

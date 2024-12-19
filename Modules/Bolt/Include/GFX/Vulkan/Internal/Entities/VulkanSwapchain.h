@@ -14,10 +14,12 @@ namespace Bolt { namespace vulkan {
         void construct();
         void destroy();
         void rebuildSwapchain();
-        bool hasValidSwapchain() { return m_valid; }
-        uint32_t getNumSwapchainImages() { return m_swapchainViews.getSize(); }
-        VkImageView getSwapchainImageView(uint32_t index) { return m_swapchainViews[index]; }
-        VkExtent2D getSwapchainExtent() { return m_extent; }
+        bool hasValidSwapchain() const { return m_valid; }
+        uint32_t getNumSwapchainImages() const { return m_swapchainViews.getSize(); }
+        VkImageView getSwapchainImageView(uint32_t index) const { return m_swapchainViews[index]; }
+        VkExtent2D getSwapchainExtent() const { return m_extent; }
+        VkSampleCountFlagBits getSamples() const { return m_samples; }
+        VkFormat getFormat() const { return m_format; }
         
     private:
         Quaint::IMemoryContext*         m_context = nullptr;
@@ -26,6 +28,8 @@ namespace Bolt { namespace vulkan {
         Quaint::QArray<VkImageView>     m_swapchainViews;
         VkExtent2D                      m_extent = {512, 512};
         bool                            m_valid = false;
+        VkFormat                        m_format = VK_FORMAT_R8G8B8A8_SRGB;
+        VkSampleCountFlagBits           m_samples = VK_SAMPLE_COUNT_1_BIT;
     };
 }}
 

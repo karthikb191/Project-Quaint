@@ -2,19 +2,254 @@
 #include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
+#include <GFX/Entities/RenderScene.h>
+#include <GFX/Vulkan/VulkanHelpers.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 
 namespace Bolt { 
     RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
+    : m_stages(context)
+    {
+        m_impl = Quaint::QUniquePtr<RenderSceneImpl>(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
+        assert(m_impl != nullptr, "Vulkan scene not constructed");
+    }
+    RenderScene::~RenderScene()
+    {
+        if(m_isValid)
+        {
+            destroy();
+        }
+    }
+
+    bool RenderScene::construct()
+    {
+        VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
+        scene->construct(this);
+    }
+
+    bool RenderScene::begin()
+    {
+
+    }
+    bool RenderScene::render()
+    {
+
+    }
+    bool RenderScene::end()
     {
 
     }
     
     namespace vulkan{
-    RenderScene::RenderScene(Quaint::IMemoryContext* context)
+
+    void ImageAttachment::buildAttachmentDescription()
+    {
+        attachmentDescription.initialLayout = texture.getCreateInfo().imageInfo.initialLayout;
+        attachmentDescription.format = texture.getCreateInfo().imageInfo.format;
+        attachmentDescription.samples = texture.getCreateInfo().imageInfo.samples;
+        if(info.clearImage)
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+        else
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    void ImageAttachment::buildAttachmentReference()
+    {
+        attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    void SwapchainAttachment::buildAttachmentDescription()
+    {
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //We don't care
+        attachmentDescription.format = getSwapchain()->getFormat();
+        attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+        if(info.clearImage)
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+        else
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    }
+    void SwapchainAttachment::buildAttachmentReference()
+    {
+        attachmentReference.attachment = info.binding;
+        attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+
+    VulkanRenderScene::VulkanRenderScene(Quaint::IMemoryContext* context)
     : m_context(context)
     , m_graphicsContext(context)
-    , m_attchmentInfos(context)
+    , m_attachments(context)
+    , m_subpassDesc(context)
+    , m_subpassDependencies(context)
     {}
+
+    void VulkanRenderScene::destroy()
+    {
+        //Free all attachments
+        for(auto& attachment : m_attachments)
+        {
+            switch(attachment->getInfo().type)
+            {
+                case AttachmentDefinition::Type::Image:
+                {
+                    ImageAttachment* atch = attachment->As<ImageAttachment>();
+                    atch->texture.destroy();
+                    attachment.release();
+                }
+                break;
+                case AttachmentDefinition::Type::Swapchain:
+                {
+                    attachment.release();
+                }
+                break;
+                case AttachmentDefinition::Type::Depth:
+                default:
+                    //Do nothing for now
+            }
+        }
+        m_attachments.clear();
+    }
+
+    void VulkanRenderScene::construct(const Bolt::RenderScene* scene)
+    {
+        const Bolt::RenderInfo& info = scene->getRenderInfo();
+        constructAttachments(info);
+        constructSubpasses(scene);
+
+        Quaint::QArray<VkAttachmentDescription> attachDescs(m_context);
+        for(auto& attachment : m_attachments)
+        {
+            attachDescs.pushBack(attachment->getAttachmentDescription());
+        }
+
+        VkRenderPassCreateInfo rpInfo{};
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+
+        rpInfo.attachmentCount = attachDescs.getSize();
+        rpInfo.pAttachments = attachDescs.getBuffer();
+        rpInfo.subpassCount = m_subpassDesc.getSize();
+        rpInfo.pSubpasses = m_subpassDesc.getBuffer();
+        rpInfo.dependencyCount = m_subpassDependencies.getSize();
+        rpInfo.pDependencies = m_subpassDependencies.getBuffer();
+        //rpInfo.pAttachments = 
+        // Setup Attachments
+
+    }
+
+    void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)
+    {
+        for(int i = 0; i < info.attachments.getSize(); ++i)
+        {
+            const Bolt::AttachmentDefinition& def = info.attachments[i];
+            switch (def.type)
+            {
+            case AttachmentDefinition::Type::Image:
+            {
+                VulkanTexture texture = constructVulkanTexture(def);
+                m_attachments.emplace(Quaint::QUniquePtr<Attachment>(QUAINT_NEW(m_context, ImageAttachment, info, texture)));
+            }
+            break;
+            case AttachmentDefinition::Type::Swapchain:
+            {
+                m_attachments.emplace(Quaint::QUniquePtr<Attachment>(QUAINT_NEW(m_context, SwapchainAttachment, info)));
+            }
+            break;
+            case AttachmentDefinition::Type::Depth:
+            default:
+                assert(false, "Not yet supported");
+            break;
+            }
+        }
+    }
+
+    VulkanTexture VulkanRenderScene::constructVulkanTexture(const Bolt::AttachmentDefinition def)
+    {
+        //TODO: Move this to builder
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+
+        //Creates, sets backing memory and creates image view
+        VulkanTextureBuilder builder;
+        VulkanTexture tex = 
+        builder.setFormat(toVulkanVkFormat(def.format))
+        .setWidth((uint32_t)def.extents.x)
+        .setHeight((uint32_t)def.extents.y)
+        .setTiling(VK_IMAGE_TILING_LINEAR)
+        .setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        .setImageViewInfo(viewInfo)
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
+    }
+
+    void VulkanRenderScene::constructSubpasses(const Bolt::RenderScene* scene)
+    {
+        const Quaint::QArray<Bolt::RenderScene::RenderStage>& stages = scene->getRenderStages();
+        if(stages.getSize() == 0)
+        {
+            assert(false, "No render stages supplied");
+            return;
+        }
+
+        m_subpassDesc.clear();
+        for(auto& stage : stages)
+        {
+            VkSubpassDescription desc{};
+            desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+            Quaint::QArray<VkAttachmentReference> colorAttachrefs(m_context);
+            for(int i = 0; i < stage.attachmentRefs.getSize(); ++i)
+            {
+                Attachment* targetAttachment = nullptr;
+                const auto& stageAttach = stage.attachmentRefs[i];
+                for(const auto& sceneAttach : m_attachments)
+                {
+                    if(sceneAttach->getInfo().name == stageAttach.attachmentName)
+                    {
+                        VkAttachmentReference ref{};
+                        ref.attachment = sceneAttach->getInfo().binding;
+                        if(sceneAttach->getInfo().type == AttachmentDefinition::Type::Depth)
+                        {
+                            ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                        }
+                        else
+                        {
+                            ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        }
+                        colorAttachrefs.pushBack(ref);
+                        break;
+                    }
+                }
+            }
+            desc.colorAttachmentCount = colorAttachrefs.getSize();
+            desc.pColorAttachments = colorAttachrefs.getBuffer();
+
+            desc.inputAttachmentCount = 0;
+            desc.pInputAttachments = nullptr;
+            desc.pDepthStencilAttachment = nullptr;
+            desc.preserveAttachmentCount = 0;
+            desc.pPreserveAttachments = nullptr;
+            desc.pResolveAttachments = nullptr;
+            m_subpassDesc.pushBack(desc);
+        }
+        
+        //now setting up dependencies
+
+    }
 
     AttachmentInfo& RenderScene::beginAttachmentSetup()
     {

@@ -15,6 +15,7 @@
 #include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
+#include <GFX/Entities/RenderScene.h>
 
 //TODO: Remove this from here
 #include <Gfx/Entities/RenderObject.h>
@@ -1765,6 +1766,29 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     void VulkanRenderer::mapBufferToMemory()
     {
         //vkMapMemory(getDevice(), )
+    }
+
+    void VulkanRenderer::addRenderScene(RenderScene* pScene)
+    {
+        for(auto scene : m_renderScenes)
+        {
+            if(scene->getName() == pScene->getName())
+            {
+                char buffer[1024];
+                sprintf_s(buffer, "Render Scene: %s has already been added", scene->getName());
+                QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
+                return;
+            }
+        }
+        m_renderScenes.pushBack(pScene);
+    }
+
+    void VulkanRenderer::constructPendingRenderScenes()
+    {
+        for(auto scene : m_renderScenes)
+        {
+            scene->construct();
+        }
     }
 
     void VulkanRenderer::createSampleImage()

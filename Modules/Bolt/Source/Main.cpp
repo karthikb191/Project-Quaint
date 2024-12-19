@@ -54,10 +54,43 @@ int main()
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();
 
+    Quaint::IMemoryContext* context = Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext();
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
+    //TODO: construct swapchain
+
     Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
-    
+
+    Bolt::RenderInfo info;
+    info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    Bolt::AttachmentDefinition def;
+    def.binding = 0;
+    def.name = "swapchain";
+    def.clearColor = Quaint::QVec4(1.0f, 1.0f, 0.0f, 1.0f);
+    def.clearImage = true;
+    def.type = Bolt::AttachmentDefinition::Type::Swapchain;
+    def.format = Bolt::EFormat::R8G8B8A8_SRGB;
+    def.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(def);
+
+    Bolt::RenderScene::RenderStage stage;
+    stage.attachmentRefs = Quaint::QArray<Bolt::RenderScene::RenderStage::AttachmentRef>(context);
+    stage.index = 0;
+
+    /* Attachment references in each sub-pass */
+    Bolt::RenderScene::RenderStage::AttachmentRef ref{};
+    ref.binding = 0;
+    ref.attachmentName = "swapchain";
+    stage.attachmentRefs.pushBack(ref);
+    stage.dependentStage = ~0;
+
+
+    Bolt::RenderScene scene(context, "graphics", info);
+    scene.addRenderStage(stage);
+
+    //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
+
+
     //TODO: Loop through application module 
     //TODO: Move this to Application Module
     MSG msg = { };
@@ -99,3 +132,11 @@ int main()
     
     return 0;
 }
+
+
+/*
+Some Learnings:
+1. Dont hesitate to create a new structure or class. Obviously, it's not okay to create a class/struct for every single thing, but
+the good practise is to be flexible.
+
+*/

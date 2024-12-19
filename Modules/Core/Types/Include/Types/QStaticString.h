@@ -85,6 +85,15 @@ public:
         memcpy(m_rawData, other.getBuffer(), SZ);
         return *this;
     }
+    template<size_t SZ>
+    bool operator==(const QStaticString<SZ>& other) const
+    {
+        if(other.length() != length())
+        {
+            return false;
+        }
+        return strcmp(m_rawData == other.getBuffer()) == 0;
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const QStaticString<N>& str)
     {

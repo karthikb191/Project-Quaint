@@ -39,7 +39,7 @@ namespace Bolt
     
     enum class EFormat
     {
-        R32G32B32A32,
+        R32G32B32A32_UINT,
         R32G32B32A32_SFLOAT,
         R8G8B8A8_SRGB,
         INVALID = 0x7FFFFFFF
@@ -76,7 +76,7 @@ namespace Bolt
         uint32_t binding = -1;
         uint32_t location = -1;
         uint32_t offset = 0;
-        EFormat format = EFormat::R32G32B32A32;
+        EFormat format = EFormat::R8G8B8A8_SRGB;
     };
     struct VertexInputBindingInfo
     {
@@ -98,12 +98,16 @@ namespace Bolt
         Type type = Type::Image;
         EFormat format = EFormat::R8G8B8A8_SRGB;
         EImageUsageFlags usage = EImageUsage::COLOR_ATTACHMENT;
-        Quaint::QVec4 color = {255, 255, 255, 255};
+        Quaint::QVec4 clearColor = {1.f, 0.f, 0.5f, 1.f};
+        Quaint::QVec2 extents = {256, 256};
+        bool clearImage = false;
+        //bool forEachSwapcahinImage = false;
     };
 
     struct RenderInfo
     {
-        Quaint::QVec2                               extents {256, 256};
+        Quaint::QVec2                               extents {256, 256}; 
+        Quaint::QVec2                               offset {256, 256};
         Quaint::QVec2                               scissor {256, 256};
         EPrimitiveTopology                          topology = EPrimitiveTopology::TRIANGLE_LIST;
         EPolygonMode                                polygonMode = EPolygonMode::FILL;

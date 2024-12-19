@@ -13,7 +13,7 @@ namespace Bolt{namespace vulkan
     * Idea is that this would be self-contained rendering construct 
     * ? When creating/binding a pipeline, its compatibility should be checked against the renderpass
     */
-    class RenderScene;
+    class Bolt::RenderScene;
     class GraphicsContext;
 
     struct CommandPool

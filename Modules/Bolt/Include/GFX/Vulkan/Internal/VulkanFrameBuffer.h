@@ -7,7 +7,7 @@
 
 namespace Bolt{ namespace vulkan{
 
-    class RenderScene;
+    class Bolt::RenderScene;
     struct AttachmentInfo;
 
     /* Creates and Owns any attachments provided */

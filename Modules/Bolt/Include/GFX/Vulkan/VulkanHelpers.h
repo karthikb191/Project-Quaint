@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.h>
 #include <assert.h>
 #include "../Data/ShaderInfo.h"
+#include "../Data/RenderInfo.h"
 
 namespace Bolt{ namespace vulkan{
     
@@ -38,5 +39,21 @@ namespace Bolt{ namespace vulkan{
                 assert(false && "Not handled yet!");
         }
         return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    }
+
+    inline VkFormat toVulkanVkFormat(const Bolt::EFormat format)
+    {
+        switch(format)
+        {
+            case Bolt::EFormat::R32G32B32A32_UINT:
+                return VK_FORMAT_R32G32B32A32_UINT;
+            case Bolt::EFormat::R32G32B32A32_SFLOAT:
+                return VK_FORMAT_R32G32B32A32_SFLOAT;
+            case Bolt::EFormat::R8G8B8A8_SRGB:
+                return VK_FORMAT_R8G8B8A8_SRGB;
+            default:
+                assert(false, "Format conversion not available. invalid format passed")
+        }
+        return VK_FORMAT_UNDEFINED;
     }
 }}
