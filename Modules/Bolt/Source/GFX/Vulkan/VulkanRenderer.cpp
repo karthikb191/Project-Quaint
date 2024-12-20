@@ -20,6 +20,7 @@
 //TODO: Remove this from here
 #include <Gfx/Entities/RenderObject.h>
 #include <Gfx/Entities/Resources.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 
 namespace Bolt
 {
@@ -459,6 +460,10 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
         m_presentQueue = m_deviceManager->getDeviceDefinition().getQueueSupportingPresentation().getVulkanQueueHandle();
 
+        m_graphicsCommandPool = buildCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+        , EQueueType::Graphics | EQueueType::Transfer, true);
+        m_transferCommandPool = m_graphicsCommandPool;
+
         //Create Swapchain
         m_vulkanSwapchain.reset(QUAINT_NEW(m_context, VulkanSwapchain));
         m_vulkanSwapchain->construct();
@@ -607,6 +612,28 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
         m_shaderManager->Shutdown();
         m_deviceManager->Shutdown();
+    }
+
+    VkCommandPool VulkanRenderer::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport = false)
+    {
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+        DeviceManager* dm = getDeviceManager();
+        VkDevice device = dm->getDeviceDefinition().getDevice();
+        
+        const QueueDefinition& def = dm->getDeviceDefinition().getQueueOfType(supportedQueues, requiresPresentationSupport);
+        //TODO: Better handle presentation query
+        assert(def.isvalid() && "could not find a queue with required support");
+        
+        VkCommandPoolCreateInfo info {};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        info.flags = flags;
+        info.queueFamilyIndex = def.getQueueFamily();
+
+        ASSERT_SUCCESS(
+            vkCreateCommandPool(device, &info, m_allocationPtr, &commandPool)
+            , "Failed to create command pool"
+        );
+        return commandPool;
     }
 
     void VulkanRenderer::render()

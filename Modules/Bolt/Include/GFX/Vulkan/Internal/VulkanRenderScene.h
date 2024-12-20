@@ -161,10 +161,10 @@ namespace Bolt {
         virtual void submit() = 0;
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
-        
-        AttachmentInfo&     beginAttachmentSetup();
+        VkRenderPass getRenderpass() const { return m_renderpass; }
 
-        //const Quaint::QArray<AttachmentInfo>& getAttachmentInfos() const { return m_attchmentInfos; }
+        AttachmentInfo&     beginAttachmentSetup();
+        Attachment* getAttachment(const Quaint::QName& name);
         const Quaint::QArray<Quaint::QUniquePtr<Attachment>>& getAttachments() const { return m_attachments; }
 
     protected:
@@ -172,11 +172,12 @@ namespace Bolt {
         VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);
 
         void constructSubpasses(const Bolt::RenderScene* scene);
-        virtual void buildFrameBuffer() = 0;
+        void constructFrameBuffer();
 
         Quaint::IMemoryContext*                                     m_context = nullptr;
         GraphicsContext                                             m_graphicsContext;
         VkCommandPool                                               m_commandPool;
+        VkRenderPass                                                m_renderpass;
         Quaint::QArray<Quaint::QUniquePtr<Attachment>>              m_attachments;
         Quaint::QArray<VkSubpassDescription>                        m_subpassDesc;
         Quaint::QArray<VkSubpassDependency>                         m_subpassDependencies;                     

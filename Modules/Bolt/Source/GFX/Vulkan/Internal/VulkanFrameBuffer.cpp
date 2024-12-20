@@ -1,84 +1,71 @@
 #include <GFX/Vulkan/Internal/VulkanFrameBuffer.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/VulkanRenderScene.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 
 namespace Bolt{ namespace vulkan{
 
     FrameBuffer::FrameBuffer(Quaint::IMemoryContext* context)
     : m_context(context)
-    , m_attachments(context)
+    , m_framebuffers(context)
     {
         m_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     }
 
     void FrameBuffer::destroy()
     {
-        DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
-        const VkDevice& device = dm->getDeviceDefinition().getDevice();
+        VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        for(auto& attachment : m_attachments)
+
+        for(auto& framebuffer : m_framebuffers)
         {
-            attachment.destroy();
+            vkDestroyFramebuffer(device, framebuffer, callbacks);
         }
     }
 
-    void FrameBuffer::construct(const RenderScene* scene)
+    void FrameBuffer::construct(const VulkanRenderScene* scene)
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
         const VkDevice& device = dm->getDeviceDefinition().getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        Quaint::QArray<VkImageView> views(m_context);
-        for(auto& attachment : m_attachments)
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+        uint32_t numImages = swapchain->getNumSwapchainImages();
+
+        
+        m_info.width = swapchain->getSwapchainExtent().width;
+        m_info.height = swapchain->getSwapchainExtent().height;
+        m_info.layers = 1;
+        m_info.pNext = nullptr;
+        m_info.renderPass = scene->getRenderpass();
+        for(int i = 0; i < numImages; ++i)
         {
-            //If it's not valid, try creating it
-            if(!attachment.isValid())
+            auto& attachments = scene->getAttachments();    
+            Quaint::QArray<VkImageView> views(m_context);
+            for(auto& attachment : attachments)
             {
-                attachment.create();
+                Bolt::AttachmentDefinition::Type type = attachment->getInfo().type;
+                switch (type)
+                {
+                case Bolt::AttachmentDefinition::Type::Image:
+                {
+                    VkImageView view = attachment->As<ImageAttachment>()->texture.getImageView();
+                    views.pushBack(view);
+                    break;
+                }
+                case Bolt::AttachmentDefinition::Type::Swapchain:
+                    views.pushBack(swapchain->getSwapchainImageView(i));
+                    break;
+                default:
+                    break;
+                }
             }
+            m_info.attachmentCount = (uint32_t)views.getSize();
+            m_info.pAttachments = views.getBuffer();
 
-            assert(attachment.isValid() && "Attachment is still not valid even after trying to build it.");
-            if(!attachment.isBacked() && !attachment.getIsSwapchainImage())
-            {
-                attachment.createBackingMemory();
-            }
-            attachment.createImageView();
-            assert(attachment.isBacked() && "Could not back attachment to GPU Memory.");
-            views.pushBack(attachment.getImageView());
+            VkFramebuffer framebuffer = VK_NULL_HANDLE;
+            ASSERT_SUCCESS(vkCreateFramebuffer(device, &m_info, callbacks, &framebuffer), "Failed to create framebuffer!!");
+            m_framebuffers.pushBack(framebuffer);
         }
-        m_info.attachmentCount = (uint32_t)views.getSize();
-        m_info.pAttachments = views.getBuffer();
-
-        ASSERT_SUCCESS(vkCreateFramebuffer(device, &m_info, callbacks, &m_framebuffer), "Failed to create framebuffer!!");
-    }
-
-    FrameBuffer& FrameBuffer::addAttachment(const VkImage swapchainImage, const AttachmentInfo* info, const Quaint::QArray<uint32_t>& queueFamilies)
-    {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = VK_NULL_HANDLE;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = info->getFormat();
-        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
-        viewInfo.components = info->getImageViewComponentMapping();
-
-        //subresource range selects mipmap levels and array layers to be accessible to the view
-        viewInfo.subresourceRange = info->getImageViewSubresourceRange();
-
-        VulkanTextureBuilder builder;
-        VulkanTexture texture = builder.setFormat(info->getFormat())
-        .setHeight(info->getExtent().height)
-        .setWidth(info->getExtent().width)
-        .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
-        .setQueueFamilies((uint32_t)queueFamilies.getSize(), queueFamilies.getBuffer())
-        .setUsage(info->getImageUsage())
-        .setMemoryProperty(info->getMemoryPropertyFlags())
-        .setImageViewInfo(viewInfo)
-        .setSwapchainImage(swapchainImage)
-        //.setIsSwapchainImage(info->getIsSwapchainImage())
-        .build();
-
-        m_attachments.pushBack(texture);
-        return *this;
     }
 }}

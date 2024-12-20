@@ -261,6 +261,7 @@ namespace Bolt
     void* pUserData);
 
     //------------------------------
+        VkCommandPool buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport = false);
 
         void updateUniformBuffer(uint32_t index);
         void updateUniformBufferProxy();

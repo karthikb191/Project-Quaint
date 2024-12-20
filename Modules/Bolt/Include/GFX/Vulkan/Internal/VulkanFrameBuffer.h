@@ -7,7 +7,7 @@
 
 namespace Bolt{ namespace vulkan{
 
-    class Bolt::RenderScene;
+    class VulkanRenderScene;
     struct AttachmentInfo;
 
     /* Creates and Owns any attachments provided */
@@ -15,18 +15,14 @@ namespace Bolt{ namespace vulkan{
     {
     public:
         FrameBuffer(Quaint::IMemoryContext* context);
-        void construct(const RenderScene* scene);
+        void construct(const VulkanRenderScene* scene);
         void destroy();
 
-        FrameBuffer& addAttachment(const VkImage swapchainImage, const AttachmentInfo* info, const Quaint::QArray<uint32_t>& queueIndices);
-        FrameBuffer& setExtent(const VkExtent3D& extent) { m_info.width = extent.width; m_info.height = extent.height; m_info.layers = extent.depth; return *this; }
-        FrameBuffer& setRenderpass(const VkRenderPass renderpass) { m_info.renderPass = renderpass; return *this; }
-        VkFramebuffer getHandle() { return m_framebuffer; }
+        VkFramebuffer getHandle(uint32_t index = 0) { assert(index < m_framebuffers.getSize()); return m_framebuffers[index]; }
     private:
         Quaint::IMemoryContext*             m_context;
-        Quaint::QArray<VulkanTexture>       m_attachments;
         VkFramebufferCreateInfo             m_info = {};
-        VkFramebuffer                       m_framebuffer = VK_NULL_HANDLE;
+        Quaint::QArray<VkFramebuffer>       m_framebuffers;
     };
 
 } }

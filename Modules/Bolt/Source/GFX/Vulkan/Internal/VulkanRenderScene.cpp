@@ -124,6 +124,9 @@ namespace Bolt {
 
     void VulkanRenderScene::construct(const Bolt::RenderScene* scene)
     {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
         const Bolt::RenderInfo& info = scene->getRenderInfo();
         constructAttachments(info);
         constructSubpasses(scene);
@@ -143,9 +146,11 @@ namespace Bolt {
         rpInfo.pSubpasses = m_subpassDesc.getBuffer();
         rpInfo.dependencyCount = m_subpassDependencies.getSize();
         rpInfo.pDependencies = m_subpassDependencies.getBuffer();
-        //rpInfo.pAttachments = 
-        // Setup Attachments
+        
+        VkResult res = vkCreateRenderPass(device, &rpInfo, callbacks, &m_renderpass);
+        ASSERT_SUCCESS(res, "could not create renderpass");
 
+        constructFrameBuffer();
     }
 
     void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)
@@ -157,6 +162,7 @@ namespace Bolt {
             {
             case AttachmentDefinition::Type::Image:
             {
+                //TODO: handle the scenario where we need multiple textures for each swapchain image
                 VulkanTexture texture = constructVulkanTexture(def);
                 m_attachments.emplace(Quaint::QUniquePtr<Attachment>(QUAINT_NEW(m_context, ImageAttachment, info, texture)));
             }
@@ -206,8 +212,11 @@ namespace Bolt {
         }
 
         m_subpassDesc.clear();
-        for(auto& stage : stages)
+        m_subpassDependencies.clear();
+        uint32_t idx = 0;
+        for(size_t i = 0; i < stages.getSize(); ++i)
         {
+            const Bolt::RenderScene::RenderStage& stage = stages[i];
             VkSubpassDescription desc{};
             desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
@@ -216,28 +225,27 @@ namespace Bolt {
             {
                 Attachment* targetAttachment = nullptr;
                 const auto& stageAttach = stage.attachmentRefs[i];
-                for(const auto& sceneAttach : m_attachments)
+                Attachment* sceneAttachRef = getAttachment(stageAttach.attachmentName);
+                if (sceneAttachRef == nullptr)
                 {
-                    if(sceneAttach->getInfo().name == stageAttach.attachmentName)
-                    {
-                        VkAttachmentReference ref{};
-                        ref.attachment = sceneAttach->getInfo().binding;
-                        if(sceneAttach->getInfo().type == AttachmentDefinition::Type::Depth)
-                        {
-                            ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                        }
-                        else
-                        {
-                            ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                        }
-                        colorAttachrefs.pushBack(ref);
-                        break;
-                    }
+                    continue;
                 }
+                VkAttachmentReference ref{};
+                ref.attachment = sceneAttachRef->getInfo().binding;
+                if(sceneAttachRef->getInfo().type == AttachmentDefinition::Type::Depth)
+                {
+                    ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                }
+                else
+                {
+                    ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                }
+                colorAttachrefs.pushBack(ref);
             }
             desc.colorAttachmentCount = colorAttachrefs.getSize();
             desc.pColorAttachments = colorAttachrefs.getBuffer();
 
+            //TODO: No other attachment types are supported for now
             desc.inputAttachmentCount = 0;
             desc.pInputAttachments = nullptr;
             desc.pDepthStencilAttachment = nullptr;
@@ -245,9 +253,52 @@ namespace Bolt {
             desc.pPreserveAttachments = nullptr;
             desc.pResolveAttachments = nullptr;
             m_subpassDesc.pushBack(desc);
+
+            
+            VkSubpassDependency dep{};
+
+            //This is the only stage we care about for now
+            dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+            dep.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dep.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            // Result of previous stage is visible to the next stage
+            
+            if(stage.index == stages.getSize() - 1)
+            {
+                //Final subpass
+                // Allow read/write access for any blending operations. After this, we only have read access
+                dep.srcSubpass = stage.index;
+                dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+                dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                dep.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+                dep.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+            }
+            else 
+            {
+                dep.srcSubpass = stage.index;
+                dep.dstSubpass = stage.index + 1; // Dependency with the next subpass
+                //Dst will have shader read access
+            }
+            m_subpassDependencies.pushBack(dep);
         }
-        
-        //now setting up dependencies
+    }
+    Attachment* VulkanRenderScene::getAttachment(const Quaint::QName& name)
+    {
+        for(auto& attachment : m_attachments)
+        {
+            if(attachment->getInfo().name == name)
+            {
+                return attachment.get();
+            }
+        }
+        return nullptr;
+    }
+
+    void VulkanRenderScene::constructFrameBuffer()
+    {
 
     }
 
