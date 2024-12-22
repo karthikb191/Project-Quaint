@@ -3,6 +3,7 @@
 
 #include <Interface/IMemoryContext.h>
 #include "../Data/ShaderInfo.h"
+#include "../Data/RenderInfo.h"
 #include "IShaderGroup.h"
 
 namespace Bolt
@@ -22,7 +23,7 @@ namespace Bolt
 
         //TODO: Implement these
         /* Adds and builds the render scenes */
-        virtual void addRenderStage(const RenderScene& scene);
+        virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo) = 0;
         //TODO:
         //virtual void mapBuffer() = 0;
         //virtual void unmapBuffer() = 0;

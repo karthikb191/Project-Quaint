@@ -9,9 +9,10 @@
 namespace Bolt { 
     RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
     : m_stages(context)
+    , m_impl(nullptr, context)
     {
-        m_impl = Quaint::QUniquePtr<RenderSceneImpl>(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
-        assert(m_impl != nullptr, "Vulkan scene not constructed");
+        m_impl.reset(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
+        assert(m_impl != nullptr && "Vulkan scene not constructed");
     }
     RenderScene::~RenderScene()
     {
@@ -21,27 +22,52 @@ namespace Bolt {
         }
     }
 
+    void RenderScene::destroy()
+    {
+
+    }
+
     bool RenderScene::construct()
     {
         VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
         scene->construct(this);
+        return true;
     }
 
     bool RenderScene::begin()
     {
-
+        return true;
     }
     bool RenderScene::render()
     {
-
+        return true;
     }
     bool RenderScene::end()
     {
+        return true;
+    }
 
+    void RenderScene::addRenderStage(const RenderStage& pStage)
+    {
+        for(auto& stage : m_stages)
+        {
+            if(stage.index == pStage.index)
+            {
+                assert(false && "stage with specified index already added. Skipping");
+                return;
+            }
+        }
+        m_stages.pushBack(pStage);
     }
     
     namespace vulkan{
 
+
+    Attachment::Attachment(const Bolt::AttachmentDefinition& info)
+    {
+        this->buildAttachmentDescription();
+        this->buildAttachmentReference();
+    };
     void ImageAttachment::buildAttachmentDescription()
     {
         attachmentDescription.initialLayout = texture.getCreateInfo().imageInfo.initialLayout;
@@ -63,6 +89,10 @@ namespace Bolt {
     void ImageAttachment::buildAttachmentReference()
     {
         attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    VulkanSwapchain* SwapchainAttachment::getSwapchain()
+    {
+         return VulkanRenderer::get()->getSwapchain();
     }
     void SwapchainAttachment::buildAttachmentDescription()
     {
@@ -93,6 +123,7 @@ namespace Bolt {
     , m_attachments(context)
     , m_subpassDesc(context)
     , m_subpassDependencies(context)
+    , m_framebuffer(nullptr, context)
     {}
 
     void VulkanRenderScene::destroy()
@@ -117,6 +148,8 @@ namespace Bolt {
                 case AttachmentDefinition::Type::Depth:
                 default:
                     //Do nothing for now
+                    assert(false && "unsupported attachment");
+                    break;
             }
         }
         m_attachments.clear();
@@ -151,11 +184,14 @@ namespace Bolt {
         ASSERT_SUCCESS(res, "could not create renderpass");
 
         constructFrameBuffer();
+        
+        //TODO: Make internal constructions bools and return failure if construction fails
+        m_valid = true;
     }
 
     void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)
     {
-        for(int i = 0; i < info.attachments.getSize(); ++i)
+        for(size_t i = 0; i < info.attachments.getSize(); ++i)
         {
             const Bolt::AttachmentDefinition& def = info.attachments[i];
             switch (def.type)
@@ -164,17 +200,17 @@ namespace Bolt {
             {
                 //TODO: handle the scenario where we need multiple textures for each swapchain image
                 VulkanTexture texture = constructVulkanTexture(def);
-                m_attachments.emplace(Quaint::QUniquePtr<Attachment>(QUAINT_NEW(m_context, ImageAttachment, info, texture)));
+                m_attachments.emplace(QUAINT_NEW(m_context, ImageAttachment, def, texture), Bolt::Deleter<Attachment>(m_context));
             }
             break;
             case AttachmentDefinition::Type::Swapchain:
             {
-                m_attachments.emplace(Quaint::QUniquePtr<Attachment>(QUAINT_NEW(m_context, SwapchainAttachment, info)));
+                m_attachments.emplace(QUAINT_NEW(m_context, SwapchainAttachment, def), Bolt::Deleter<Attachment>(m_context));
             }
             break;
             case AttachmentDefinition::Type::Depth:
             default:
-                assert(false, "Not yet supported");
+                assert(false && "Not yet supported");
             break;
             }
         }
@@ -200,6 +236,7 @@ namespace Bolt {
         .setBackingMemory()
         .setBuildImageView()
         .build();
+        return tex;
     }
 
     void VulkanRenderScene::constructSubpasses(const Bolt::RenderScene* scene)
@@ -207,7 +244,7 @@ namespace Bolt {
         const Quaint::QArray<Bolt::RenderScene::RenderStage>& stages = scene->getRenderStages();
         if(stages.getSize() == 0)
         {
-            assert(false, "No render stages supplied");
+            assert(false && "No render stages supplied");
             return;
         }
 
@@ -221,7 +258,7 @@ namespace Bolt {
             desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             Quaint::QArray<VkAttachmentReference> colorAttachrefs(m_context);
-            for(int i = 0; i < stage.attachmentRefs.getSize(); ++i)
+            for(size_t i = 0; i < stage.attachmentRefs.getSize(); ++i)
             {
                 Attachment* targetAttachment = nullptr;
                 const auto& stageAttach = stage.attachmentRefs[i];
@@ -299,281 +336,24 @@ namespace Bolt {
 
     void VulkanRenderScene::constructFrameBuffer()
     {
-
-    }
-
-    AttachmentInfo& RenderScene::beginAttachmentSetup()
-    {
-        AttachmentInfo info;
-        info.scene = this;
-        info.index = (uint32_t)m_attchmentInfos.getSize();
-        m_attchmentInfos.pushBack(info);
-        return m_attchmentInfos[info.index];
-    }
-
-    RenderFrameScene::RenderFrameScene(Quaint::IMemoryContext* context, const uint32_t framesInFlight)
-    : RenderScene(context)
-    , m_framesInFlight(framesInFlight)
-    , m_nextFrameIndex(0)
-    , m_renderPass(context)
-    , m_framebuffers(context)
-    , m_frameInfo(context)
-    {}
-
-    void RenderFrameScene::construct()
-    {
-        //TODO: Find a place to add command buffers
-        buildGraphicsContext();
-        m_renderPass.constructFromScene(this);
-        setupSwapchain();
-        buildFrameBuffer();
-        setupFrameInfo();
-    }
-
-    void RenderFrameScene::destroy()
-    {
-        if(m_swapchain != VK_NULL_HANDLE)
+        if(m_framebuffer.get() != nullptr)
         {
-            vkDestroySwapchainKHR(VulkanRenderer::get()->getDevice(), m_swapchain, VulkanRenderer::get()->getAllocationCallbacks());
+            m_framebuffer->destroy();
         }
-        for(uint32_t i = 0; i < m_framebuffers.getSize(); ++i)
-        {
-            m_framebuffers[i].destroy();
-        }
-        m_graphicsContext.destroy();
+        m_framebuffer.reset(QUAINT_NEW( m_context, FrameBuffer, m_context));
+        m_framebuffer->construct(this);
     }
 
-    void RenderFrameScene::setupSwapchain()
+    bool VulkanRenderScene::begin()
     {
-        VulkanRenderer::SwapchainSupportInfo supportInfo = 
-        querySwapchainSupport(m_context, VulkanRenderer::get()->getPhysicalDevice(), VulkanRenderer::get()->getSurface());
-
-        VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(supportInfo);
-        VkPresentModeKHR presentMode = choosePresentationMode(m_context, supportInfo);
-        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
-        m_swapchainExtent = swapExtent;
-        
-        uint32_t imageCount = supportInfo.surfaceCapabilities.minImageCount + 1;
-        if (supportInfo.surfaceCapabilities.maxImageCount > 0 && imageCount > supportInfo.surfaceCapabilities.maxImageCount) {
-            imageCount = supportInfo.surfaceCapabilities.maxImageCount;
-        }
-
-        AttachmentInfo* swapchainInfo = nullptr;
-        for(auto& attachment : m_attchmentInfos)
-        {
-            if(attachment.getIsSwapchainImage())
-            {
-                swapchainInfo = &attachment;
-                break;
-            }
-        }
-        assert(swapchainInfo != nullptr && "could not find swapchain in the attachments setup");
-
-        const Bolt::Window& window = RenderModule::get().getBoltRenderer()->getWindow();
-        
-        VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = VulkanRenderer::get()->getSurface();
-        createInfo.minImageCount = imageCount;
-        createInfo.imageFormat = swapchainInfo->getFormat();
-        createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = {m_swapchainExtent.width, m_swapchainExtent.height}; //Should match with the one setup in attachment
-        createInfo.imageArrayLayers = 1; //This is always 1 unless you are developing stereoscopic 3D app
-        //TODO: Change this later if we are using a memory command to transfer images to swapchain
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        
-        // Only allowing exclusive sharing mode for now. 
-        // TODO: Handle this once we support multiple queue operations
-        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-        
-        //Change this if you want the image to have a different transform 
-        createInfo.preTransform = supportInfo.surfaceCapabilities.currentTransform;
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; //This specifies if alpha channel should be used for blending with other windows
-        createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = m_outOfDateSwapchain; //This will eventually have a null handle 
-        createInfo.presentMode = presentMode;
-
-        VkResult res = vkCreateSwapchainKHR(VulkanRenderer::get()->getDevice(), &createInfo, VulkanRenderer::get()->getAllocationCallbacks(), &m_swapchain);
-        assert(res == VK_SUCCESS && "Swapchain creation failed! Application will terminate");
-    }
-
-    void RenderFrameScene::buildGraphicsContext()
-    {
-        m_graphicsContext.buildCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-        , EQueueType::Graphics | EQueueType::Transfer, true);
-        m_graphicsContext.construct();
-        // How to build renderpass
-    }
-
-    void RenderFrameScene::buildFrameBuffer()
-    {
-        VulkanRenderer::SwapchainSupportInfo supportInfo = 
-        querySwapchainSupport(m_context, VulkanRenderer::get()->getPhysicalDevice(), VulkanRenderer::get()->getSurface());
-
-        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
-
-        uint32_t swapchainImageCount = 0;
-        vkGetSwapchainImagesKHR(VulkanRenderer::get()->getDevice(), m_swapchain, &swapchainImageCount, nullptr);
-        assert(swapchainImageCount != 0 && "No images were retrieved from swapchain.");
-        Quaint::QArray<VkImage> swapchainImages(m_context);
-        swapchainImages.resize(swapchainImageCount);
-        vkGetSwapchainImagesKHR(VulkanRenderer::get()->getDevice(), m_swapchain, &swapchainImageCount, swapchainImages.getBuffer_NonConst());
-
-        AttachmentInfo* swapchainInfo = nullptr;
-        for(auto& attachment : m_attchmentInfos)
-        {
-            if(attachment.getIsSwapchainImage())
-            {
-                swapchainInfo = &attachment;
-                break;
-            }
-        }
-        assert(swapchainInfo != nullptr && "could not find swapchain in the attachments setup");
-
-        uint32_t family = m_graphicsContext.getCommandPool().getQueueDefinition().getQueueFamily();
-        Quaint::QArray<uint32_t> families(m_context);
-        families.pushBack(family);
-
-        m_framebuffers.resizeWithArgs(swapchainImageCount, m_context);
-        for(uint32_t i = 0; i < swapchainImageCount; ++i)
-        {
-            FrameBuffer buffer(m_context);
-            m_framebuffers[i]
-            .addAttachment(swapchainImages[i], swapchainInfo, families)
-            .setExtent({m_swapchainExtent.width, m_swapchainExtent.height, 1})
-            .setRenderpass(m_renderPass.getRenderPass())
-            .construct(this);
-        }
-    }
-
-    void RenderFrameScene::setupFrameInfo()
-    {
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        VkSemaphoreCreateInfo semInfo{};
-        semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semInfo.flags = 0;
-
-        for(uint32_t i = 0; i < m_framesInFlight; ++i)
-        {
-            FrameInfo info{};
-            auto buffers = m_graphicsContext.addCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, &info.commandBuffer);
-            info.commandBuffer = buffers[0];
-
-            ASSERT_SUCCESS(vkCreateFence(VulkanRenderer::get()->getDevice(), &fenceInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.renderFence)
-                , "Coule not create fence");
-
-            ASSERT_SUCCESS(vkCreateSemaphore(VulkanRenderer::get()->getDevice(), &semInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.scImageAvailableSemaphore)
-                , "Could not create semaphore");
-
-            ASSERT_SUCCESS(vkCreateSemaphore(VulkanRenderer::get()->getDevice(), &semInfo, VulkanRenderer::get()->getAllocationCallbacks(), &info.renderFinishedSemaphore)
-            , "Could not create Render finished semaphore");
-            m_frameInfo.pushBack(info);
-        }
-    }
-
-    bool RenderFrameScene::begin()
-    {
-        m_currentFrame = (m_currentFrame + 1) % m_framesInFlight;
-
-        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
-        VkDevice device = VulkanRenderer::get()->getDevice();
-        vkWaitForFences(device, 1, &frameInfo.renderFence, VK_TRUE, UINT64_MAX);
-        
-        //Semaphore is signalled when presentation engine finishes using the image
-        VkResult res = vkAcquireNextImageKHR(device, m_swapchain, UINT64_MAX, frameInfo.scImageAvailableSemaphore, VK_NULL_HANDLE, &m_currentImageIndex);
-
-        //if(res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-        if(res != VK_SUCCESS)
-        {
-            //recreateSwapchain();
-            int i = 100;
-            i -= 100;
-            return false;
-        }
-        assert(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR && "Failed to acquire swapchain image");
-        vkResetFences(device, 1, &frameInfo.renderFence);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0; // Optional
-        beginInfo.pInheritanceInfo = nullptr; // Optional\\
-
-        vkResetCommandBuffer(frameInfo.commandBuffer, 0);
-
-        res = vkBeginCommandBuffer(frameInfo.commandBuffer, &beginInfo);
-        assert(res==VK_SUCCESS && "Could not being command buffer");
-
-        //Now we begin a renderpass
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = m_renderPass.getRenderPass();
-        renderPassInfo.framebuffer = m_framebuffers[m_currentImageIndex].getHandle();
-
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = m_swapchainExtent;
-
-        VkClearValue clearColor = {0.0f, 0.0f, 0.5f, 1.0f};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-
-        vkCmdBeginRenderPass(frameInfo.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
         return true;
     }
-
-    void RenderFrameScene::end()
+    void VulkanRenderScene::end()
     {
-        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
-        vkCmdEndRenderPass(frameInfo.commandBuffer);
-        vkEndCommandBuffer(frameInfo.commandBuffer);
-    }
 
-    void RenderFrameScene::submit()
+    }
+    void VulkanRenderScene::submit()
     {
-        FrameInfo& frameInfo = m_frameInfo[m_currentFrame];
-        VkQueue handle = m_graphicsContext.getCommandPool().getQueueDefinition().getVulkanQueueHandle();
 
-        //Submit to graphics queue.
-        // Wait for image to be available at COLOR_ATTACHMENT pipeline stage and signal render finished semaphore
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        VkSubmitInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        info.commandBufferCount = 1;
-        info.pCommandBuffers = &frameInfo.commandBuffer;
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &frameInfo.scImageAvailableSemaphore;
-        info.signalSemaphoreCount = 1;
-        info.pSignalSemaphores = &frameInfo.renderFinishedSemaphore;
-        info.pWaitDstStageMask = waitStages;
-        ASSERT_SUCCESS(vkQueueSubmit(handle, 1, &info, frameInfo.renderFence), "Submit to graphics queue failed");
-
-        //Submit to presentation queue
-        //Wait for render to complete
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &frameInfo.renderFinishedSemaphore;
-
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_swapchain;
-        presentInfo.pImageIndices = &m_currentImageIndex;
-
-        VkResult res = vkQueuePresentKHR(handle, &presentInfo);
-        if(res == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            vkDeviceWaitIdle(VulkanRenderer::get()->getDevice());
-            m_outOfDateSwapchain = m_swapchain;
-            setupSwapchain();
-
-            buildFrameBuffer();
-            return;
-        }
-        ASSERT_SUCCESS(res, "Failed to submit to present queue");
     }
-
 }}

@@ -4,11 +4,10 @@
 #include <Vulkan/vulkan_core.h>
 #include <Types/QArray.h>
 
-namespace Bolt { namespace vulkan 
-{
+namespace Bolt { 
+    class RenderScene;
+    namespace vulkan {
     class VulkanRenderPass;
-    class Bolt::RenderScene;
-
     /* TODO: Should take a reference to FrameBuffer to create attachments*/
     class VulkanRenderPass
     {

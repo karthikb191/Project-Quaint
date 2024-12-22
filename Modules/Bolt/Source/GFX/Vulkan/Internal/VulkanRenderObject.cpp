@@ -295,7 +295,7 @@ namespace Bolt { namespace vulkan {
         inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
         //Setting up Viewport and scissor
-        const VkExtent2D& extent = VulkanRenderer::get()->getRenderFrameScene()->getSwapchainExtent();
+        const VkExtent2D& extent = {512, 512};
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -416,9 +416,10 @@ namespace Bolt { namespace vulkan {
         graphicsPipelineInfo.layout = m_pipelineLayout;
 
         //TODO: Somehow handle this better
-        VulkanRenderPass* renderPass = VulkanRenderer::get()->getRenderFrameScene()->getRenderPass();
+        //VulkanRenderPass* renderPass = VulkanRenderer::get()->getRenderFrameScene()->getRenderPass();
+        VulkanRenderPass* renderPass = nullptr;
         
-        graphicsPipelineInfo.renderPass = renderPass->getRenderPass();
+        graphicsPipelineInfo.renderPass = VK_NULL_HANDLE;
         graphicsPipelineInfo.subpass = 0; 
 
         //Vulkan lets you create new pipelines by deriving from existing ones. More on this later
@@ -431,29 +432,29 @@ namespace Bolt { namespace vulkan {
 
     void VulkanRenderObject::draw(const GeometryRenderInfo& info)
     {
-        RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
-        VkDeviceSize offsets[] = {0};
-        VulkanBufferObjectResource* vertRes = static_cast<VulkanBufferObjectResource*> (info.vertBufferResource->getGpuResourceProxy());
-        VulkanBufferObjectResource* indexRes = static_cast<VulkanBufferObjectResource*> (info.indexBufferResource->getGpuResourceProxy());
+        // RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
+        // VkDeviceSize offsets[] = {0};
+        // VulkanBufferObjectResource* vertRes = static_cast<VulkanBufferObjectResource*> (info.vertBufferResource->getGpuResourceProxy());
+        // VulkanBufferObjectResource* indexRes = static_cast<VulkanBufferObjectResource*> (info.indexBufferResource->getGpuResourceProxy());
 
-        VkBuffer vertBuffer = vertRes->getBufferhandle();
-        VkBuffer indexBuffer = indexRes->getBufferhandle();
+        // VkBuffer vertBuffer = vertRes->getBufferhandle();
+        // VkBuffer indexBuffer = indexRes->getBufferhandle();
 
-        vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
-        0, 1, &vertBuffer, offsets);
+        // vkCmdBindVertexBuffers(scene->getCurrentFrameInfo().commandBuffer,
+        // 0, 1, &vertBuffer, offsets);
 
-        vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        // vkCmdBindIndexBuffer(scene->getCurrentFrameInfo().commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
-        FrameInfo& frameInfo = VulkanRenderer::get()->getRenderFrameScene()->getCurrentFrameInfo();
+        // FrameInfo& frameInfo = VulkanRenderer::get()->getRenderFrameScene()->getCurrentFrameInfo();
         
-        vkCmdBindPipeline(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+        // vkCmdBindPipeline(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
-        vkCmdBindDescriptorSets(frameInfo.commandBuffer,
-         VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, m_sets.getBuffer(), 0, nullptr);
+        // vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+        //  VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, m_sets.getBuffer(), 0, nullptr);
 
-        Geometry* geo = static_cast<Geometry*>(m_renderObject);
-        auto& bufferInfo = indexRes->getBufferInfo();
-        vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, geo->getIndexCount(), 1, 0, 0, 0);
+        // Geometry* geo = static_cast<Geometry*>(m_renderObject);
+        // auto& bufferInfo = indexRes->getBufferInfo();
+        // vkCmdDrawIndexed(scene->getCurrentFrameInfo().commandBuffer, geo->getIndexCount(), 1, 0, 0, 0);
     }
 
 }}

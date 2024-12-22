@@ -194,6 +194,9 @@ namespace Bolt
         };
 
     public:
+        typedef Quaint::QUniquePtr<RenderScene, Deleter<RenderScene>> TRenderScenePtr;
+        typedef Quaint::QArray<TRenderScenePtr> TRenderSceneArray;
+
         void init() override;
         void shutdown() override;
         void render() override;
@@ -210,7 +213,7 @@ namespace Bolt
         IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
 
         IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
-        vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
+        //vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
 
         VulkanSwapchain* getSwapchain() { return m_vulkanSwapchain.get(); }
 
@@ -234,8 +237,13 @@ namespace Bolt
 
         void mapBufferToMemory();
 
-        void addRenderScene(RenderScene* scene);
+        void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo);
         void constructPendingRenderScenes();
+
+        /*Only supports primary command buffers for now*/
+        Quaint::QArray<VkCommandBuffer> getGraphicsCommandBuffers(uint32_t count);
+        /*Only supports primary command buffers for now*/
+        Quaint::QArray<VkCommandBuffer> getTransferCommandBuffers(uint32_t count);
     private:
         void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -273,7 +281,7 @@ namespace Bolt
         void selectPhysicalDevice();
         void createLogicalDevice();
 
-        void createScene();
+        //void createScene();
 
         void createSwapchain();
         void createImageViews();
@@ -389,12 +397,12 @@ namespace Bolt
         ShaderManager*                      m_shaderManager = nullptr;
 
         vulkan::VulkanRenderPass            m_customRenderPass;
-        vulkan::RenderFrameScene            m_renderScene;                     
+        //vulkan::RenderFrameScene            m_renderScene;                     
         static VulkanRenderer*              s_Instance;
 
         vulkan::GraphicsContext             m_immediateContext;
         Quaint::QUniquePtr<VulkanSwapchain> m_vulkanSwapchain = nullptr;
-        Quaint::QArray<RenderScene*>        m_renderScenes;
+        TRenderSceneArray                   m_renderScenes;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

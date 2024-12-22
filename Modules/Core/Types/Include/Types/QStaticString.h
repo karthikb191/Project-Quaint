@@ -92,7 +92,7 @@ public:
         {
             return false;
         }
-        return strcmp(m_rawData == other.getBuffer()) == 0;
+        return strcmp(m_rawData, other.getBuffer()) == 0;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const QStaticString<N>& str)

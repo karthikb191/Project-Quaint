@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <Types/QArray.h>
 #include <Types/QStaticString.h>
+#include <Types/QUniquePtr.h>
 #include "../Data/RenderInfo.h"
+#include "../Helpers.h"
 
 namespace Bolt
 {
@@ -12,6 +14,7 @@ namespace Bolt
     class RenderScene
     {
     public:
+        typedef Quaint::QUniquePtr<RenderSceneImpl, Deleter<RenderSceneImpl>> TRenderScenImplPtr;
         /* Currently very limited */
         struct StageDependency
         {
@@ -24,11 +27,11 @@ namespace Bolt
             // Refers to the attachment defined in RenderInfo
             struct AttachmentRef
             {
-                uint32_t        binding = ~0;
+                uint32_t        binding = ~0ul;
                 Quaint::QName   attachmentName = "";
             };
-            uint32_t                                index = ~0;
-            uint32_t                                dependentStage = ~0;
+            uint32_t                                index = ~0ul;
+            uint32_t                                dependentStage = ~0ul;
             Quaint::QArray<AttachmentRef>           attachmentRefs; 
         };
 
@@ -47,7 +50,7 @@ namespace Bolt
         const RenderInfo& getRenderInfo() const { return m_renderInfo; }
         const Quaint::QArray<RenderStage>& getRenderStages() const { return m_stages; }
         template<typename _T>
-        _T* getRenderSceneImplAs() { return static_cast<_T*>(m_impl); }
+        _T* getRenderSceneImplAs() { return static_cast<_T*>(m_impl.get()); }
 
     protected:
         Quaint::IMemoryContext*                 m_context = nullptr;
@@ -55,7 +58,7 @@ namespace Bolt
         RenderInfo                              m_renderInfo = {};
         StageDependency                         m_dependency = {};
         Quaint::QArray<RenderStage>             m_stages;
-        Quaint::QUniquePtr<RenderSceneImpl>     m_impl = nullptr;
+        TRenderScenImplPtr                      m_impl;
         bool                                    m_isValid = false;
     };
 }

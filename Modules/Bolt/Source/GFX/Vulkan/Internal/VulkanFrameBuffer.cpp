@@ -38,7 +38,7 @@ namespace Bolt{ namespace vulkan{
         m_info.layers = 1;
         m_info.pNext = nullptr;
         m_info.renderPass = scene->getRenderpass();
-        for(int i = 0; i < numImages; ++i)
+        for(size_t i = 0; i < numImages; ++i)
         {
             auto& attachments = scene->getAttachments();    
             Quaint::QArray<VkImageView> views(m_context);

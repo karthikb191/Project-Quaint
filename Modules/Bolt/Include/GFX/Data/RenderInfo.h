@@ -5,7 +5,6 @@
 #include <Math/QMat.h>
 #include <Types/QArray.h>
 #include <Types/QStaticString.h>
-#include "../Interface/IRenderer.h"
 //#include "ShaderInfo.h"
 
 namespace Bolt
@@ -54,7 +53,7 @@ namespace Bolt
         COMBINED_IMAGE_SAMPLER = 1 << 3,
         COPY_SRC = 1 << 4, // Used as source of copy operations
         COPY_DST = 1 << 5, // Used as destination of copy operations
-    }EImageUsage;
+    };
     typedef uint32_t EImageUsageFlags; 
 
     enum class EVertexInputRate

@@ -52,7 +52,10 @@ namespace Bolt{ namespace vulkan{
             case Bolt::EFormat::R8G8B8A8_SRGB:
                 return VK_FORMAT_R8G8B8A8_SRGB;
             default:
-                assert(false, "Format conversion not available. invalid format passed")
+            {
+                assert(false && "Format conversion not available. invalid format passed");
+                break;
+            }
         }
         return VK_FORMAT_UNDEFINED;
     }

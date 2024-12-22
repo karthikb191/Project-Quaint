@@ -228,53 +228,53 @@ namespace Bolt { namespace vulkan
 
     void VulkanRenderPass::constructFromScene(const RenderScene* scene)
     {
-        for(Subpass& subpass : m_subPasses)
-        {
-            subpass.construct();
-        }
+        // for(Subpass& subpass : m_subPasses)
+        // {
+        //     subpass.construct();
+        // }
 
-        VkRenderPassCreateInfo info {};
-        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        // VkRenderPassCreateInfo info {};
+        // info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 
-        info.flags = 0; //Not used for now. TODO: Check back later
+        // info.flags = 0; //Not used for now. TODO: Check back later
         
-        // populating Attachments information
-        const auto& attachmentInfos = scene->getAttachmentInfos();
+        // // populating Attachments information
+        // const auto& attachmentInfos = scene->getAttachmentInfos();
 
-        uint32_t numAttachments = (uint32_t)attachmentInfos.getSize();
-        Quaint::QArray<VkAttachmentDescription> attachDescs(m_context, numAttachments);
-        if(numAttachments > 0)
-        {
-            for(uint32_t i = 0; i < numAttachments; ++i)
-            {
-                attachDescs[i] = attachmentInfos[i].getDescription();
-            }
-            info.attachmentCount = (uint32_t)attachmentInfos.getSize();
-            info.pAttachments = attachDescs.getBuffer();
-        }
+        // uint32_t numAttachments = (uint32_t)attachmentInfos.getSize();
+        // Quaint::QArray<VkAttachmentDescription> attachDescs(m_context, numAttachments);
+        // if(numAttachments > 0)
+        // {
+        //     for(uint32_t i = 0; i < numAttachments; ++i)
+        //     {
+        //         attachDescs[i] = attachmentInfos[i].getDescription();
+        //     }
+        //     info.attachmentCount = (uint32_t)attachmentInfos.getSize();
+        //     info.pAttachments = attachDescs.getBuffer();
+        // }
 
-        //Populating subpass information
-        uint32_t numSubpasses = (uint32_t)m_subPasses.getSize();
-        Quaint::QArray<VkSubpassDescription> subpassDescs(m_context, numSubpasses);
-        assert(numSubpasses > 0 && "RenderPass needs atleast a single subpass!!");
-        for(uint32_t i = 0; i < numSubpasses; ++i)
-        {
-            subpassDescs[i] = m_subPasses[i].getDescription();
-        }
-        info.subpassCount = numSubpasses;
-        info.pSubpasses = subpassDescs.getBuffer();
+        // //Populating subpass information
+        // uint32_t numSubpasses = (uint32_t)m_subPasses.getSize();
+        // Quaint::QArray<VkSubpassDescription> subpassDescs(m_context, numSubpasses);
+        // assert(numSubpasses > 0 && "RenderPass needs atleast a single subpass!!");
+        // for(uint32_t i = 0; i < numSubpasses; ++i)
+        // {
+        //     subpassDescs[i] = m_subPasses[i].getDescription();
+        // }
+        // info.subpassCount = numSubpasses;
+        // info.pSubpasses = subpassDescs.getBuffer();
 
-        //Populating subpass dependency information
-        uint32_t numDependencies = (uint32_t)m_subPassDependencies.getSize();
-        if(numDependencies > 0)
-        {
-            info.dependencyCount = (uint32_t)m_subPassDependencies.getSize();
-            info.pDependencies = m_subPassDependencies.getBuffer();
-        }
+        // //Populating subpass dependency information
+        // uint32_t numDependencies = (uint32_t)m_subPassDependencies.getSize();
+        // if(numDependencies > 0)
+        // {
+        //     info.dependencyCount = (uint32_t)m_subPassDependencies.getSize();
+        //     info.pDependencies = m_subPassDependencies.getBuffer();
+        // }
         
-        VkDevice device = VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice();
-        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        VkResult res = vkCreateRenderPass(device, &info, callbacks, &m_renderPass);
-        ASSERT_SUCCESS(res, "Could not create render pass!!");
+        // VkDevice device = VulkanRenderer::get()->getDeviceManager()->getDeviceDefinition().getDevice();
+        // VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        // VkResult res = vkCreateRenderPass(device, &info, callbacks, &m_renderPass);
+        // ASSERT_SUCCESS(res, "Could not create render pass!!");
     }
 }}

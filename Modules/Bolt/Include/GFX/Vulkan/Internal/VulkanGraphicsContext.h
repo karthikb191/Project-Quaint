@@ -7,13 +7,14 @@
 #include <GFX/Vulkan/Internal/DeviceManager.h>
 #include <GFX/Vulkan/Internal/VulkanRenderPass.h>
 
-namespace Bolt{namespace vulkan
-{
+namespace Bolt{
+    class RenderScene;
+    
+    namespace vulkan{
     /* Encapsulates Renderpass, framebuffer, Command Buffer and attachments used by renderpass and framebuffer.
     * Idea is that this would be self-contained rendering construct 
     * ? When creating/binding a pipeline, its compatibility should be checked against the renderpass
     */
-    class Bolt::RenderScene;
     class GraphicsContext;
 
     struct CommandPool

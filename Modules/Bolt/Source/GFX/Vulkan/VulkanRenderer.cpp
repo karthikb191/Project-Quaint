@@ -399,7 +399,7 @@ namespace Bolt
     , m_mappedUniformBuffers(context)
     , m_descriptorSets(context)
     , m_customRenderPass(context)
-    , m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
+    //, m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
     , m_immediateContext(context)
     {
         s_Instance = this;
@@ -440,7 +440,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         phyReq.graphics = {EQueueType::Graphics, 1};
         phyReq.compute = {EQueueType::Compute, 1};
         phyReq.transfer = {EQueueType::Transfer, 1};
-        phyReq.strictlyIdealQueueFamilyRequired = false; //TODO: Update this later and check
+        phyReq.strictlyIdealQueueFamilyRequired = true; //TODO: Update this later and check
         phyReq.extensions = Quaint::QArray<Quaint::QString256>(m_context);
         phyReq.extensions.pushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -465,7 +465,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_transferCommandPool = m_graphicsCommandPool;
 
         //Create Swapchain
-        m_vulkanSwapchain.reset(QUAINT_NEW(m_context, VulkanSwapchain));
+        m_vulkanSwapchain.reset(QUAINT_NEW(m_context, VulkanSwapchain, m_context));
         m_vulkanSwapchain->construct();
 
         //setting up immediate context for simple immediate queue submit commands
@@ -475,7 +475,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         );
         m_immediateContext.construct();
 
-        createScene();
+        //createScene();
+
 
         RenderQuad quad(m_context);
         quadRef = QUAINT_NEW(m_context, RenderQuad, m_context);
@@ -614,7 +615,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_deviceManager->Shutdown();
     }
 
-    VkCommandPool VulkanRenderer::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport = false)
+    VkCommandPool VulkanRenderer::buildCommandPool(const VkCommandPoolCreateFlags flags, const EQueueTypeFlags supportedQueues, const bool requiresPresentationSupport)
     {
         VkCommandPool commandPool = VK_NULL_HANDLE;
         DeviceManager* dm = getDeviceManager();
@@ -634,6 +635,35 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             , "Failed to create command pool"
         );
         return commandPool;
+    }
+
+    Quaint::QArray<VkCommandBuffer> VulkanRenderer::getGraphicsCommandBuffers(uint32_t count)
+    {
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = m_graphicsCommandPool;
+        info.pNext = nullptr;
+        info.commandBufferCount = count;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        Quaint::QArray<VkCommandBuffer> allocatedBuffers(m_context, count);
+        ASSERT_SUCCESS(vkAllocateCommandBuffers(m_device, &info, allocatedBuffers.getBuffer_NonConst()),
+                        "Failed to allocate all the required command buffers");
+        return allocatedBuffers;
+    }
+    Quaint::QArray<VkCommandBuffer> VulkanRenderer::getTransferCommandBuffers(uint32_t count)
+    {
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = m_transferCommandPool;
+        info.pNext = nullptr;
+        info.commandBufferCount = count;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        Quaint::QArray<VkCommandBuffer> allocatedBuffers(m_context, count);
+        ASSERT_SUCCESS(vkAllocateCommandBuffers(m_device, &info, allocatedBuffers.getBuffer_NonConst()),
+                        "Failed to allocate all the required command buffers");
+        return allocatedBuffers;
     }
 
     void VulkanRenderer::render()
@@ -1101,56 +1131,75 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
     }
 //--------------------------------------------------
-    void VulkanRenderer::createScene()
+    void VulkanRenderer::addRenderScene(Quaint::QName name, const RenderInfo& renderInfo)
     {
-        //First attachment is a swapchain image
-        VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
-        VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
-        VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+        for(auto& scene : m_renderScenes)
+        {
+            if(scene->getName() == name)
+            {
+                char buffer[1024];
+                sprintf_s(buffer, "Render Scene: %s has already been added", scene->getName().getBuffer());
+                QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
+                return;
+            }
+        }
 
-        m_camera.setAspectRatio((float)swapExtent.width / (float)swapExtent.height);
-        m_swapchainExtent = swapExtent;
-        
-        //TODO: Maybe add some queue information here?
-        VkImageSubresourceRange range{};
-        range.aspectMask =VK_IMAGE_ASPECT_COLOR_BIT;
-        range.layerCount = 1;
-        range.baseArrayLayer = 0;
-        range.levelCount = 1;
-        range.baseMipLevel = 0;
-
-        //TODO: This way of accessing is dangerous when array data is modified
-        uint32_t swapchainOuputColorAttachment = m_renderScene.beginAttachmentSetup()
-        .setType(EAttachmentType::Color)
-        .setFormat(format.format)
-        .setSamples(VK_SAMPLE_COUNT_1_BIT)
-        .setOps(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
-        .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
-        .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-        .setExtent({swapExtent.width, swapExtent.height, 1})
-        .setMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        .setImageViewType(VK_IMAGE_VIEW_TYPE_2D)
-        .setImageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-        .setImageViewFormat(format.format)
-        .setImageViewComponentMapping({ VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY })
-        .setImageViewSubresourceRange(range)
-        .setIsSwapchainImage(true)
-        .getIndex();
-
-        //TODO: Add end setup functions?
-
-        VulkanRenderPass::Subpass& subpass = m_renderScene.editRenderPassSetup()
-        .beginSubpassSetup()
-        .addColorAttachment(swapchainOuputColorAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        m_renderScene.editRenderPassSetup()
-        .addSubpassDependency(
-            subpass, SUBPASS_EXTERNAL
-            , VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-            ,  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
-
-        m_renderScene.construct();
+        //Constructing the scene
+        m_renderScenes.emplace(QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo), Deleter<RenderScene>(m_context));
+        m_renderScenes[m_renderScenes.getSize() - 1]->construct();
     }
+
+
+    // void VulkanRenderer::createScene()
+    // {
+    //     //First attachment is a swapchain image
+    //     VulkanRenderer::SwapchainSupportInfo supportInfo = querySwapchainSupport(m_context, m_physicalDevice, m_surface);
+    //     VkSurfaceFormatKHR format = chooseSurfaceFormat(supportInfo);
+    //     VkExtent2D swapExtent = chooseSwapExtent(m_context, supportInfo);
+
+    //     m_camera.setAspectRatio((float)swapExtent.width / (float)swapExtent.height);
+    //     m_swapchainExtent = swapExtent;
+        
+    //     //TODO: Maybe add some queue information here?
+    //     VkImageSubresourceRange range{};
+    //     range.aspectMask =VK_IMAGE_ASPECT_COLOR_BIT;
+    //     range.layerCount = 1;
+    //     range.baseArrayLayer = 0;
+    //     range.levelCount = 1;
+    //     range.baseMipLevel = 0;
+
+    //     //TODO: This way of accessing is dangerous when array data is modified
+    //     uint32_t swapchainOuputColorAttachment = m_renderScene.beginAttachmentSetup()
+    //     .setType(EAttachmentType::Color)
+    //     .setFormat(format.format)
+    //     .setSamples(VK_SAMPLE_COUNT_1_BIT)
+    //     .setOps(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+    //     .setStencilOps(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE)
+    //     .setLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+    //     .setExtent({swapExtent.width, swapExtent.height, 1})
+    //     .setMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    //     .setImageViewType(VK_IMAGE_VIEW_TYPE_2D)
+    //     .setImageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+    //     .setImageViewFormat(format.format)
+    //     .setImageViewComponentMapping({ VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY })
+    //     .setImageViewSubresourceRange(range)
+    //     .setIsSwapchainImage(true)
+    //     .getIndex();
+
+    //     //TODO: Add end setup functions?
+
+    //     VulkanRenderPass::Subpass& subpass = m_renderScene.editRenderPassSetup()
+    //     .beginSubpassSetup()
+    //     .addColorAttachment(swapchainOuputColorAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    //     m_renderScene.editRenderPassSetup()
+    //     .addSubpassDependency(
+    //         subpass, SUBPASS_EXTERNAL
+    //         , VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+    //         ,  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
+
+    //     m_renderScene.construct();
+    // }
 
     void VulkanRenderer::createDescriptorSetLayout()
     {
@@ -1745,7 +1794,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         memcpy(data, pixels, bufferSize);
         vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
-        uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
+        uint32_t family = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily();
+        VkQueue queue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
 
         VulkanTextureBuilder builder;
         outTexuture = builder
@@ -1769,25 +1819,24 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         // If this Image has explicit ownership 
         transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-         , m_renderScene.getContext()->getCommandPool().getHandle()
-         , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+         , m_graphicsCommandPool
+         , queue);
 
         //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
         copyImageFromStaging(m_device, outTexuture.getHandle(), stagingBuffer, width, height
-        , m_renderScene.getContext()->getCommandPool().getHandle()
-        , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+        , m_graphicsCommandPool
+        , queue);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
         transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        , m_renderScene.getContext()->getCommandPool().getHandle()
-        , m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle());
+        , m_graphicsCommandPool
+        , queue);
 
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
         vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
         stbi_image_free(pixels);
-
     }
 
     void VulkanRenderer::mapBufferToMemory()
@@ -1795,24 +1844,9 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //vkMapMemory(getDevice(), )
     }
 
-    void VulkanRenderer::addRenderScene(RenderScene* pScene)
-    {
-        for(auto scene : m_renderScenes)
-        {
-            if(scene->getName() == pScene->getName())
-            {
-                char buffer[1024];
-                sprintf_s(buffer, "Render Scene: %s has already been added", scene->getName());
-                QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
-                return;
-            }
-        }
-        m_renderScenes.pushBack(pScene);
-    }
-
     void VulkanRenderer::constructPendingRenderScenes()
     {
-        for(auto scene : m_renderScenes)
+        for(auto& scene : m_renderScenes)
         {
             scene->construct();
         }
@@ -2016,8 +2050,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             vkUnmapMemory(m_device, gpuMemory);
 
             //TODO: Handle this properly
-            copyBuffer(m_device, m_renderScene.getContext()->getCommandPool().getQueueDefinition().getVulkanQueueHandle() 
-            , stagingBuffer, buffer, bufferSize, m_renderScene.getContext()->getCommandPool().getHandle());
+            VkQueue transferQueue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Transfer).getVulkanQueueHandle();
+            copyBuffer(m_device, transferQueue, stagingBuffer, buffer, bufferSize, m_transferCommandPool);
 
             //Free staging buffer
             vkFreeMemory(m_device, gpuMemory, m_allocationPtr);
@@ -2040,9 +2074,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer)
     {
-        
-        //TODO: Handle this using an immediate context. If queue family is different, it should 
-        uint32_t family = m_renderScene.getContext()->getCommandPool().getQueueDefinition().getQueueFamily();
+        uint32_t family = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily();
+        VkQueue queue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
 
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -2368,13 +2401,15 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     {
         //updateUniformBufferProxy();
 
-        if(m_renderScene.begin())
-        {
-            quadRef->draw();
-            
-            m_renderScene.end();
-            m_renderScene.submit();
-        }
+
+
+       //if(m_renderScene.begin())
+       //{
+       //    quadRef->draw();
+       //    
+       //    m_renderScene.end();
+       //    m_renderScene.submit();
+       //}
         // vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
         
         // uint32_t imageIndex;

@@ -49,7 +49,7 @@ namespace Bolt { namespace vulkan {
                 return format;
             }
         }
-        assert(false, "Required format is not supposed by physical device");
+        assert(false && "Required format is not supposed by physical device");
         return VkSurfaceFormatKHR{};
     }
 
