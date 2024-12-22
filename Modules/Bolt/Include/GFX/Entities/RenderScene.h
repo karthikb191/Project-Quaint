@@ -11,28 +11,27 @@ namespace Bolt
 {
     class RenderSceneImpl;
 
+    struct RenderStage
+    {
+        // Refers to the attachment defined in RenderInfo
+        struct AttachmentRef
+        {
+            uint32_t        binding = ~0ul;
+            Quaint::QName   attachmentName = "";
+        };
+        uint32_t                                index = ~0ul;
+        uint32_t                                dependentStage = ~0ul;
+        Quaint::QArray<AttachmentRef>           attachmentRefs; 
+    };
     class RenderScene
     {
     public:
         typedef Quaint::QUniquePtr<RenderSceneImpl, Deleter<RenderSceneImpl>> TRenderScenImplPtr;
         /* Currently very limited */
-        struct StageDependency
+        struct SceneDependency
         {
             Quaint::QName waitOn = "";
             Quaint::QName signalTo = "";
-        };
-
-        struct RenderStage
-        {
-            // Refers to the attachment defined in RenderInfo
-            struct AttachmentRef
-            {
-                uint32_t        binding = ~0ul;
-                Quaint::QName   attachmentName = "";
-            };
-            uint32_t                                index = ~0ul;
-            uint32_t                                dependentStage = ~0ul;
-            Quaint::QArray<AttachmentRef>           attachmentRefs; 
         };
 
         RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo);
@@ -56,7 +55,7 @@ namespace Bolt
         Quaint::IMemoryContext*                 m_context = nullptr;
         Quaint::QName                           m_name = "";
         RenderInfo                              m_renderInfo = {};
-        StageDependency                         m_dependency = {};
+        SceneDependency                         m_dependency = {};
         Quaint::QArray<RenderStage>             m_stages;
         TRenderScenImplPtr                      m_impl;
         bool                                    m_isValid = false;

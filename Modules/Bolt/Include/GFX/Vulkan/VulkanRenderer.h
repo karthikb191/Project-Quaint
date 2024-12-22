@@ -28,7 +28,8 @@ namespace Bolt
     using namespace vulkan;
     class BoltRenderer;
     class VulkanRenderer;
-    class Bolt::RenderScene;
+    class RenderScene;
+    struct RenderStage;
 
     namespace vulkan
     {
@@ -237,7 +238,7 @@ namespace Bolt
 
         void mapBufferToMemory();
 
-        void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo);
+        void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages);
         void constructPendingRenderScenes();
 
         /*Only supports primary command buffers for now*/

@@ -73,20 +73,20 @@ int main()
     def.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
     info.attachments.pushBack(def);
 
-    Bolt::RenderScene::RenderStage stage;
-    stage.attachmentRefs = Quaint::QArray<Bolt::RenderScene::RenderStage::AttachmentRef>(context);
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::RenderStage stage;
+    stage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
     stage.index = 0;
 
     /* Attachment references in each sub-pass */
-    Bolt::RenderScene::RenderStage::AttachmentRef ref{};
+    Bolt::RenderStage::AttachmentRef ref{};
     ref.binding = 0;
     ref.attachmentName = "swapchain";
     stage.attachmentRefs.pushBack(ref);
     stage.dependentStage = ~0;
+    stages.pushBack(stage);
 
-
-    Bolt::RenderScene scene(context, "graphics", info);
-    scene.addRenderStage(stage);
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 

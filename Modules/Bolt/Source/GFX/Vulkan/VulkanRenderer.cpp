@@ -401,6 +401,7 @@ namespace Bolt
     , m_customRenderPass(context)
     //, m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
     , m_immediateContext(context)
+    , m_renderScenes(context)
     {
         s_Instance = this;
     }
@@ -478,9 +479,9 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //createScene();
 
 
-        RenderQuad quad(m_context);
-        quadRef = QUAINT_NEW(m_context, RenderQuad, m_context);
-        quadRef->load();
+        //RenderQuad quad(m_context);
+        //quadRef = QUAINT_NEW(m_context, RenderQuad, m_context);
+        //quadRef->load();
 
         //createSwapchain();
         //createImageViews();
@@ -1131,7 +1132,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
     }
 //--------------------------------------------------
-    void VulkanRenderer::addRenderScene(Quaint::QName name, const RenderInfo& renderInfo)
+    void VulkanRenderer::addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages)
     {
         for(auto& scene : m_renderScenes)
         {
@@ -1146,6 +1147,10 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
         //Constructing the scene
         m_renderScenes.emplace(QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo), Deleter<RenderScene>(m_context));
+        for(uint32_t i = 0; i < numStages; ++i)
+        {
+            m_renderScenes[m_renderScenes.getSize() - 1]->addRenderStage(*(pStages + i));
+        }
         m_renderScenes[m_renderScenes.getSize() - 1]->construct();
     }
 

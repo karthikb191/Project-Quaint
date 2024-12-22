@@ -10,6 +10,7 @@ namespace Bolt {
     RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
     : m_stages(context)
     , m_impl(nullptr, context)
+    , m_context(context)
     {
         m_impl.reset(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
         assert(m_impl != nullptr && "Vulkan scene not constructed");
@@ -241,7 +242,7 @@ namespace Bolt {
 
     void VulkanRenderScene::constructSubpasses(const Bolt::RenderScene* scene)
     {
-        const Quaint::QArray<Bolt::RenderScene::RenderStage>& stages = scene->getRenderStages();
+        const Quaint::QArray<Bolt::RenderStage>& stages = scene->getRenderStages();
         if(stages.getSize() == 0)
         {
             assert(false && "No render stages supplied");
@@ -253,7 +254,7 @@ namespace Bolt {
         uint32_t idx = 0;
         for(size_t i = 0; i < stages.getSize(); ++i)
         {
-            const Bolt::RenderScene::RenderStage& stage = stages[i];
+            const Bolt::RenderStage& stage = stages[i];
             VkSubpassDescription desc{};
             desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 

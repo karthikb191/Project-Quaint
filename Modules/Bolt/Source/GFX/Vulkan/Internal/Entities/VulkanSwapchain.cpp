@@ -43,7 +43,7 @@ namespace Bolt { namespace vulkan {
 
         for(auto& format : surfaceFormats)
         {
-            if(format.format == VK_FORMAT_R8G8B8A8_UNORM
+            if(format.format == VK_FORMAT_R8G8B8A8_SRGB
             && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
             {
                 return format;
@@ -53,7 +53,7 @@ namespace Bolt { namespace vulkan {
         return VkSurfaceFormatKHR{};
     }
 
-    VkExtent2D getSwapchainExtent()
+    VkExtent2D getActualSwapchainExtent()
     {
         VkSurfaceKHR surface = VulkanRenderer::get()->getSurface();
         VkPhysicalDevice phyDevice = VulkanRenderer::get()->getPhysicalDevice();
@@ -99,6 +99,7 @@ namespace Bolt { namespace vulkan {
 
     VulkanSwapchain::VulkanSwapchain(Quaint::IMemoryContext* context)
     : m_swapchainViews(context)
+    , m_context(context)
     {}
 
     VulkanSwapchain::~VulkanSwapchain()
@@ -128,7 +129,7 @@ namespace Bolt { namespace vulkan {
         info.minImageCount = getMinSwapchainImageCount();
         info.imageFormat = format.format;
         info.imageColorSpace = format.colorSpace;
-        info.imageExtent = getSwapchainExtent();
+        info.imageExtent = getActualSwapchainExtent();
         info.imageArrayLayers = 1;
         info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
@@ -151,6 +152,7 @@ namespace Bolt { namespace vulkan {
         assert(swapchainImageCount > 0 && "No valid swapchain images available for presentation");
         Quaint::QArray<VkImage> swapchainImages(m_context);
         m_swapchainViews.resize(swapchainImageCount);
+        swapchainImages.resize(swapchainImageCount);
         vkGetSwapchainImagesKHR(device, m_swapchain, &swapchainImageCount, swapchainImages.getBuffer_NonConst());
 
         //TODO: See if it makes sense to use VulkanTexture here
