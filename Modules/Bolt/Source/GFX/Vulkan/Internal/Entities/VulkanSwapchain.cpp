@@ -1,6 +1,7 @@
 #include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Interface/IWindow_Impl.h>
+#include <GFX/Vulkan/Internal/DeviceManager.h>
 #include <RenderModule.h>
 #include <BoltRenderer.h>
 #include <LoggerModule.h>
@@ -199,6 +200,7 @@ namespace Bolt { namespace vulkan {
             vkDestroyImageView(device, view, callbacks);
         }
         vkDestroySwapchainKHR(device, m_swapchain, callbacks);
+        m_currentSwapchainImage = ~0u;
         m_swapchain = VK_NULL_HANDLE;
         m_valid = false;
     }
@@ -210,6 +212,7 @@ namespace Bolt { namespace vulkan {
             QLOG_E(VK_SWAPCHAIN, "Need a valid swapchain first before trying to rebuild it");
             return;
         }
+        m_currentSwapchainImage = ~0u;
         m_valid = false;
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
@@ -222,5 +225,41 @@ namespace Bolt { namespace vulkan {
             vkDestroySwapchainKHR(device, m_oldSwapchain, callbacks);
             m_oldSwapchain = VK_NULL_HANDLE;
         }
+    }
+
+    uint32_t VulkanSwapchain::getNextSwapchainImage(VkSemaphore imageAvailableSemaphore, VkFence imageAvailableFence)
+    {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        vkAcquireNextImageKHR(device, m_swapchain, UINT64_MAX, imageAvailableSemaphore, imageAvailableFence, &m_currentSwapchainImage);
+        return m_currentSwapchainImage;
+    }
+
+    void VulkanSwapchain::present(const Quaint::QArray<VkSemaphore>& waitSemaphores)
+    {
+        //TODO: Add a few asserts
+
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VkQueue queue = VulkanRenderer::get()->getPresentationQueue();
+
+        VkPresentInfoKHR info{};
+        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        info.swapchainCount = 1;
+        info.pSwapchains = &m_swapchain;
+        info.pImageIndices = &m_currentSwapchainImage;
+        if(waitSemaphores.getSize() > 0)
+        {
+            info.waitSemaphoreCount = waitSemaphores.getSize();
+            info.pWaitSemaphores = waitSemaphores.getBuffer();
+        }
+        else
+        {
+            info.waitSemaphoreCount = 0;
+            info.pWaitSemaphores = nullptr;
+        }
+        info.pResults = NULL;
+
+        ASSERT_SUCCESS(vkQueuePresentKHR(queue, &info), "Could not present");
     }
 }}

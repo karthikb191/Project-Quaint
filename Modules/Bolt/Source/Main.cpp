@@ -87,6 +87,12 @@ int main()
     stages.pushBack(stage);
 
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
+    
+    def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    info.offset = {100, 0};
+    info.attachments.clear();
+    info.attachments.pushBack(def);
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics2", info, stages.getSize(), stages.getBuffer());
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 

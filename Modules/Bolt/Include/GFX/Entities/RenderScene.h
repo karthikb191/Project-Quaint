@@ -45,6 +45,7 @@ namespace Bolt
         virtual bool render();
         virtual bool end();
 
+        bool isValid() const { return m_isValid; }
         const Quaint::QName& getName() const { return m_name; }
         const RenderInfo& getRenderInfo() const { return m_renderInfo; }
         const Quaint::QArray<RenderStage>& getRenderStages() const { return m_stages; }

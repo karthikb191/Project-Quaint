@@ -201,10 +201,10 @@ namespace Bolt
         renderPassInfo.renderArea.extent = extent;
 
         VkClearValue clearColor = {};
-        clearColor.color.float32[0] = 1.0;
+        clearColor.color.float32[0] = 255.0;
         clearColor.color.float32[1] = 0.0;
         clearColor.color.float32[2] = 0.0;
-        clearColor.color.float32[3] = 1.0;
+        clearColor.color.float32[3] = 255.0;
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
@@ -394,6 +394,8 @@ namespace Bolt
     , m_imageAvailableSemaphores(context)
     , m_renderFinishedSemaphores(context)
     , m_inFlightFences(context)
+    , m_sceneFences(context)
+    , m_sceneSemaphores(context)
     , m_uniformBuffers(context)
     , m_uniformBufferGpuMemory(context)
     , m_mappedUniformBuffers(context)
@@ -475,6 +477,13 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             EQueueType::Transfer, false
         );
         m_immediateContext.construct();
+
+
+        //TODO: Remove this later
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Init fence in signalled state
+        vkCreateFence(m_device, &fenceInfo, m_allocationPtr, &m_imageAvailableFence);
 
         //createScene();
 
@@ -2406,7 +2415,48 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     {
         //updateUniformBufferProxy();
 
+        //Wait for all scenes to finish rendering
+        Quaint::QArray<VkFence> fencesToWaiton(m_context);
+        if(m_sceneFences.getSize() > 0)
+        {
+            vkWaitForFences(m_device, m_sceneFences.getSize(), m_sceneFences.getBuffer(), VK_TRUE, UINT64_MAX);
+            m_sceneFences.clear();
+            m_sceneSemaphores.clear();
+        }
 
+        vkResetFences(m_device, 1, &m_imageAvailableFence);
+        uint32_t swapchainImage = m_vulkanSwapchain->getNextSwapchainImage(VK_NULL_HANDLE, m_imageAvailableFence);
+        VkResult res = vkWaitForFences(m_device, 1, &m_imageAvailableFence, VK_TRUE, UINT64_MAX);
+
+        Quaint::QArray<VkSemaphore> semaphoresToWaitOn(m_context);
+        //Draw each render scene and wait for it to finish
+        for(auto& scene : m_renderScenes)
+        {
+            if(!scene->isValid())
+            {
+                //TODO: Print an error message
+                return;
+            }
+            VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+
+            if(!vulkanScene->begin())
+            {
+                return;
+            }
+
+            auto& stages = scene->getRenderStages();
+            for(auto& stage : stages)
+            {
+                //TODO: Pass the scene ans stage info to a specific sub-renderer
+            }
+
+            vulkanScene->end(m_graphicsQueue);
+            auto& params = vulkanScene->getSceneParams();
+            semaphoresToWaitOn.pushBack(params.renderFinishedSemaphore);
+            m_sceneFences.pushBack(params.renderFence);
+        }
+
+        m_vulkanSwapchain->present(semaphoresToWaitOn);
 
        //if(m_renderScene.begin())
        //{

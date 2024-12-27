@@ -11,6 +11,7 @@ namespace Bolt {
     : m_stages(context)
     , m_impl(nullptr, context)
     , m_context(context)
+    , m_renderInfo(renderInfo)
     {
         m_impl.reset(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
         assert(m_impl != nullptr && "Vulkan scene not constructed");
@@ -21,6 +22,7 @@ namespace Bolt {
         {
             destroy();
         }
+        m_isValid = false;
     }
 
     void RenderScene::destroy()
@@ -32,12 +34,14 @@ namespace Bolt {
     {
         VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
         scene->construct(this);
+        m_isValid = true;
         return true;
     }
 
     bool RenderScene::begin()
     {
-        return true;
+        VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
+        return scene->begin();
     }
     bool RenderScene::render()
     {
@@ -45,6 +49,8 @@ namespace Bolt {
     }
     bool RenderScene::end()
     {
+        VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
+        //scene->end();
         return true;
     }
 
@@ -64,11 +70,14 @@ namespace Bolt {
     namespace vulkan{
 
 
-    Attachment::Attachment(const Bolt::AttachmentDefinition& info)
+    Attachment::Attachment(const Bolt::AttachmentDefinition& pInfo)
+    : info(pInfo)
+    {}
+    void Attachment::construct()
     {
         this->buildAttachmentDescription();
         this->buildAttachmentReference();
-    };
+    }
     void ImageAttachment::buildAttachmentDescription()
     {
         attachmentDescription.initialLayout = texture.getCreateInfo().imageInfo.initialLayout;
@@ -165,6 +174,12 @@ namespace Bolt {
         constructAttachments(info);
         constructSubpasses(scene);
 
+        Quaint::QArray<VkSubpassDescription> subpassDescs(m_context);
+        for(auto& desc : m_subpassDesc)
+        {
+            subpassDescs.pushBack(desc.description);
+        }
+
         Quaint::QArray<VkAttachmentDescription> attachDescs(m_context);
         for(auto& attachment : m_attachments)
         {
@@ -176,8 +191,8 @@ namespace Bolt {
 
         rpInfo.attachmentCount = attachDescs.getSize();
         rpInfo.pAttachments = attachDescs.getBuffer();
-        rpInfo.subpassCount = m_subpassDesc.getSize();
-        rpInfo.pSubpasses = m_subpassDesc.getBuffer();
+        rpInfo.subpassCount = subpassDescs.getSize();
+        rpInfo.pSubpasses = subpassDescs.getBuffer();
         rpInfo.dependencyCount = m_subpassDependencies.getSize();
         rpInfo.pDependencies = m_subpassDependencies.getBuffer();
         
@@ -185,9 +200,27 @@ namespace Bolt {
         ASSERT_SUCCESS(res, "could not create renderpass");
 
         constructFrameBuffer();
-        
+
+        //Constructing scene params
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+        uint32_t swapchainImages = swapchain->getNumSwapchainImages();
+        //TODO: One for each swapchain image later
+        m_sceneParams.commandBuffer = VulkanRenderer::get()->getGraphicsCommandBuffers(1)[0];
+        VkSemaphoreCreateInfo semInfo{};
+        semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semInfo.flags = 0;
+        semInfo.pNext = nullptr;
+        ASSERT_SUCCESS(vkCreateSemaphore(device, &semInfo, callbacks, &m_sceneParams.renderFinishedSemaphore), "failed to create semaphore");
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = 0;
+        fenceInfo.pNext = nullptr;
+        ASSERT_SUCCESS(vkCreateFence(device, &fenceInfo, callbacks, &m_sceneParams.renderFence), "failed to create fence");
+
         //TODO: Make internal constructions bools and return failure if construction fails
-        m_valid = true;
+        m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
+        m_renderOffset = {(int)info.offset.x, (int)info.offset.y};
     }
 
     void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)
@@ -214,6 +247,12 @@ namespace Bolt {
                 assert(false && "Not yet supported");
             break;
             }
+        }
+
+        //Construct all attachments
+        for(auto& attachment : m_attachments)
+        {
+            attachment->construct();
         }
     }
 
@@ -254,11 +293,12 @@ namespace Bolt {
         uint32_t idx = 0;
         for(size_t i = 0; i < stages.getSize(); ++i)
         {
+            SubpassDescription desc{};
+            desc.references = Quaint::QArray<VkAttachmentReference>(m_context);
+            desc.description = {};
             const Bolt::RenderStage& stage = stages[i];
-            VkSubpassDescription desc{};
-            desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            desc.description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-            Quaint::QArray<VkAttachmentReference> colorAttachrefs(m_context);
             for(size_t i = 0; i < stage.attachmentRefs.getSize(); ++i)
             {
                 Attachment* targetAttachment = nullptr;
@@ -278,20 +318,19 @@ namespace Bolt {
                 {
                     ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 }
-                colorAttachrefs.pushBack(ref);
+                desc.references.pushBack(ref);
             }
-            desc.colorAttachmentCount = colorAttachrefs.getSize();
-            desc.pColorAttachments = colorAttachrefs.getBuffer();
+            desc.description.colorAttachmentCount = desc.references.getSize();
+            desc.description.pColorAttachments = desc.references.getBuffer();
 
             //TODO: No other attachment types are supported for now
-            desc.inputAttachmentCount = 0;
-            desc.pInputAttachments = nullptr;
-            desc.pDepthStencilAttachment = nullptr;
-            desc.preserveAttachmentCount = 0;
-            desc.pPreserveAttachments = nullptr;
-            desc.pResolveAttachments = nullptr;
-            m_subpassDesc.pushBack(desc);
-
+            desc.description.inputAttachmentCount = 0;
+            desc.description.pInputAttachments = nullptr;
+            desc.description.pDepthStencilAttachment = nullptr;
+            desc.description.preserveAttachmentCount = 0;
+            desc.description.pPreserveAttachments = nullptr;
+            desc.description.pResolveAttachments = nullptr;
+            m_subpassDesc.pushBack(std::move(desc));
             
             VkSubpassDependency dep{};
 
@@ -347,14 +386,85 @@ namespace Bolt {
 
     bool VulkanRenderScene::begin()
     {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+        vkResetCommandBuffer(m_sceneParams.commandBuffer, 0);
+        vkResetFences(device, 1, &m_sceneParams.renderFence);
+
+        VkCommandBufferBeginInfo cbinfo{};
+        cbinfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cbinfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        cbinfo.pInheritanceInfo = nullptr;
+        cbinfo.pNext = nullptr;
+
+        vkBeginCommandBuffer(m_sceneParams.commandBuffer, &cbinfo);
+
+        VkRenderPassBeginInfo rpInfo{};
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpInfo.framebuffer = m_framebuffer->getHandle(swapchain->getCurrentSwapchainImageIndex());
+        rpInfo.renderPass = m_renderpass;
+        rpInfo.renderArea.extent = m_renderExtent;
+        rpInfo.renderArea.offset = m_renderOffset;
+        
+        Quaint::QArray<VkClearValue> clearValues(m_context);
+        for(auto& attachment : m_attachments)
+        {
+            if(attachment->getInfo().clearImage)
+            {
+                if(attachment->getInfo().type == AttachmentDefinition::Type::Swapchain || attachment->getInfo().type == AttachmentDefinition::Type::Image)
+                {
+                    VkClearValue val{};
+                    val.color = {{attachment->getInfo().clearColor.x, 
+                                attachment->getInfo().clearColor.y, 
+                                attachment->getInfo().clearColor.z,
+                                attachment->getInfo().clearColor.w}};
+                    clearValues.pushBack(val);
+                }
+                else
+                {
+                    clearValues.pushBack({});
+                }
+            }
+            else
+            {
+                clearValues.pushBack({});
+            }
+        }
+
+        rpInfo.clearValueCount = clearValues.getSize();
+        rpInfo.pClearValues = clearValues.getBuffer();
+        rpInfo.pNext = nullptr;
+
+        vkCmdBeginRenderPass(m_sceneParams.commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
         return true;
     }
-    void VulkanRenderScene::end()
+    VulkanRenderScene::SceneParams VulkanRenderScene::end(VkQueue queue)
     {
-
+        vkCmdEndRenderPass(m_sceneParams.commandBuffer);
+        vkEndCommandBuffer(m_sceneParams.commandBuffer);
+        submit(queue);
+        return m_sceneParams;
     }
-    void VulkanRenderScene::submit()
+    void VulkanRenderScene::submit(VkQueue queue)
     {
+        VkSubmitInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        //TODO: Add this when ready
+        //VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        info.waitSemaphoreCount = 0;
+        info.pWaitSemaphores = nullptr;
+        info.pWaitDstStageMask = nullptr;
 
+        info.commandBufferCount = 1;
+        info.pCommandBuffers = &m_sceneParams.commandBuffer;
+
+        info.signalSemaphoreCount = 1;
+        info.pSignalSemaphores = &m_sceneParams.renderFinishedSemaphore;
+
+        info.pNext = nullptr;
+
+        VkResult res = vkQueueSubmit(queue, 1, &info, m_sceneParams.renderFence);
+        ASSERT_SUCCESS(res, "failed to submit to queue");
     }
 }}

@@ -245,6 +245,7 @@ namespace Bolt
         Quaint::QArray<VkCommandBuffer> getGraphicsCommandBuffers(uint32_t count);
         /*Only supports primary command buffers for now*/
         Quaint::QArray<VkCommandBuffer> getTransferCommandBuffers(uint32_t count);
+        VkQueue getPresentationQueue() { return m_presentQueue; }
     private:
         void createBuffer2(size_t bufferSize, VkBufferUsageFlags usageFlags,
         VkMemoryPropertyFlags propertyFlags,
@@ -384,6 +385,12 @@ namespace Bolt
         Quaint::QArray<VkSemaphore>         m_imageAvailableSemaphores;
         Quaint::QArray<VkSemaphore>         m_renderFinishedSemaphores;
         Quaint::QArray<VkFence>             m_inFlightFences;
+
+        //TODO: Remove this later
+        VkFence                             m_imageAvailableFence;
+        
+        Quaint::QArray<VkFence>             m_sceneFences;
+        Quaint::QArray<VkSemaphore>         m_sceneSemaphores;
 
         uint8_t                             m_currentFrame = 0;
 

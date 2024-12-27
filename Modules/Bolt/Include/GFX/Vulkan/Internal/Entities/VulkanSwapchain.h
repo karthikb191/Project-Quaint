@@ -20,7 +20,9 @@ namespace Bolt { namespace vulkan {
         VkExtent2D getSwapchainExtent() const { return m_extent; }
         VkSampleCountFlagBits getSamples() const { return m_samples; }
         VkFormat getFormat() const { return m_format; }
-        
+        uint32_t getNextSwapchainImage(VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE, VkFence imageAvailableFence = VK_NULL_HANDLE);
+        uint32_t getCurrentSwapchainImageIndex() { return m_currentSwapchainImage; }
+        void present(const Quaint::QArray<VkSemaphore>& waitSemaphore);
     private:
         Quaint::IMemoryContext*         m_context = nullptr;
         VkSwapchainKHR                  m_swapchain = VK_NULL_HANDLE;
@@ -30,6 +32,7 @@ namespace Bolt { namespace vulkan {
         bool                            m_valid = false;
         VkFormat                        m_format = VK_FORMAT_R8G8B8A8_SRGB;
         VkSampleCountFlagBits           m_samples = VK_SAMPLE_COUNT_1_BIT;
+        uint32_t                        m_currentSwapchainImage = ~0u;
     };
 }}
 

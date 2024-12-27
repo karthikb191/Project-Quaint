@@ -195,6 +195,18 @@ public:
             new(m_rawData + m_size)T(t);
             ++m_size;
         }
+        void pushBack(T&& t)
+        {
+            assert(m_context != nullptr && "Needs a valid memory context to work with");
+            if(m_size >= m_reservedSize)
+            {
+                reserve(INC_RESERVE_FROM(m_size));
+            }
+
+            //memcpy((m_rawData + m_size), &t, TYPE_SIZE);
+            new(m_rawData + m_size)T(std::move(t));
+            ++m_size;
+        }
 
         /* Currently only emplaces at the end */
         template<typename ...ARGS>

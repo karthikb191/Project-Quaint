@@ -25,10 +25,11 @@ namespace Bolt {
 
     struct Attachment
     {
-        Attachment(const Bolt::AttachmentDefinition& info);
+        Attachment(const Bolt::AttachmentDefinition& pInfo);
         template<typename _T>
         _T* As() { return static_cast<_T*>(this); }
         
+        void construct();
         const AttachmentDefinition& getInfo() const { return info; }
         const VkAttachmentDescription& getAttachmentDescription() const { return attachmentDescription; }
         const VkAttachmentReference& getAttachmentReference() const { return attachmentReference; } 
@@ -79,6 +80,12 @@ namespace Bolt {
         virtual void buildAttachmentDescription() override;
     };
 
+    struct SubpassDescription
+    {
+        Quaint::QArray<VkAttachmentReference> references;
+        VkSubpassDescription description;
+    };
+
     class VulkanRenderScene : public Bolt::RenderSceneImpl
     {
     public:
@@ -86,14 +93,21 @@ namespace Bolt {
         typedef Quaint::QUniquePtr<Attachment, Bolt::Deleter<Attachment>> TAttachmentPtr;
         typedef Quaint::QArray<TAttachmentPtr> TAttachmentArray ;
 
+        struct SceneParams
+        {
+            VkSemaphore renderFinishedSemaphore;
+            VkFence renderFence;
+            VkCommandBuffer commandBuffer;
+        };
+
         VulkanRenderScene(Quaint::IMemoryContext* context);
         virtual ~VulkanRenderScene() noexcept = default;
         virtual void construct(const Bolt::RenderScene* scene);
         virtual void destroy();
     
         virtual bool begin();
-        virtual void end();
-        virtual void submit();
+        virtual SceneParams end(VkQueue queue);
+        virtual void submit(VkQueue queue);
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
         VkRenderPass getRenderpass() const { return m_renderpass; }
@@ -102,7 +116,7 @@ namespace Bolt {
         Attachment* getAttachment(const Quaint::QName& name);
         const TAttachmentArray& getAttachments() const { return m_attachments; }
         
-        bool isValid() { return m_valid; }
+        const SceneParams& getSceneParams() { return m_sceneParams; }
     protected:
         void constructAttachments(const Bolt::RenderInfo& info);
         VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);
@@ -112,13 +126,15 @@ namespace Bolt {
 
         Quaint::IMemoryContext*                                     m_context = nullptr;
         GraphicsContext                                             m_graphicsContext;
-        VkCommandPool                                               m_commandPool;
+        //VkCommandPool                                               m_commandPool;
         VkRenderPass                                                m_renderpass;
         TAttachmentArray                                            m_attachments;
-        Quaint::QArray<VkSubpassDescription>                        m_subpassDesc;
+        Quaint::QArray<SubpassDescription>                          m_subpassDesc;
         Quaint::QArray<VkSubpassDependency>                         m_subpassDependencies;
         TFramebufferPtr                                             m_framebuffer;
-        bool                                                        m_valid = false;
+        SceneParams                                                 m_sceneParams = {};
+        VkExtent2D                                                  m_renderExtent = {512, 512};
+        VkOffset2D                                                  m_renderOffset = {0, 0};
     };
 
     struct MVP
