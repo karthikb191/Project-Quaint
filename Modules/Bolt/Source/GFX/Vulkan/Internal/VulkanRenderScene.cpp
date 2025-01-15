@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 #include <RenderModule.h>
@@ -5,6 +7,8 @@
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
+#include <algorithm>
+
 
 namespace Bolt { 
     RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
@@ -219,8 +223,29 @@ namespace Bolt {
         ASSERT_SUCCESS(vkCreateFence(device, &fenceInfo, callbacks, &m_sceneParams.renderFence), "failed to create fence");
 
         //TODO: Make internal constructions bools and return failure if construction fails
-        m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
-        m_renderOffset = {(int)info.offset.x, (int)info.offset.y};
+        VkExtent2D& swapchainExtent = swapchain->getSwapchainExtent();
+        if(info.extents.x == -1 || info.extents.y == -1)
+        {
+            m_renderExtent = swapchainExtent;
+            m_renderOffset = {0, 0};
+        }
+        else
+        {
+            assert((info.extents.x + info.offset.x) <= swapchainExtent.width && "Invalid extent and offset combo");
+            assert((info.extents.y + info.offset.y) <= swapchainExtent.height && "Invalid extent and offset combo");
+
+            if(info.extents.x + info.offset.x > swapchainExtent.width
+            || info.extents.y + info.offset.y > swapchainExtent.height)
+            {
+                m_renderExtent = swapchainExtent;
+                m_renderOffset = {0, 0};
+            }
+            else
+            {
+                m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
+                m_renderOffset = {(int32_t)info.offset.x, (int32_t)info.offset.y};
+            }
+        }
     }
 
     void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)

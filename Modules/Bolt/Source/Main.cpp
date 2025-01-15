@@ -58,15 +58,22 @@ int main()
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     //TODO: construct swapchain
+    const Bolt::IWindow_Impl_Win* window = Bolt::RenderModule::get().getBoltRenderer()->getWindow().getWindowsWindow();
+    RECT rect;
+    GetWindowRect(window->getWindowHandle(), &rect);
+    uint32_t width = rect.right - rect.left;
+    uint32_t height = rect.bottom - rect.top;
 
     Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     Bolt::RenderInfo info;
+    info.extents = Quaint::QVec2(-1, -1);
+    info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition def;
     def.binding = 0;
     def.name = "swapchain";
-    def.clearColor = Quaint::QVec4(1.0f, 1.0f, 0.0f, 1.0f);
+    def.clearColor = Quaint::QVec4(.0f, 1.0f, 0.0f, 1.0f);
     def.clearImage = true;
     def.type = Bolt::AttachmentDefinition::Type::Swapchain;
     def.format = Bolt::EFormat::R8G8B8A8_SRGB;
@@ -89,7 +96,8 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
     def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
-    info.offset = {100, 0};
+    info.extents = Quaint::QVec2(256, 560);
+    info.offset = {40, 0};
     info.attachments.clear();
     info.attachments.pushBack(def);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics2", info, stages.getSize(), stages.getBuffer());
