@@ -155,12 +155,11 @@ namespace Bolt {
         return *this;
     }
 
-    GraphicsResource* ShaderGroupResourceBuilder::build()
+    ShaderGroupResourceBuilderPtr&& ShaderGroupResourceBuilder::build()
     {
-        VulkanShaderGroupResource* proxy = QUAINT_NEW(m_context, VulkanShaderGroupResource, m_context);
-        proxy->wrap(m_attachmentsRefs, VulkanShaderGroup(m_vertShaderPath.getBuffer(), m_fragShaderPath.getBuffer()));
-
-        return GraphicsResource::create<ShaderGroupResource>(m_context, proxy);
+        VulkanShaderGroup* shaderGroup = QUAINT_NEW(m_context, VulkanShaderGroup, m_context, m_vertShaderPath, m_fragShaderPath);
+        m_ptr.reset(shaderGroup);
+        return std::move(m_ptr);
     }
 
 }

@@ -1,6 +1,9 @@
 #ifndef _H_RESOURCE_BUILDER
 #define _H_RESOURCE_BUILDER
 #include "Entities/Resources.h"
+#include "Entities/ShaderGroup.h"
+#include "./Helpers.h"
+#include <Types/QUniquePtr.h>
 
 //TODO: Rename file to VulkanResourceBuilder.cpp
 namespace Bolt
@@ -72,22 +75,25 @@ namespace Bolt
     };
 //====================================================================================
 //====================================================================================
+    typedef Quaint::QUniquePtr<ShaderGroup, Deleter<ShaderGroup>> ShaderGroupResourceBuilderPtr;
     class ShaderGroupResourceBuilder : public GraphicsResourceBuilderBase
     {
     public:
         ShaderGroupResourceBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
         , m_attachmentsRefs(context)
+        , m_ptr(nullptr, Deleter<ShaderGroup>(context))
         {}
         ShaderGroupResourceBuilder& setVertShaderPath(const char* path) { m_vertShaderPath = path; return *this; }
         ShaderGroupResourceBuilder& setFragShaderPath(const char* path) { m_fragShaderPath = path; return *this; }
         ShaderGroupResourceBuilder& addAttchmentRef(const ShaderAttachmentInfo& info);
 
-        GraphicsResource* build();
+        ShaderGroupResourceBuilderPtr&& build();
     private:
         Quaint::QPath                           m_vertShaderPath;
         Quaint::QPath                           m_fragShaderPath;
         Quaint::QArray<ShaderAttachmentInfo>    m_attachmentsRefs;
+        ShaderGroupResourceBuilderPtr           m_ptr;
         //TODO: Add attachment resources somehow
     };
 //====================================================================================

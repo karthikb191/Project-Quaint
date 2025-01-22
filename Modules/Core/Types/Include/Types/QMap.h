@@ -71,9 +71,54 @@ namespace Quaint
         , m_tree(context)
         {}
 
+        QMap(const std::initializer_list<QPair<Key, Data>>& list)
+        {
+            for(size_t i = 0; i < list.size(); i++)
+            {
+                insert(*(list.begin() + i));
+            }
+            return *this;
+        }
+
+        template<typename TKey, typenamt TData>
+        QMap(const QMap<TKey, TData>& other)
+        {
+            clear();
+            for(auto& entry : other)
+            {
+                insert(entry);
+            }
+        }
+
+        template<typename TKey, typenamt TData>
+        QMap(QMap<TKey, TData>&& other)
+        {
+            clear();
+            m_context = other.m_context;
+            m_tree = other.m_tree;
+        }
+
         ~QMap()
         {
             clear();
+        }
+
+        template<typename TKey, typenamt TData>
+        QMap& operator=(const QMap<TKey, TData>& other)
+        {
+            clear();
+            for(auto& entry : other)
+            {
+                insert(entry);
+            }
+        }
+
+        template<typename TKey, typenamt TData>
+        QMap& operator=(QMap<TKey, TData>&& other)
+        {
+            clear();
+            m_context = other.m_context;
+            m_tree = other.m_tree;
         }
 
         QMap& operator=(const std::initializer_list<QPair<Key, Data>>& list)

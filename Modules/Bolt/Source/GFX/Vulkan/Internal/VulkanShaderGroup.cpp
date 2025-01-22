@@ -1,28 +1,44 @@
 #include <GFX/Vulkan/Internal/VulkanShaderGroup.h>
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
+#include <GFX/Data/ShaderInfo.h>
 
 namespace Bolt { namespace vulkan
 {
-    VulkanShaderGroup::VulkanShaderGroup()
-    : m_vertShader(nullptr, Deleter<VulkanVertexShader>(VulkanRenderer::get()->getMemoryContext()))
-    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(VulkanRenderer::get()->getMemoryContext()))
+    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context)
+    : Bolt::ShaderGroup(context, "Invalid", "", "", Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    , m_context(context)
+    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
+    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    , m_VIBs(context)
+    , m_VIAs(context)
     {
-        Quaint::IMemoryContext* context = VulkanRenderer::get()->getMemoryContext();
-        m_VIBs = Quaint::QArray<VkVertexInputBindingDescription>(context);
-        m_VIAs = Quaint::QArray<VkVertexInputAttributeDescription>(context);
     }
 
-    VulkanShaderGroup::VulkanShaderGroup(const char* vertSprvPath, const char* fragSpirvPath)
-    : m_vertShader(nullptr, Deleter<VulkanVertexShader>(VulkanRenderer::get()->getMemoryContext()))
-    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(VulkanRenderer::get()->getMemoryContext()))
+    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QPath& vertSprvPath, const Quaint::QPath& fragSpirvPath)
+    : Bolt::ShaderGroup(context, "NoName", vertSprvPath, fragSpirvPath, Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    , m_context(context)
+    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
+    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    , m_VIBs(context)
+    , m_VIAs(context)
     {
-        m_vertShader.reset(QUAINT_NEW(Bolt::VulkanRenderer::get()->getMemoryContext(), Bolt::VulkanVertexShader, vertSprvPath));
-        m_fragShader.reset(QUAINT_NEW(Bolt::VulkanRenderer::get()->getMemoryContext(), Bolt::VulkanFragmentShader, fragSpirvPath));
-        
-        Quaint::IMemoryContext* context = VulkanRenderer::get()->getMemoryContext();
-        m_VIBs = Quaint::QArray<VkVertexInputBindingDescription>(context);
-        m_VIAs = Quaint::QArray<VkVertexInputAttributeDescription>(context);
+        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, vertSprvPath));
+        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath));
+    }
+
+    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QName& name
+        , const Quaint::QPath& vertShaderPath, const Quaint::QPath& fragShaderPath
+        , const Quaint::QMap<Quaint::QName, ShaderAttribute>&& vertexAttributes)
+    : Bolt::ShaderGroup(context, name, vertShaderPath, fragShaderPath, Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    , m_context(context)
+    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
+    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    , m_VIBs(context)
+    , m_VIAs(context)
+    {
+        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, vertSprvPath));
+        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath));
     }
 
     VulkanShaderGroup::~VulkanShaderGroup()
@@ -47,6 +63,11 @@ namespace Bolt { namespace vulkan
     bool VulkanShaderGroup::isValid() const
     {
         return m_vertShader.get() != nullptr && m_fragShader.get() != nullptr;
+    }
+
+    void VulkanShaderGroup::setupDescriptions()
+    {
+
     }
     
     //TODO: Not sure there are necessary here. Remove if they aren't

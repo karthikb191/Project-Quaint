@@ -106,7 +106,7 @@ namespace Bolt
         const EResourceType getResourceType() { return m_resourceType; }
 
         template<EResourceType _Type>
-        constexpr typename ResourceTraits<_Type>::TYPE* get()
+        constexpr typename ResourceTraits<_Type>::TYPE* getAs()
         {
             assert(_Type == m_resourceType && "Invalid type cast");
             return static_cast<typename ResourceTraits<_Type>::TYPE*>(this);
@@ -125,6 +125,7 @@ namespace Bolt
         : Resource(context, type)
         {}
 
+        //TODO: Remove all of these. None of these are required
         //TODO: move these to a cpp file
         template<typename _T = GraphicsResource> 
         static _T* create(Quaint::IMemoryContext* context, EResourceType type, ResourceGPUProxy* gpuResource)
@@ -199,8 +200,8 @@ namespace Bolt
         : BufferResourceBase(context, _BufferType)
         {}
 
-        template<EBufferType BufferType>
-        typename BufferResource<BufferType>* get()
+        template<EBufferType _Type>
+        typename BufferResource<_Type>* get()
         {
             assert(_Type == m_type && "Invalid type cast");
             return static_cast<typename ShaderResourceTraits<_Type>::RESOURCE_TYPE*>(this);
@@ -252,6 +253,39 @@ namespace Bolt
 
     private:
         typename Traits::INPUT_INFO_TYPE     m_info;
+    };
+
+    class ShaderGroupBase : public GraphicsResource
+    {
+    public:
+        ShaderGroupBase(Quaint::IMemoryContext* context)
+        : GraphicsResource(context, EResourceType::SHADER_GROUP)
+        {}
+
+    private:
+
+    };
+
+    /* Implementation should be defined in API-Layer */
+    class UniformBuffer : public GraphicsResource
+    {
+
+    };
+
+    /* Implementation should be defined in API-Layer */
+    class Texture : public GraphicsResource
+    {
+    public:
+
+    private:
+    };
+
+    class RenderModel : public GraphicsResource
+    {
+    public:
+
+    private:
+
     };
 }
 

@@ -2586,7 +2586,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     void mapBufferResource(GraphicsResource* resource, void** out)
     {
         assert(resource->getResourceType() == EResourceType::BUFFER && "Invalid Resource type");
-        assert(resource->get<EResourceType::BUFFER>()->getBufferType() == EBufferType::UNIFORM && "Not a uniform buffer resource");
+        assert(resource->getAs<EResourceType::BUFFER>()->getBufferType() == EBufferType::UNIFORM && "Not a uniform buffer resource");
         VulkanBufferObjectResource* res = static_cast<VulkanBufferObjectResource*>(resource->getGpuResourceProxy());
 
         auto& bufferInfo = res->getBufferInfo();

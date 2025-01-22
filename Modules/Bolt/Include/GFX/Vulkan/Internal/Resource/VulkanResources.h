@@ -60,26 +60,6 @@ namespace Bolt{
         VkBufferUsageFlags      m_usageFlags;
         VkMemoryPropertyFlags   m_memFlags;
     };
-
-    class VulkanShaderGroupResource : public Bolt::ResourceGPUProxy
-    {
-    public:
-        VulkanShaderGroupResource(Quaint::IMemoryContext* context)
-        : Bolt::ResourceGPUProxy(context)
-        , m_attachmentRefs(context)
-        {}
-
-        void wrap(const Quaint::QArray<ShaderAttachmentInfo>& attachments, VulkanShaderGroup&& shaderGroup);
-        virtual void destroy() override;
-
-        VulkanShaderGroup& getShaderGroup() { return m_shaderGroup; }
-        Quaint::QArray<ShaderAttachmentInfo>& getAttachmentRefs() { return m_attachmentRefs; }
-    private:
-        VulkanShaderGroup                       m_shaderGroup;
-        
-        /*This class is not responsible for destroying the dependent resources*/
-        Quaint::QArray<ShaderAttachmentInfo>    m_attachmentRefs;
-    };
 }}
 
 #endif
