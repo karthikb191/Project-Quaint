@@ -13,14 +13,12 @@ namespace Bolt { namespace vulkan{
     * Should take ownership of shaders.
     * Cant be copied or assigned
     */
-    class VulkanShaderGroup : public Bolt::ShaderGroup 
+    class VulkanShaderGroup : public Bolt::ResourceGPUProxy 
     {
     public:
         VulkanShaderGroup(Quaint::IMemoryContext* context);
         VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QPath& vertSprvPath, const Quaint::QPath& fragSpirvPath);
-        VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QName& name
-        , const Quaint::QPath& vertShaderPath, const Quaint::QPath& fragShaderPath
-        , const Quaint::QMap<Quaint::QName, ShaderAttribute>&& vertexAttributes);
+        VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup);
 
         virtual ~VulkanShaderGroup();
         void destroy();

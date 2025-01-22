@@ -145,9 +145,29 @@ namespace Bolt
             //TODO: Add a log
             return resource;
         }
+
+        /* GPU Resource is created implictly. Expects a constructor that accepts an object of this type*/
+        template<typename _T = GraphicsResource, typename _PROXY, typename ...ARGS>
+        static _T* create(Quaint::IMemoryContext* context, ARGS... args)
+        {
+            _T* resource = QUAINT_NEW(context, _T, context, args...);
+            m_gpuProxy = QUAINT_NEW(m_context, _PROXY, *resource);
+            //TODO: Add a log
+            return resource;
+        }
+
+        /* No GPU proxy is created*/
+        template<typename _T = GraphicsResource, typename ...ARGS>
+        static _T* create(Quaint::IMemoryContext* context, ARGS... args)
+        {
+            _T* resource = QUAINT_NEW(context, _T, context, args...);
+            //TODO: Add a log
+            return resource;
+        }
+
         ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
-        void destroy(Quaint::IMemoryContext* context)
+        virtual void destroy(Quaint::IMemoryContext* context)
         {
             if(m_gpuProxy)
             {

@@ -82,18 +82,23 @@ namespace Bolt
         ShaderGroupResourceBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
         , m_attachmentsRefs(context)
+        , m_attributeMap(context)
         , m_ptr(nullptr, Deleter<ShaderGroup>(context))
         {}
+
+        ShaderGroupResourceBuilder& setName(const Quaint::QName& name) { m_name = name; }
         ShaderGroupResourceBuilder& setVertShaderPath(const char* path) { m_vertShaderPath = path; return *this; }
         ShaderGroupResourceBuilder& setFragShaderPath(const char* path) { m_fragShaderPath = path; return *this; }
         ShaderGroupResourceBuilder& addAttchmentRef(const ShaderAttachmentInfo& info);
 
         ShaderGroupResourceBuilderPtr&& build();
     private:
-        Quaint::QPath                           m_vertShaderPath;
-        Quaint::QPath                           m_fragShaderPath;
-        Quaint::QArray<ShaderAttachmentInfo>    m_attachmentsRefs;
-        ShaderGroupResourceBuilderPtr           m_ptr;
+        Quaint::QName                                   m_name = "";
+        Quaint::QPath                                   m_vertShaderPath = "";
+        Quaint::QPath                                   m_fragShaderPath = "";
+        Quaint::QMap<Quaint::QName, ShaderAttribute>    m_attributeMap;
+        Quaint::QArray<ShaderAttachmentInfo>            m_attachmentsRefs;
+        ShaderGroupResourceBuilderPtr                   m_ptr;
         //TODO: Add attachment resources somehow
     };
 //====================================================================================

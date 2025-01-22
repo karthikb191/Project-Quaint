@@ -23,14 +23,22 @@ namespace Bolt
         , const Quaint::QMap<Quaint::QName, ShaderAttribute>&& vertexAttributes)
         : ShaderGroupBase(context)
         , m_name(name)
+        , m_vertShaderPath(vertShaderPath)
+        , m_fragShaderPath(fragShaderPath)
         , m_vertexAttributes(vertexAttributes)
         {}
         
         const Quaint::QName& getName() const { return m_name; }
+        const Quaint::QPath& getVertexShaderPath() const { return m_vertShaderPath; }
+        bool hasVertexShader() const { return m_vertShaderPath.length() > 0; }
+        const Quaint::QPath& getFragmentShaderPath() const { return m_fragShaderPath; }
+        bool hasFragmentShader() const { return m_fragShaderPath.length() > 0; }
         const Quaint::QMap<Quaint::QName, ShaderAttribute>& getVertexAttributes() const { return m_vertexAttributes; }
 
     private:
         Quaint::QName m_name = "";
+        Quaint::QPath m_vertShaderPath = "";
+        Quaint::QPath m_fragShaderPath = "";
         Quaint::QMap<Quaint::QName, ShaderAttribute> m_vertexAttributes;
     };
 }

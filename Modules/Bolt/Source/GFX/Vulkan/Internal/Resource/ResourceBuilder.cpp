@@ -157,7 +157,12 @@ namespace Bolt {
 
     ShaderGroupResourceBuilderPtr&& ShaderGroupResourceBuilder::build()
     {
-        VulkanShaderGroup* shaderGroup = QUAINT_NEW(m_context, VulkanShaderGroup, m_context, m_vertShaderPath, m_fragShaderPath);
+        ShaderGroup* shaderGroup = 
+        GraphicsResource::create<ShaderGroup, VulkanShaderGroup>(m_context
+                            , m_name
+                            , m_fragShaderPath
+                            , m_vertShaderPath
+                            , m_attributeMap);
         m_ptr.reset(shaderGroup);
         return std::move(m_ptr);
     }

@@ -6,7 +6,7 @@
 namespace Bolt { namespace vulkan
 {
     VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context)
-    : Bolt::ShaderGroup(context, "Invalid", "", "", Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    : Bolt::ResourceGPUProxy(context)
     , m_context(context)
     , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
     , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
@@ -16,7 +16,7 @@ namespace Bolt { namespace vulkan
     }
 
     VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QPath& vertSprvPath, const Quaint::QPath& fragSpirvPath)
-    : Bolt::ShaderGroup(context, "NoName", vertSprvPath, fragSpirvPath, Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    : Bolt::ResourceGPUProxy(context)
     , m_context(context)
     , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
     , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
@@ -27,18 +27,16 @@ namespace Bolt { namespace vulkan
         m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath));
     }
 
-    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QName& name
-        , const Quaint::QPath& vertShaderPath, const Quaint::QPath& fragShaderPath
-        , const Quaint::QMap<Quaint::QName, ShaderAttribute>&& vertexAttributes)
-    : Bolt::ShaderGroup(context, name, vertShaderPath, fragShaderPath, Quaint::QMap<Quaint::QName, ShaderAttribute>(context))
+    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup)
+    : Bolt::ResourceGPUProxy(context)
     , m_context(context)
     , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
     , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
     , m_VIBs(context)
     , m_VIAs(context)
     {
-        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, vertSprvPath));
-        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath));
+        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, shaderGroup.getVertexShaderPath()));
+        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, shaderGroup.getFragmentShaderPath()));
     }
 
     VulkanShaderGroup::~VulkanShaderGroup()
