@@ -59,4 +59,16 @@ namespace Bolt{ namespace vulkan{
         }
         return VK_FORMAT_UNDEFINED;
     }
+
+    inline VkShaderStageFlagBits toShaderStageFlags(const EShaderStage stage)
+    {
+        switch(stage)
+        {
+            case EShaderStage::VERTEX: return VK_SHADER_STAGE_VERTEX_BIT;
+            case EShaderStage::FRAGMENT: return VK_SHADER_STAGE_FRAGMENT_BIT;
+            case EShaderStage::GEOMETRY: return VK_SHADER_STAGE_GEOMETRY_BIT;
+            case EShaderStage::COMPUTE: return VK_SHADER_STAGE_COMPUTE_BIT;
+            default: return VK_SHADER_STAGE_ALL;
+        }
+    }
 }}

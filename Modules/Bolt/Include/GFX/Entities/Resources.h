@@ -167,6 +167,9 @@ namespace Bolt
 
         ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
+        virtual void bindToGpu();
+        virtual void unbindFromGPU();
+
         virtual void destroy(Quaint::IMemoryContext* context)
         {
             if(m_gpuProxy)
@@ -298,14 +301,6 @@ namespace Bolt
     public:
 
     private:
-    };
-
-    class RenderModel : public GraphicsResource
-    {
-    public:
-
-    private:
-
     };
 }
 

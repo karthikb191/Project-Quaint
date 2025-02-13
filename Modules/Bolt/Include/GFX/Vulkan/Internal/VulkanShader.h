@@ -20,7 +20,7 @@ namespace Bolt
             Compute = 1 << 2
         };
 
-        VulkanShader(EType type, const char* spirvPath, const Quaint::QName entryFnName);
+        VulkanShader(EShaderStage stage, const char* spirvPath, const Quaint::QName entryFnName);
         virtual ~VulkanShader();
         VulkanShader(const VulkanShader&) = delete;
         VulkanShader(VulkanShader&&) = delete;
@@ -33,7 +33,7 @@ namespace Bolt
         void constructShaderModule(const char* spirvPath);
         // Vertex Input Descriptions that must be bound
         // Uniform objects that must be bound to a descriptor set
-        const EType                     m_type;
+        EShaderStage                    m_stage;
         Quaint::QName                   m_entryFn;
         VkShaderModule                  m_shaderModule = VK_NULL_HANDLE;
     };

@@ -31,6 +31,8 @@ namespace Bolt
         SHADER_GROUP,
         COMBINED_IMAGE_SAMPLER,
         BUFFER,
+        MODEL,
+        PIPELINE,
         Invalid
     };
     
@@ -68,6 +70,36 @@ namespace Bolt
         EShaderStage            shaderStage;
         EShaderResourceType     resourceType;
         GraphicsResource*       resource = nullptr;
+    };
+
+
+    struct ShaderUniform
+    {
+        Quaint::QName name = "";
+        EShaderResourceType type = EShaderResourceType::INVALID;
+        uint32_t size = 0;
+    };
+    //TODO: Extend the uniforms to more specific types if necessary
+
+    struct ShaderAttribute
+    {
+        Quaint::QName name = "";
+        uint32_t size = 0;
+    };
+
+    struct ShaderFileInfo
+    {
+        Quaint::QName name = "";
+        Quaint::QPath path = "";
+        Quaint::QName entry = "main";
+        EShaderStage stage = EShaderStage::INVALID;
+    };
+
+    struct ShaderDefinition
+    {
+        Quaint::QArray<ShaderFileInfo>                          shaders;
+        Quaint::QArray<ShaderUniform>                           uniforms;
+        Quaint::QArray<Quaint::QArray<ShaderAttribute>>         attributeSets;
     };
 
     struct ShaderInfo

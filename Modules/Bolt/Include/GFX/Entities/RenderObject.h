@@ -9,6 +9,7 @@
 #include "../Interface/IRenderer.h"
 #include "../Interface/IShaderGroup.h"
 #include "../Data/ShaderInfo.h"
+#include "Resources.h"
 
 namespace Quaint
 {
@@ -82,6 +83,21 @@ namespace Bolt
 
         //TODO: Remove this
         //void drawTemp(vulkan::RenderFrameScene* context);
+    };
+
+    /* This should be client facing */
+    /* Model is basically a resource */
+    class Model : public GraphicsResource
+    {
+    public:
+        Model(Quaint::IMemoryContext* context, const Quaint::QArray<ShaderAttachmentInfo>& resources);
+
+        void build();
+
+        //TODO:  This should later have material information
+        //TODO: Hoe to link this to Vulkan API?
+    private:
+        Quaint::IMemoryContext* m_context;
     };
 }
 

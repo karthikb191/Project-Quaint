@@ -19,8 +19,8 @@ namespace Bolt
         stream.close();
     }
 
-    VulkanShader::VulkanShader(EType type, const char* spirvPath, const Quaint::QName entryFnName)
-    : m_type(type)
+    VulkanShader::VulkanShader(EShaderStage stage, const char* spirvPath, const Quaint::QName entryFnName)
+    : m_stage(stage)
     , m_shaderModule(VK_NULL_HANDLE)
     , m_entryFn(entryFnName)
     {

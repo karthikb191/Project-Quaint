@@ -13,6 +13,7 @@
 #include <Core/Camera.h>
 #include <GFX/Entities/RenderObject.h>
 #include <GFX/Entities/RenderScene.h>
+#include <GFX/Entities/Pipeline.h>
 
 namespace Quaint
 {
@@ -104,6 +105,9 @@ int main()
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 
+    // Pipeline creation
+    // Pipeline(name, scene, stageIndex, shaderDefinition, PrimitiveInformation, BlendInformation)
+    // 1. Create a pipeline from shader
 
     //TODO: Loop through application module 
     //TODO: Move this to Application Module

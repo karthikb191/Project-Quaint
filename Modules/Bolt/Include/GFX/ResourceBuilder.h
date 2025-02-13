@@ -5,7 +5,8 @@
 #include "./Helpers.h"
 #include <Types/QUniquePtr.h>
 
-//TODO: Rename file to VulkanResourceBuilder.cpp
+//TODO: Update the rest to use GPU specific objects
+
 namespace Bolt
 {
     class ResourceBuilderFactory
@@ -102,6 +103,19 @@ namespace Bolt
         //TODO: Add attachment resources somehow
     };
 //====================================================================================
+//====================================================================================
+    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
+    class PipelineResourceBuilder : public GraphicsResourceBuilderBase
+    {
+    public:
+        PipelineResourceBuilder(Quaint::IMemoryContext* context)
+        : GraphicsResourceBuilderBase(context)
+        , m_ptr(nullptr, Deleter<ResourceGPUProxy>(context))
+        {}
+
+    private:
+        ResourceGPUProxyPtr       m_ptr;
+    };
 }
 
 #endif //_H_RESOURCE_BUILDER
