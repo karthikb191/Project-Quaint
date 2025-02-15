@@ -25,6 +25,7 @@ namespace Bolt
         //TODO: Implement these
         /* Adds and builds the render scenes */
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, const uint32_t numStages, const RenderStage* pStages) = 0;
+        virtual RenderScene* getRenderScene(Quaint::QName name);
         //TODO:
         //virtual void mapBuffer() = 0;
         //virtual void unmapBuffer() = 0;

@@ -31,7 +31,10 @@ namespace Bolt {
 
     void RenderScene::destroy()
     {
-
+        if(m_impl.get())
+        {
+            QUAINT_DELETE(m_context, m_impl.get());
+        }
     }
 
     bool RenderScene::construct()

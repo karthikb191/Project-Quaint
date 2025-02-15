@@ -238,7 +238,8 @@ namespace Bolt
 
         void mapBufferToMemory();
 
-        void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages);
+        virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
+        virtual RenderScene* getRenderScene(Quaint::QName name) override;
         void constructPendingRenderScenes();
 
         /*Only supports primary command buffers for now*/

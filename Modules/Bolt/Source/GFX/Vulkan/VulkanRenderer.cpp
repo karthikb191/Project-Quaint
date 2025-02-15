@@ -1163,6 +1163,18 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_renderScenes[m_renderScenes.getSize() - 1]->construct();
     }
 
+    RenderScene* VulkanRenderer::getRenderScene(Quaint::QName name)
+    {
+        for(auto& scene : m_renderScenes)
+        {
+            if(scene->getName() == name)
+            {
+                return scene.get();
+            }
+        }
+        return nullptr;
+    }
+
 
     // void VulkanRenderer::createScene()
     // {

@@ -51,6 +51,8 @@ namespace Bolt
         const Quaint::QArray<RenderStage>& getRenderStages() const { return m_stages; }
         template<typename _T>
         _T* getRenderSceneImplAs() { return static_cast<_T*>(m_impl.get()); }
+        template<typename _T>
+        const _T* getRenderSceneImplAs() const { return static_cast<_T*>(m_impl.get()); }
 
     protected:
         Quaint::IMemoryContext*                 m_context = nullptr;

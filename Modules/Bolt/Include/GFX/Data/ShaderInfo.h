@@ -81,10 +81,11 @@ namespace Bolt
     };
     //TODO: Extend the uniforms to more specific types if necessary
 
-    struct ShaderAttribute
+    struct ShaderAttributeInfo
     {
         Quaint::QName name = "";
         uint32_t size = 0;
+        EFormat format = EFormat::R8G8B8A8_SRGB;
     };
 
     struct ShaderFileInfo
@@ -99,7 +100,7 @@ namespace Bolt
     {
         Quaint::QArray<ShaderFileInfo>                          shaders;
         Quaint::QArray<ShaderUniform>                           uniforms;
-        Quaint::QArray<Quaint::QArray<ShaderAttribute>>         attributeSets;
+        Quaint::QArray<Quaint::QArray<ShaderAttributeInfo>>     attributeSets;
     };
 
     struct ShaderInfo
