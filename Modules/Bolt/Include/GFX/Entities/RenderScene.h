@@ -11,8 +11,9 @@ namespace Bolt
 {
     class RenderSceneImpl;
 
-    struct RenderStage
+    class RenderStage
     {
+    public:
         // Refers to the attachment defined in RenderInfo
         struct AttachmentRef
         {

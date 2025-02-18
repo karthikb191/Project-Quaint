@@ -151,7 +151,8 @@ namespace Bolt
         static _T* create(Quaint::IMemoryContext* context, ARGS... args)
         {
             _T* resource = QUAINT_NEW(context, _T, context, args...);
-            m_gpuProxy = QUAINT_NEW(m_context, _PROXY, *resource);
+            _PROXY* gpuResource = QUAINT_NEW(context, _PROXY, context, *resource);
+            resource->assignGpuProxyResource(gpuResource);
             //TODO: Add a log
             return resource;
         }
@@ -167,8 +168,8 @@ namespace Bolt
 
         ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
-        virtual void bindToGpu();
-        virtual void unbindFromGPU();
+        virtual void bindToGpu() {/*TODO*/};
+        virtual void unbindFromGPU() {/*TODO*/};
 
         virtual void destroy(Quaint::IMemoryContext* context)
         {

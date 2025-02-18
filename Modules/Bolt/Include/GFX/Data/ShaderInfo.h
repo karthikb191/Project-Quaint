@@ -3,6 +3,7 @@
 #include <Types/QStaticString.h>
 #include <Types/QArray.h>
 #include <cstdint>
+#include "RenderInfo.h"
 
 namespace Bolt
 {

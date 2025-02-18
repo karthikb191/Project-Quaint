@@ -20,12 +20,12 @@ namespace Bolt
     public:
         ShaderGroup(Quaint::IMemoryContext* context, const Quaint::QName& name
         , const Quaint::QPath& vertShaderPath, const Quaint::QPath& fragShaderPath
-        , const Quaint::QMap<Quaint::QName, ShaderAttribute>&& vertexAttributes)
+        , Quaint::QMap<Quaint::QName, ShaderAttribute>& vertexAttributes)
         : ShaderGroupBase(context)
         , m_name(name)
         , m_vertShaderPath(vertShaderPath)
         , m_fragShaderPath(fragShaderPath)
-        , m_vertexAttributes(vertexAttributes)
+        , m_vertexAttributes(std::move(vertexAttributes))
         {}
         
         const Quaint::QName& getName() const { return m_name; }

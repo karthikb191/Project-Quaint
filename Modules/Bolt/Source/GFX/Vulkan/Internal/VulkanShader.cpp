@@ -61,22 +61,22 @@ namespace Bolt
     
 
     VulkanVertexShader::VulkanVertexShader(const char* spirvPath)
-    : VulkanShader(EType::Vertex, spirvPath, "main")
+    : VulkanShader(EShaderStage::VERTEX, spirvPath, "main")
     {
     }
     VulkanVertexShader::VulkanVertexShader(const char* spirvPath, const Quaint::QName entryFunction)
-    : VulkanShader(EType::Vertex, spirvPath, entryFunction)
+    : VulkanShader(EShaderStage::VERTEX, spirvPath, entryFunction)
     {
         
     }
 
     VulkanFragmentShader::VulkanFragmentShader(const char* spirvPath)
-    : VulkanShader(EType::Fragment, spirvPath, "main")
+    : VulkanShader(EShaderStage::FRAGMENT, spirvPath, "main")
     {
 
     }
     VulkanFragmentShader::VulkanFragmentShader(const char* spirvPath, const Quaint::QName entryFunction)
-    : VulkanShader(EType::Vertex, spirvPath, entryFunction)
+    : VulkanShader(EShaderStage::FRAGMENT, spirvPath, entryFunction)
     {
 
     }

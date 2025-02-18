@@ -45,13 +45,13 @@ namespace Bolt { namespace vulkan{
         m_buffer = VK_NULL_HANDLE;
     }
 
-    void VulkanShaderGroupResource::wrap(const Quaint::QArray<ShaderAttachmentInfo>& attachments, VulkanShaderGroup&& shaderGroup)
-    {
-        m_attachmentRefs = attachments;
-        m_shaderGroup.moveFrom(shaderGroup);
-    }
-    void VulkanShaderGroupResource::destroy()
-    {
-        m_shaderGroup.destroy();
-    }
+    //void VulkanShaderGroupResource::wrap(const Quaint::QArray<ShaderAttachmentInfo>& attachments, VulkanShaderGroup&& shaderGroup)
+    //{
+    //    m_attachmentRefs = attachments;
+    //    m_shaderGroup.moveFrom(shaderGroup);
+    //}
+    //void VulkanShaderGroupResource::destroy()
+    //{
+    //    m_shaderGroup.destroy();
+    //}
 }}

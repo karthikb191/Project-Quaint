@@ -12,35 +12,35 @@ namespace Quaint
         First first;
         Second second;
 
-        bool operator ==(const First& key)
+        bool operator ==(const First& key) const
         {
             return first == key;
         }
-        bool operator ==(const QPair<First,Second>& other)
+        bool operator ==(const QPair<First,Second>& other) const
         {
             return this->operator == (other.first);
         }
-        bool operator!=(const First& key)
+        bool operator!=(const First& key) const
         {
             return first != key;
         }
-        bool operator !=(const QPair<First,Second>& other)
+        bool operator !=(const QPair<First,Second>& other) const
         {
             return this->operator != (other.first);
         }
-        bool operator <(const First& key)
+        bool operator <(const First& key) const
         {
             return first < key;
         }
-        bool operator <(const QPair<First,Second>& other)
+        bool operator <(const QPair<First,Second>& other) const
         {
             return this->operator < (other.first);
         }
-        bool operator >(const First& key)
+        bool operator >(const First& key) const
         {
             return first > key;
         }
-        bool operator >(const QPair<First,Second>& other)
+        bool operator >(const QPair<First,Second>& other) const
         {
             return this->operator > (other.first);
         }
@@ -80,8 +80,8 @@ namespace Quaint
             return *this;
         }
 
-        template<typename TKey, typenamt TData>
-        QMap(const QMap<TKey, TData>& other)
+        QMap(const QMap<Key, Data>& other)
+        : QMap(other.m_context)
         {
             clear();
             for(auto& entry : other)
@@ -90,12 +90,12 @@ namespace Quaint
             }
         }
 
-        template<typename TKey, typenamt TData>
-        QMap(QMap<TKey, TData>&& other)
+        QMap(QMap<Key, Data>&& other)
+        : QMap(other.m_context)
         {
             clear();
             m_context = other.m_context;
-            m_tree = other.m_tree;
+            m_tree = std::move(other.m_tree);
         }
 
         ~QMap()
@@ -103,7 +103,7 @@ namespace Quaint
             clear();
         }
 
-        template<typename TKey, typenamt TData>
+        template<typename TKey, typename TData>
         QMap& operator=(const QMap<TKey, TData>& other)
         {
             clear();
@@ -113,7 +113,7 @@ namespace Quaint
             }
         }
 
-        template<typename TKey, typenamt TData>
+        template<typename TKey, typename TData>
         QMap& operator=(QMap<TKey, TData>&& other)
         {
             clear();
@@ -192,10 +192,10 @@ namespace Quaint
             ++itr;
             return itr;
         }
-        Const_Iterator cbegin() const
+        Const_Iterator begin() const
         {
-            Iterator itr(&m_tree, true);
-            ++itr;
+            Const_Iterator itr(const_cast<QRBTree<QPair<Key, Data>>*>(&m_tree), true);
+            ++(*(const_cast<Iterator*>(&itr)));
             return itr;
         }
         Reverse_Iterator rbegin()
@@ -214,9 +214,9 @@ namespace Quaint
         {
             return Iterator(&m_tree);
         }
-        Const_Iterator cend() const
+        Const_Iterator end() const
         {
-            return Iterator(&m_tree);
+            return Const_Iterator(const_cast<QRBTree<QPair<Key, Data>>*>(&m_tree));
         }
         Reverse_Iterator rend()
         {

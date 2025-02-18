@@ -23,8 +23,8 @@ namespace Bolt { namespace vulkan
     , m_VIBs(context)
     , m_VIAs(context)
     {
-        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, vertSprvPath));
-        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath));
+        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, vertSprvPath.getBuffer()));
+        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath.getBuffer()));
     }
 
     VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup)
@@ -35,8 +35,8 @@ namespace Bolt { namespace vulkan
     , m_VIBs(context)
     , m_VIAs(context)
     {
-        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, shaderGroup.getVertexShaderPath()));
-        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, shaderGroup.getFragmentShaderPath()));
+        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, shaderGroup.getVertexShaderPath().getBuffer()));
+        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, shaderGroup.getFragmentShaderPath().getBuffer()));
     }
 
     VulkanShaderGroup::~VulkanShaderGroup()

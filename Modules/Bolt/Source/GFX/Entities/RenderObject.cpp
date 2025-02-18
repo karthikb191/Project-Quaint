@@ -131,18 +131,18 @@ namespace Bolt
         diffuseTexInfo.resourceType = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
         diffuseTexInfo.resource = texResource;
 
-        GraphicsResource* shaderGroupResource = 
-        sgBuilder
-        .setVertShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
-        .setFragShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
-        .addAttchmentRef(uboAttachInfo)
-        .addAttchmentRef(diffuseTexInfo)
-        .build();
+        //GraphicsResource* shaderGroupResource = 
+        //sgBuilder
+        //.setVertShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
+        //.setFragShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
+        //.addAttchmentRef(uboAttachInfo)
+        //.addAttchmentRef(diffuseTexInfo)
+        //.build();
         
         m_RenderInfo.drawType = EPrimitiveDrawType::INDEXED;
         m_RenderInfo.vertBufferResource = vertResource;
         m_RenderInfo.indexBufferResource = indexResource;
-        m_RenderInfo.shaderGroupResource = shaderGroupResource;
+        //m_RenderInfo.shaderGroupResource = shaderGroupResource;
         
 
         //TODO: Application map interface

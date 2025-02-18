@@ -19,23 +19,23 @@ namespace Bolt { namespace vulkan {
 
     void VulkanRenderObject::build(const GeometryRenderInfo& renderInfo)
     {
-        VkDevice device = VulkanRenderer::get()->getDevice();
-        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        
-        m_shaderGroupResource = static_cast<VulkanShaderGroupResource*>(renderInfo.shaderGroupResource->getGpuResourceProxy());
-
-        ShaderInfo shaderInfo{};
-        
-        shaderInfo.maxResourceSets = 1;
-        shaderInfo.resources = m_shaderGroupResource->getAttachmentRefs();
-        //TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
-        //createShaderGroup(shaderinfo); // Probably not needed as shader group would've already been created
-        
-        createDescriptorLayoutInformation(shaderInfo);
-        allocateDescriptorPool(shaderInfo);
-        createDescriptors(shaderInfo);
-        createPipeline();
-        writeDescriptorSets();
+        //VkDevice device = VulkanRenderer::get()->getDevice();
+        //VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        //
+        //m_shaderGroupResource = static_cast<VulkanShaderGroupResource*>(renderInfo.shaderGroupResource->getGpuResourceProxy());
+//
+        //ShaderInfo shaderInfo{};
+        //
+        //shaderInfo.maxResourceSets = 1;
+        //shaderInfo.resources = m_shaderGroupResource->getAttachmentRefs();
+        ////TODO: Hardcoding for now, but get this information from ShaderData. Doesn't make sense otherwise
+        ////createShaderGroup(shaderinfo); // Probably not needed as shader group would've already been created
+        //
+        //createDescriptorLayoutInformation(shaderInfo);
+        //allocateDescriptorPool(shaderInfo);
+        //createDescriptors(shaderInfo);
+        //createPipeline();
+        //writeDescriptorSets();
     }
 
     void VulkanRenderObject::destroy()
@@ -184,250 +184,250 @@ namespace Bolt { namespace vulkan {
 
     void VulkanRenderObject::writeDescriptorSets()
     {
-        VkDevice device = VulkanRenderer::get()->getDevice();
-        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        // VkDevice device = VulkanRenderer::get()->getDevice();
+        // VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        Quaint::QArray<VkWriteDescriptorSet> writes(m_renderObject->getMemoryContext());
-        assert(m_shaderGroupResource != nullptr && "Invalis shader group resource available to write to descriptor sets");
-        auto& attachments = m_shaderGroupResource->getAttachmentRefs();
+        // Quaint::QArray<VkWriteDescriptorSet> writes(m_renderObject->getMemoryContext());
+        // assert(m_shaderGroupResource != nullptr && "Invalis shader group resource available to write to descriptor sets");
+        // auto& attachments = m_shaderGroupResource->getAttachmentRefs();
 
-        Quaint::QArray<VkDescriptorImageInfo> imageWrites(m_renderObject->getMemoryContext());
-        Quaint::QArray<VkDescriptorBufferInfo> bufferWrites(m_renderObject->getMemoryContext());
-        for(auto& attachment : attachments)
-        {
-            uint32_t imageInfoStartIdx = (uint32_t)imageWrites.getSize();
-            uint32_t bufferInfoStartIdx = (uint32_t)bufferWrites.getSize();
+        // Quaint::QArray<VkDescriptorImageInfo> imageWrites(m_renderObject->getMemoryContext());
+        // Quaint::QArray<VkDescriptorBufferInfo> bufferWrites(m_renderObject->getMemoryContext());
+        // for(auto& attachment : attachments)
+        // {
+        //     uint32_t imageInfoStartIdx = (uint32_t)imageWrites.getSize();
+        //     uint32_t bufferInfoStartIdx = (uint32_t)bufferWrites.getSize();
 
-            VkWriteDescriptorSet write{};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = m_sets[attachment.set];
-            write.dstBinding = attachment.binding;
-            write.descriptorCount = attachment.count;
-            write.descriptorType = toVulkanDescriptorType(attachment.resourceType);
-            //TODO: get layout info from resource
-            if(attachment.resourceType == EShaderResourceType::COMBINED_IMAGE_SAMPLER)
-            {
-                EResourceType type = attachment.resource->getResourceType();
-                //TODO: A helper function to get sampler reource type from resource type
-                VulkanCombinedImageSamplerResource* res 
-                = static_cast<VulkanCombinedImageSamplerResource*>(attachment.resource->getGpuResourceProxy());
+        //     VkWriteDescriptorSet write{};
+        //     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        //     write.dstSet = m_sets[attachment.set];
+        //     write.dstBinding = attachment.binding;
+        //     write.descriptorCount = attachment.count;
+        //     write.descriptorType = toVulkanDescriptorType(attachment.resourceType);
+        //     //TODO: get layout info from resource
+        //     if(attachment.resourceType == EShaderResourceType::COMBINED_IMAGE_SAMPLER)
+        //     {
+        //         EResourceType type = attachment.resource->getResourceType();
+        //         //TODO: A helper function to get sampler reource type from resource type
+        //         VulkanCombinedImageSamplerResource* res 
+        //         = static_cast<VulkanCombinedImageSamplerResource*>(attachment.resource->getGpuResourceProxy());
 
-                VkDescriptorImageInfo imageInfo{};
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = res->getTexture().getImageView();
-                imageInfo.sampler = res->getSampler();
+        //         VkDescriptorImageInfo imageInfo{};
+        //         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //         imageInfo.imageView = res->getTexture().getImageView();
+        //         imageInfo.sampler = res->getSampler();
                 
-                imageWrites.pushBack(imageInfo);
-            }
-            else if(attachment.resourceType == EShaderResourceType::UNIFORM_BUFFER)
-            {
-                VkDescriptorBufferInfo bufferInfo{};
-                VulkanBufferObjectResource* res 
-                = static_cast<VulkanBufferObjectResource*>(attachment.resource->getGpuResourceProxy());
+        //         imageWrites.pushBack(imageInfo);
+        //     }
+        //     else if(attachment.resourceType == EShaderResourceType::UNIFORM_BUFFER)
+        //     {
+        //         VkDescriptorBufferInfo bufferInfo{};
+        //         VulkanBufferObjectResource* res 
+        //         = static_cast<VulkanBufferObjectResource*>(attachment.resource->getGpuResourceProxy());
                 
-                bufferInfo.buffer = res->getBufferhandle();
-                bufferInfo.range = res->getBufferInfo().size;
-                bufferInfo.offset = res->getBufferInfo().offset;
-                bufferWrites.pushBack(bufferInfo);
-            }
-            else
-            {
-                assert(false && "unsupported resource type passed");
-            }
+        //         bufferInfo.buffer = res->getBufferhandle();
+        //         bufferInfo.range = res->getBufferInfo().size;
+        //         bufferInfo.offset = res->getBufferInfo().offset;
+        //         bufferWrites.pushBack(bufferInfo);
+        //     }
+        //     else
+        //     {
+        //         assert(false && "unsupported resource type passed");
+        //     }
 
-            write.pImageInfo = imageWrites.getBuffer() + imageInfoStartIdx;
-            write.pBufferInfo = bufferWrites.getBuffer() + bufferInfoStartIdx;
-            write.pTexelBufferView = nullptr;
+        //     write.pImageInfo = imageWrites.getBuffer() + imageInfoStartIdx;
+        //     write.pBufferInfo = bufferWrites.getBuffer() + bufferInfoStartIdx;
+        //     write.pTexelBufferView = nullptr;
 
-            writes.pushBack(write);
-        }
+        //     writes.pushBack(write);
+        // }
 
-        vkUpdateDescriptorSets(device, (uint32_t)writes.getSize(), writes.getBuffer(), 0, nullptr);
+        // vkUpdateDescriptorSets(device, (uint32_t)writes.getSize(), writes.getBuffer(), 0, nullptr);
     }
 
     void VulkanRenderObject::createPipeline()
     {
-        VkDevice device = VulkanRenderer::get()->getDevice();
-        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-        VulkanShaderGroup& shaderGroup = m_shaderGroupResource->getShaderGroup();
+//         VkDevice device = VulkanRenderer::get()->getDevice();
+//         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+//         VulkanShaderGroup& shaderGroup = m_shaderGroupResource->getShaderGroup();
 
-        VkPipelineShaderStageCreateInfo vertStageInfo{};
-        vertStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertStageInfo.module = shaderGroup.getVertexShader()->getHandle();
-        vertStageInfo.pName = "main"; //TODO: Pass from shader info
-        //vertStageInfo.pSpecializationInfo = //This lets us specify values for shader constants. TODO: Read more on this later 
+//         VkPipelineShaderStageCreateInfo vertStageInfo{};
+//         vertStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+//         vertStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+//         vertStageInfo.module = shaderGroup.getVertexShader()->getHandle();
+//         vertStageInfo.pName = "main"; //TODO: Pass from shader info
+//         //vertStageInfo.pSpecializationInfo = //This lets us specify values for shader constants. TODO: Read more on this later 
 
-        VkPipelineShaderStageCreateInfo fragStageInfo{};
-        fragStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragStageInfo.module = shaderGroup.getFragmentShader()->getHandle();
-        fragStageInfo.pName = "main"; // TODO: 
+//         VkPipelineShaderStageCreateInfo fragStageInfo{};
+//         fragStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+//         fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+//         fragStageInfo.module = shaderGroup.getFragmentShader()->getHandle();
+//         fragStageInfo.pName = "main"; // TODO: 
 
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
+//         VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
 
-        //create Dynamic states. Specifying these ignores the configuration of these values and these must be specified at drawing time
-        //TODO: No dynamic states for now
-        VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
-        dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateInfo.dynamicStateCount = 0;
-        dynamicStateInfo.pDynamicStates = nullptr;
+//         //create Dynamic states. Specifying these ignores the configuration of these values and these must be specified at drawing time
+//         //TODO: No dynamic states for now
+//         VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+//         dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+//         dynamicStateInfo.dynamicStateCount = 0;
+//         dynamicStateInfo.pDynamicStates = nullptr;
 
-        //Pass in vertex input. This structure describes the format of vertex data that will be passed to the vertex shader
-        //Populated below
-        VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
-        vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+//         //Pass in vertex input. This structure describes the format of vertex data that will be passed to the vertex shader
+//         //Populated below
+//         VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
+//         vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-        //TODO: Fill these
-        //Spacing between data and whether data is per-vertex or per-instance
-        vertexInputStateInfo.vertexBindingDescriptionCount = 0;
-        vertexInputStateInfo.pVertexBindingDescriptions = nullptr;
+//         //TODO: Fill these
+//         //Spacing between data and whether data is per-vertex or per-instance
+//         vertexInputStateInfo.vertexBindingDescriptionCount = 0;
+//         vertexInputStateInfo.pVertexBindingDescriptions = nullptr;
 
-        //Types of attributes passed to vertex shader, which binding to load them from and at which offset
-        vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
+//         //Types of attributes passed to vertex shader, which binding to load them from and at which offset
+//         vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
+//         vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
 
-        //TODO: Get this info from RenderObejct data
-        //Input Assembly: We specify what kind of geometry to be drawn an if primitiveRestart should be enabled. Not sure what this is yet
-        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-        inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+//         //TODO: Get this info from RenderObejct data
+//         //Input Assembly: We specify what kind of geometry to be drawn an if primitiveRestart should be enabled. Not sure what this is yet
+//         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+//         inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+//         inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+//         inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-        //Setting up Viewport and scissor
-        const VkExtent2D& extent = {512, 512};
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(extent.width);
-        viewport.height = static_cast<float>(extent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
+//         //Setting up Viewport and scissor
+//         const VkExtent2D& extent = {512, 512};
+//         VkViewport viewport{};
+//         viewport.x = 0.0f;
+//         viewport.y = 0.0f;
+//         viewport.width = static_cast<float>(extent.width);
+//         viewport.height = static_cast<float>(extent.height);
+//         viewport.minDepth = 0.0f;
+//         viewport.maxDepth = 1.0f;
 
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = extent;
+//         VkRect2D scissor{};
+//         scissor.offset = {0, 0};
+//         scissor.extent = extent;
 
-        VkPipelineViewportStateCreateInfo viewportStateInfo{};
-        viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+//         VkPipelineViewportStateCreateInfo viewportStateInfo{};
+//         viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         
-        viewportStateInfo.scissorCount = 1;
-        viewportStateInfo.pScissors = &scissor;
-        viewportStateInfo.viewportCount = 1;
-        viewportStateInfo.pViewports = &viewport;
+//         viewportStateInfo.scissorCount = 1;
+//         viewportStateInfo.pScissors = &scissor;
+//         viewportStateInfo.viewportCount = 1;
+//         viewportStateInfo.pViewports = &viewport;
 
-        //Rasterizer: Takes geometry shaped by the vertices and turns it into fragments
-        //Also performs depth testing, face culling
-        VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
-        rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        //If this is set to true, fragments that are beyond near and far planes are clamped as opposed to discarded.
-        //This is useful in shadow maps;
-        rasterizationInfo.depthClampEnable = VK_FALSE;
-        //If this is true, geometry never passes through rasterization stage and nothing gets drawn to framebuffer
-        rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
-        rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizationInfo.lineWidth = 1.0f;
-        rasterizationInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT; //Cull back faces
-        rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //Vertices are processed in clock-wise direction
-        rasterizationInfo.depthBiasEnable = VK_FALSE;
+//         //Rasterizer: Takes geometry shaped by the vertices and turns it into fragments
+//         //Also performs depth testing, face culling
+//         VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
+//         rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+//         //If this is set to true, fragments that are beyond near and far planes are clamped as opposed to discarded.
+//         //This is useful in shadow maps;
+//         rasterizationInfo.depthClampEnable = VK_FALSE;
+//         //If this is true, geometry never passes through rasterization stage and nothing gets drawn to framebuffer
+//         rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+//         rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+//         rasterizationInfo.lineWidth = 1.0f;
+//         rasterizationInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT; //Cull back faces
+//         rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //Vertices are processed in clock-wise direction
+//         rasterizationInfo.depthBiasEnable = VK_FALSE;
 
-        //Multi-sampling: helps with alnti aliasing. More on this later
-        VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
-        multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisamplingInfo.sampleShadingEnable = VK_FALSE;
-        multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+//         //Multi-sampling: helps with alnti aliasing. More on this later
+//         VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+//         multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+//         multisamplingInfo.sampleShadingEnable = VK_FALSE;
+//         multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        //TODO: Depth and Stencil testing: We have to set up a structure for depth and stencil testing here late
+//         //TODO: Depth and Stencil testing: We have to set up a structure for depth and stencil testing here late
 
-        //Color Blending: 
-        VkPipelineColorBlendAttachmentState blendAttachmentState{};
-        blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        blendAttachmentState.blendEnable = VK_FALSE;
+//         //Color Blending: 
+//         VkPipelineColorBlendAttachmentState blendAttachmentState{};
+//         blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+//         blendAttachmentState.blendEnable = VK_FALSE;
 
-        VkPipelineColorBlendStateCreateInfo blendInfo{};
-        blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        blendInfo.attachmentCount = 1;
-        blendInfo.pAttachments = &blendAttachmentState;
-        blendInfo.logicOpEnable = VK_FALSE;
-        blendInfo.logicOp = VK_LOGIC_OP_COPY;
-        blendInfo.blendConstants[0] = 0.0f;
-        blendInfo.blendConstants[1] = 0.0f;
-        blendInfo.blendConstants[2] = 0.0f;
-        blendInfo.blendConstants[3] = 0.0f;
+//         VkPipelineColorBlendStateCreateInfo blendInfo{};
+//         blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+//         blendInfo.attachmentCount = 1;
+//         blendInfo.pAttachments = &blendAttachmentState;
+//         blendInfo.logicOpEnable = VK_FALSE;
+//         blendInfo.logicOp = VK_LOGIC_OP_COPY;
+//         blendInfo.blendConstants[0] = 0.0f;
+//         blendInfo.blendConstants[1] = 0.0f;
+//         blendInfo.blendConstants[2] = 0.0f;
+//         blendInfo.blendConstants[3] = 0.0f;
 
-        VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
-        graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        //Shader Modules setup
-        graphicsPipelineInfo.stageCount = 2;
-        graphicsPipelineInfo.pStages = shaderStages;
+//         VkGraphicsPipelineCreateInfo graphicsPipelineInfo{};
+//         graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+//         //Shader Modules setup
+//         graphicsPipelineInfo.stageCount = 2;
+//         graphicsPipelineInfo.pStages = shaderStages;
         
-        //Fixed stage setup
-        graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
+//         //Fixed stage setup
+//         graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
 
-//-------------Vertex Shader input binding----------------------
-        //TODO: Generate this information from a string
+// //-------------Vertex Shader input binding----------------------
+//         //TODO: Generate this information from a string
 
-        //TODO: Get this from some info structure or a render object
-        VkVertexInputBindingDescription inputBindingDesc{};
-        inputBindingDesc.binding = 0;
-        inputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        inputBindingDesc.stride = sizeof(Quaint::QVertex);
+//         //TODO: Get this from some info structure or a render object
+//         VkVertexInputBindingDescription inputBindingDesc{};
+//         inputBindingDesc.binding = 0;
+//         inputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+//         inputBindingDesc.stride = sizeof(Quaint::QVertex);
 
-        //auto inputBindingDesc = QVertex::getBindingDescription();
-        Quaint::QFastArray<VkVertexInputAttributeDescription, 3> attributeDesc;
-        constexpr auto posOff = Quaint::QVertex::getPositionOffset();
-        constexpr auto colorOff = Quaint::QVertex::getColorOffset();
-        constexpr auto texCoordOff = Quaint::QVertex::getTexCoordOffset();
-        //Position
-        attributeDesc[0].binding = 0;
-        attributeDesc[0].location = 0;
-        attributeDesc[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-        attributeDesc[0].offset = Quaint::QVertex::getPositionOffset();
+//         //auto inputBindingDesc = QVertex::getBindingDescription();
+//         Quaint::QFastArray<VkVertexInputAttributeDescription, 3> attributeDesc;
+//         constexpr auto posOff = Quaint::QVertex::getPositionOffset();
+//         constexpr auto colorOff = Quaint::QVertex::getColorOffset();
+//         constexpr auto texCoordOff = Quaint::QVertex::getTexCoordOffset();
+//         //Position
+//         attributeDesc[0].binding = 0;
+//         attributeDesc[0].location = 0;
+//         attributeDesc[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+//         attributeDesc[0].offset = Quaint::QVertex::getPositionOffset();
 
-        //Color
-        attributeDesc[1].binding = 0;
-        attributeDesc[1].location = 1;
-        attributeDesc[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-        attributeDesc[1].offset = Quaint::QVertex::getColorOffset();
+//         //Color
+//         attributeDesc[1].binding = 0;
+//         attributeDesc[1].location = 1;
+//         attributeDesc[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+//         attributeDesc[1].offset = Quaint::QVertex::getColorOffset();
 
-        //Texcoord
-        attributeDesc[2].binding = 0;
-        attributeDesc[2].location = 2;
-        attributeDesc[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDesc[2].offset = Quaint::QVertex::getTexCoordOffset();
+//         //Texcoord
+//         attributeDesc[2].binding = 0;
+//         attributeDesc[2].location = 2;
+//         attributeDesc[2].format = VK_FORMAT_R32G32_SFLOAT;
+//         attributeDesc[2].offset = Quaint::QVertex::getTexCoordOffset();
 
-        //TODO: This probably doesnt get correct values
-        vertexInputStateInfo.vertexBindingDescriptionCount = 1;
-        vertexInputStateInfo.pVertexBindingDescriptions = &inputBindingDesc;
+//         //TODO: This probably doesnt get correct values
+//         vertexInputStateInfo.vertexBindingDescriptionCount = 1;
+//         vertexInputStateInfo.pVertexBindingDescriptions = &inputBindingDesc;
 
-        vertexInputStateInfo.vertexAttributeDescriptionCount = attributeDesc.getSize();
-        vertexInputStateInfo.pVertexAttributeDescriptions = attributeDesc.getBuffer();
+//         vertexInputStateInfo.vertexAttributeDescriptionCount = attributeDesc.getSize();
+//         vertexInputStateInfo.pVertexAttributeDescriptions = attributeDesc.getBuffer();
 
-        graphicsPipelineInfo.pVertexInputState = &vertexInputStateInfo;
-//---------------------------------------------------------------
+//         graphicsPipelineInfo.pVertexInputState = &vertexInputStateInfo;
+// //---------------------------------------------------------------
 
-        graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
-        graphicsPipelineInfo.pViewportState = &viewportStateInfo;
-        graphicsPipelineInfo.pRasterizationState = &rasterizationInfo;
-        graphicsPipelineInfo.pMultisampleState = &multisamplingInfo;
-        graphicsPipelineInfo.pColorBlendState = &blendInfo;
-        graphicsPipelineInfo.pDepthStencilState = nullptr;
+//         graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
+//         graphicsPipelineInfo.pViewportState = &viewportStateInfo;
+//         graphicsPipelineInfo.pRasterizationState = &rasterizationInfo;
+//         graphicsPipelineInfo.pMultisampleState = &multisamplingInfo;
+//         graphicsPipelineInfo.pColorBlendState = &blendInfo;
+//         graphicsPipelineInfo.pDepthStencilState = nullptr;
 
-        graphicsPipelineInfo.layout = m_pipelineLayout;
+//         graphicsPipelineInfo.layout = m_pipelineLayout;
 
-        //TODO: Somehow handle this better
-        //VulkanRenderPass* renderPass = VulkanRenderer::get()->getRenderFrameScene()->getRenderPass();
-        VulkanRenderPass* renderPass = nullptr;
+//         //TODO: Somehow handle this better
+//         //VulkanRenderPass* renderPass = VulkanRenderer::get()->getRenderFrameScene()->getRenderPass();
+//         VulkanRenderPass* renderPass = nullptr;
         
-        graphicsPipelineInfo.renderPass = VK_NULL_HANDLE;
-        graphicsPipelineInfo.subpass = 0; 
+//         graphicsPipelineInfo.renderPass = VK_NULL_HANDLE;
+//         graphicsPipelineInfo.subpass = 0; 
 
-        //Vulkan lets you create new pipelines by deriving from existing ones. More on this later
-        graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        graphicsPipelineInfo.basePipelineIndex = 0;
+//         //Vulkan lets you create new pipelines by deriving from existing ones. More on this later
+//         graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+//         graphicsPipelineInfo.basePipelineIndex = 0;
 
-        ASSERT_SUCCESS(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, callbacks, &m_pipeline)
-        , "Failed to create Graphics pipeline");
+//         ASSERT_SUCCESS(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, callbacks, &m_pipeline)
+//         , "Failed to create Graphics pipeline");
     }
 
     void VulkanRenderObject::draw(const GeometryRenderInfo& info)

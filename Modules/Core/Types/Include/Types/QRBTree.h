@@ -86,6 +86,10 @@ public:
         {
             return m_node->key;
         }
+        const T& operator*() const
+        {
+            return m_node->key;
+        }
 
         bool operator==(const Iterator& other)
         {
@@ -162,6 +166,21 @@ public:
 
         m_root = &m_sentinel;
     }
+    QRBTree(const QRBTree& other) = delete;
+    QRBTree(QRBTree&& other)
+    {
+        m_context = other.m_context;
+        m_root = other.m_root;
+        m_size = other.m_size;
+    }
+    QRBTree& operator=(QRBTree&& other)
+    {
+        m_context = other.m_context;
+        m_root = other.m_root;
+        m_size = other.m_size;
+        return *this;
+    }
+
     ~QRBTree()
     {
         deleteSubTree(m_root);

@@ -2,6 +2,7 @@
 #include <GFX/Vulkan/Internal/VulkanShader.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/VulkanHelpers.h>
+#include <GFX/Vulkan/Internal/VulkanShader.h>
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/ResourceBuilder.h>
 
@@ -21,15 +22,17 @@ namespace Bolt
     {
         m_pipeline->buildShaders(definition);
         m_pipeline->setVertexAttributes(definition, VK_VERTEX_INPUT_RATE_VERTEX);
+        return *this;
     }
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupPrimitiveTopology(bool primitiveRestartEnabled, VkPrimitiveTopology topology)
     {
         m_pipeline->setInputAssemblyState(primitiveRestartEnabled, topology);
+        return *this;
     }
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupRenderStageInfo(const RenderScene* const scene, const uint32_t stageIndex, bool addViewport)
     {
         assert(scene != nullptr && "Invalid render scene passed");
-        assert(stageIndex >= 0 && stageIndex < scene->getRenderStages().getSize(), "Invalid render stage passed");
+        assert(stageIndex >= 0 && stageIndex < scene->getRenderStages().getSize() && "Invalid render stage passed");
         m_pipeline->setRenderStage(scene, stageIndex);
         if(addViewport)
         {
@@ -37,23 +40,13 @@ namespace Bolt
             m_pipeline->addViewport(renderInfo.offset.x, renderInfo.offset.y, renderInfo.extents.x, renderInfo.extents.y, 0.0f, 1.0f
                             , VkOffset2D{0, 0}, VkExtent2D{(uint32_t)renderInfo.extents.x, (uint32_t)renderInfo.extents.y});
         }
+        return *this;
     }
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace)
     {
         m_pipeline->setRasterizationInfo(polyMode, cullMode, frontFace);
+        return *this;
     }
-    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupBlendState(const RenderStage* const stage)
-    {
-        auto& attachmentRefs = stage->attachmentRefs;
-        for(int i = 0; i < attachmentRefs.getSize(); ++i)
-        {
-            if(attachmentRefs[i].attachmentName == "swapchain")
-            {
-                
-            }
-        }
-    }
-        
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
     {
         m_pipeline->init();
@@ -72,6 +65,7 @@ namespace Bolt
         , m_attrDescs(context)
         , m_viewports(context)
         , m_scissors(context)
+        , m_blendAttachments(context)
         {
         }
         void VulkanGraphicsPipeline::buildShaders(const ShaderDefinition& definition)
@@ -136,6 +130,46 @@ namespace Bolt
 
             m_renderPass = vulkanScene->getRenderpass();
             m_subPass = stageIndex;
+
+            const RenderStage& stage = scene->getRenderStages()[stageIndex];
+            auto& attachmentRefs = stage.attachmentRefs;
+            for(size_t i = 0; i < attachmentRefs.getSize(); ++i)
+            {
+                VkPipelineColorBlendAttachmentState state {};
+                state.blendEnable = VK_FALSE;
+                //TODO: Make it generic
+                if(attachmentRefs[i].attachmentName == "swapchain")
+                {
+                    state.blendEnable = VK_TRUE;
+                    state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+                    state.dstColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+                    state.colorBlendOp = VK_BLEND_OP_ADD;
+                    state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                    state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                }
+                m_blendAttachments.pushBack(state);
+            }
+
+            //Pipeline layout setup
+            VkDevice device = VulkanRenderer::get()->getDevice();
+            VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+            VkPipelineLayoutCreateInfo layoutInfo{};
+            layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layoutInfo.pNext = nullptr;
+            //TODO: Add push constants
+            layoutInfo.pushConstantRangeCount = 0;
+            layoutInfo.pPushConstantRanges = nullptr;
+            
+            VkDescriptorSetLayout setLayout{};
+            //setLayout.
+
+            //vkCreatePipelineLayout(device, , callbacks, &m_layout);
+        }
+        void VulkanGraphicsPipeline::buildDescriptors(const RenderScene* const scene)
+        {
+
         }
         void VulkanGraphicsPipeline::addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent)
         {
@@ -244,6 +278,17 @@ namespace Bolt
             info.pDepthStencilState = nullptr;
 
 
+            // Blend
+            VkPipelineColorBlendStateCreateInfo blendInfo{};
+            blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            blendInfo.flags = 0;
+            blendInfo.pNext = nullptr;
+            blendInfo.logicOpEnable = VK_FALSE;
+            blendInfo.logicOp = VK_LOGIC_OP_COPY;
+            blendInfo.attachmentCount = m_blendAttachments.getSize();
+            blendInfo.pAttachments = m_blendAttachments.getBuffer();
+
+            info.pColorBlendState = &blendInfo;
 
             // No dynamic state for now
             info.pDynamicState = nullptr;

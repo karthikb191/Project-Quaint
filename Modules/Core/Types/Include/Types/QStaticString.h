@@ -94,6 +94,19 @@ public:
         }
         return strcmp(m_rawData, other.getBuffer()) == 0;
     }
+    bool operator==(const char* other) const
+    {
+        return strcmp(m_rawData, other) == 0;
+    }
+    bool operator<(const QStaticString<N>& other) const
+    {
+        return strcmp(m_rawData, other.getBuffer()) < 0;
+    }
+    bool operator>(const QStaticString<N>& other) const
+    {
+        return strcmp(m_rawData, other.getBuffer()) > 0;
+    }
+
 
     friend std::ostream& operator<<(std::ostream& os, const QStaticString<N>& str)
     {

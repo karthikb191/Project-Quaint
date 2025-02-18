@@ -24,8 +24,8 @@ namespace Bolt
         Pipeline(Quaint::IMemoryContext* context, const ShaderDefinition& shader);
         
         //Uses builder to bind this pipeline to GPU
-        virtual void bindToGpu() override;
-        virtual void unbindFromGPU() override;
+        virtual void bindToGpu() override { /*TODO:*/ }
+        virtual void unbindFromGPU() override { /*TODO:*/ }
         
     private:
         PipelineInputInfo   m_piplelineInfo;

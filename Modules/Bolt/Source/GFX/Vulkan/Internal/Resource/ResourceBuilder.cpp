@@ -45,7 +45,9 @@ namespace Bolt {
 
         proxy->wrap(sampler, texture);
 
-        GraphicsResource* resource = GraphicsResource::create<GraphicsResource>(m_context, EResourceType::COMBINED_IMAGE_SAMPLER, proxy);
+        GraphicsResource* resource = GraphicsResource::create<GraphicsResource>(m_context, EResourceType::COMBINED_IMAGE_SAMPLER);
+        
+        //TODO: Should refactor this to only build the Vulkan Resource
         return resource;
     }
 
@@ -162,7 +164,7 @@ namespace Bolt {
                             , m_name
                             , m_fragShaderPath
                             , m_vertShaderPath
-                            , m_attributeMap);
+                            , std::move(m_attributeMap));
         m_ptr.reset(shaderGroup);
         return std::move(m_ptr);
     }

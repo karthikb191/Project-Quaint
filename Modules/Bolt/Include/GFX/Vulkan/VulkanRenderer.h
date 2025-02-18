@@ -29,7 +29,7 @@ namespace Bolt
     class BoltRenderer;
     class VulkanRenderer;
     class RenderScene;
-    struct RenderStage;
+    class RenderStage;
 
     namespace vulkan
     {

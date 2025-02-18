@@ -2,10 +2,19 @@
 #define _H_Vulkan_Pipeline
 
 #include <Vulkan/vulkan.h>
+#include <Interface/IMemoryContext.h>
+#include <GFX/Data/ShaderInfo.h>
+#include <Types/QArray.h>
 
-namespace Bolt{ namespace vulkan {
+namespace Bolt{ 
+    
+    class RenderScene;
+    class RenderStage;
+
+    namespace vulkan {
 
     class VulkanGraphicsPipeline;
+    class VulkanShader;
     class VulkanGraphicsPipelineBuilder
     {
     public:
@@ -15,7 +24,6 @@ namespace Bolt{ namespace vulkan {
         VulkanGraphicsPipelineBuilder& setupRenderStageInfo(const RenderScene* const scene, const uint32_t stageIndex, const bool addViewport);
         //TODO: Add viewport override
         VulkanGraphicsPipelineBuilder& setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
-        VulkanGraphicsPipelineBuilder& setupBlendState(const RenderStage* const stage);
         
         //TODO: Add dynamic state support
         VulkanGraphicsPipeline* build();
@@ -40,6 +48,8 @@ namespace Bolt{ namespace vulkan {
         void setVertexAttributes(const ShaderDefinition& definition, VkVertexInputRate pInputRate);
         void setInputAssemblyState(const bool pRestartEnabled, const VkPrimitiveTopology pTopology);
         void setRenderStage(const RenderScene* const scene, const uint32_t stageIndex);
+        /*Pipeline should own descriptors and pipeline layout. These should get destroyed with the pipeline*/
+        void buildDescriptors(const RenderScene* const scene);
         void addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent);
         void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
 
@@ -52,6 +62,7 @@ namespace Bolt{ namespace vulkan {
         Quaint::QArray<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         Quaint::QArray<VkVertexInputBindingDescription> m_bindingDescs;
         Quaint::QArray<VkVertexInputAttributeDescription> m_attrDescs;
+        Quaint::QArray<VkPipelineColorBlendAttachmentState> m_blendAttachments;
         Quaint::QArray<VkViewport> m_viewports;
         Quaint::QArray<VkRect2D> m_scissors;
 
@@ -63,6 +74,7 @@ namespace Bolt{ namespace vulkan {
         VkCullModeFlagBits m_cullMode = VK_CULL_MODE_NONE;
         VkFrontFace m_frontFace = VK_FRONT_FACE_CLOCKWISE;
 
+        VkPipelineLayout m_layout = VK_NULL_HANDLE;
         VkRenderPass m_renderPass = VK_NULL_HANDLE;
         uint32_t m_subPass = 0;
         // Does it need shader handle?
