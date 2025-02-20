@@ -12,7 +12,8 @@
 
 namespace Bolt { 
     RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
-    : m_stages(context)
+    : m_name(name)
+    , m_stages(context)
     , m_impl(nullptr, context)
     , m_context(context)
     , m_renderInfo(renderInfo)

@@ -68,7 +68,7 @@ int main()
     Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     Bolt::RenderInfo info;
-    info.extents = Quaint::QVec2(-1, -1);
+    info.extents = Quaint::QVec2(~0, ~0);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition def;
@@ -106,6 +106,33 @@ int main()
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 
     // Pipeline creation
+    Bolt::ShaderDefinition shaderDef{};
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+
+    shaderDef.shaders.pushBack({"simpleTri.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"simpleTri.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 256, 1});
+    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 0, 1});
+    
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"color", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"texcoord", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+
+
+    shaderDef.attributeSets.pushBack(attributes);
+
+    Bolt::Pipeline pipeline = Bolt::Pipeline(context, "GeoPipeline", "graphics", 0, shaderDef);
+    /*Creates a vulkan resource*/
+    pipeline.bindToGpu();
+
     // Pipeline(name, scene, stageIndex, shaderDefinition, PrimitiveInformation, BlendInformation)
     // 1. Create a pipeline from shader
 

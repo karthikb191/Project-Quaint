@@ -104,6 +104,7 @@ namespace Bolt
     };
 //====================================================================================
 //====================================================================================
+    class Pipeline;
     typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
     class PipelineResourceBuilder : public GraphicsResourceBuilderBase
     {
@@ -113,8 +114,12 @@ namespace Bolt
         , m_ptr(nullptr, Deleter<ResourceGPUProxy>(context))
         {}
 
+        PipelineResourceBuilder& setPipelineRef(Pipeline* pipeline);
+        ResourceGPUProxyPtr build();
+
     private:
         ResourceGPUProxyPtr       m_ptr;
+        Pipeline*                 m_pipeline = nullptr;
     };
 }
 

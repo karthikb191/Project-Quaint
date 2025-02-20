@@ -116,7 +116,9 @@ namespace Bolt {
         Attachment* getAttachment(const Quaint::QName& name);
         const TAttachmentArray& getAttachments() const { return m_attachments; }
         
-        const SceneParams& getSceneParams() { return m_sceneParams; }
+        const SceneParams& getSceneParams() const { return m_sceneParams; }
+        const VkExtent2D& getRenderExtent() const { return m_renderExtent; }
+        const VkOffset2D& getRenderOffset() const { return m_renderOffset; }
     protected:
         void constructAttachments(const Bolt::RenderInfo& info);
         VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);

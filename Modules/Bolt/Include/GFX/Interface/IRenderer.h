@@ -63,7 +63,8 @@ namespace Bolt
         
         virtual void destroy() = 0;
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
-    private:
+    
+    protected:
         Quaint::IMemoryContext* m_context = nullptr;
     };
 }

@@ -6,6 +6,9 @@
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/ResourceBuilder.h>
 
+//TODO: Remove this map once map structure is throughly tested
+#include <map>
+
 namespace Bolt
 {
     VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(Quaint::IMemoryContext* context)
@@ -22,6 +25,7 @@ namespace Bolt
     {
         m_pipeline->buildShaders(definition);
         m_pipeline->setVertexAttributes(definition, VK_VERTEX_INPUT_RATE_VERTEX);
+        m_pipeline->buildDescriptors(definition);
         return *this;
     }
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupPrimitiveTopology(bool primitiveRestartEnabled, VkPrimitiveTopology topology)
@@ -36,9 +40,12 @@ namespace Bolt
         m_pipeline->setRenderStage(scene, stageIndex);
         if(addViewport)
         {
-            const RenderInfo& renderInfo = scene->getRenderInfo();
-            m_pipeline->addViewport(renderInfo.offset.x, renderInfo.offset.y, renderInfo.extents.x, renderInfo.extents.y, 0.0f, 1.0f
-                            , VkOffset2D{0, 0}, VkExtent2D{(uint32_t)renderInfo.extents.x, (uint32_t)renderInfo.extents.y});
+            const VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+            assert(vulkanScene != nullptr && "No valid vulkan scene available");
+            const VkExtent2D& extent = vulkanScene->getRenderExtent();
+            const VkOffset2D& offset = vulkanScene->getRenderOffset();
+            m_pipeline->addViewport((float)offset.x, (float)offset.y, (float)extent.width, (float)extent.height, 0.0f, 1.0f
+                            , VkOffset2D{0, 0}, extent);
         }
         return *this;
     }
@@ -58,7 +65,7 @@ namespace Bolt
     namespace vulkan
     {
         VulkanGraphicsPipeline::VulkanGraphicsPipeline(Quaint::IMemoryContext* context)
-        : m_context(context)
+        : ResourceGPUProxy(context)
         , m_shaders(context)
         , m_shaderStageInfos(context)
         , m_bindingDescs(context)
@@ -76,7 +83,7 @@ namespace Bolt
                 VulkanShader* shader = QUAINT_NEW(m_context, VulkanShader, def.stage, def.path.getBuffer(), def.entry);
                 VkPipelineShaderStageCreateInfo stageInfo{};
                 stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                stageInfo.pName = def.name.getBuffer();
+                stageInfo.pName = def.entry.getBuffer();
                 stageInfo.module = shader->getHandle();
                 stageInfo.stage = toShaderStageFlags(def.stage);
                 stageInfo.flags = 0;
@@ -97,7 +104,7 @@ namespace Bolt
                 VkVertexInputBindingDescription bindingDesc {};
 
                 uint32_t initialOffset = 0;
-                for(int j = 0; j < set.getSize(); ++j)
+                for(uint32_t j = 0; j < set.getSize(); ++j)
                 {
                     VkVertexInputAttributeDescription attrDesc{};
                     auto& attribute = set[j];
@@ -106,6 +113,8 @@ namespace Bolt
                     attrDesc.location = j;
                     attrDesc.offset = initialOffset;
                     m_attrDescs.pushBack(attrDesc);
+                    initialOffset += attribute.size;
+                    stride += attribute.size;
                 }
                 assert(stride > 0 && "No valid attributes found");
                 if(stride <= 0) continue; 
@@ -150,26 +159,92 @@ namespace Bolt
                 }
                 m_blendAttachments.pushBack(state);
             }
+        }
 
-            //Pipeline layout setup
+        /* TODO: This needs to be moved to a class that generates descriptor sets on demand. Currently only supports a single descriptor set*/
+        void VulkanGraphicsPipeline::buildDescriptors(const ShaderDefinition& shaderDefinition)
+        {
             VkDevice device = VulkanRenderer::get()->getDevice();
             VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+            
+            std::map<VkDescriptorType, uint32_t> poolTypeMap;
+            auto& attachments = shaderDefinition.uniforms;
+            for(const ShaderUniform& uniform : attachments)
+            {
+                VkDescriptorType type = toVulkanDescriptorType(uniform.type);
+                if(poolTypeMap.count(type) == 0)
+                {
+                    poolTypeMap.insert({type, 0});
+                }
 
+                ++poolTypeMap[type];
+            }
+            
+            Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_context);
+            
+            for(auto& pool : poolTypeMap)
+            {
+                VkDescriptorPoolSize poolSize{};
+                poolSize.type = pool.first;
+                poolSize.descriptorCount = pool.second;
+                poolSizes.pushBack(poolSize);
+            }
+            
+            VkDescriptorPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolInfo.flags = 0;
+            poolInfo.maxSets = 1; /* TODO: Only allowing a single set for now */
+            poolInfo.poolSizeCount = poolSizes.getSize();
+            poolInfo.pPoolSizes = poolSizes.getBuffer();
+
+            VkResult res = vkCreateDescriptorPool(device, &poolInfo, callbacks, &m_descriptorPool);
+            ASSERT_SUCCESS(res, "Failed to create descriptor pool");
+
+            Quaint::QArray<VkDescriptorSetLayoutBinding> bindings(m_context);
+            for(uint32_t i = 0; i < attachments.getSize(); ++i)
+            {
+                const ShaderUniform& uniform = attachments[i];
+                VkDescriptorSetLayoutBinding binding{};
+                binding.binding = i;
+                binding.descriptorCount = uniform.count;
+                binding.descriptorType = toVulkanDescriptorType(uniform.type);
+                binding.stageFlags = toVulkanShaderStageFlagBits(uniform.stage);
+                bindings.pushBack(binding);
+            }
+
+            VkDescriptorSetLayoutCreateInfo setLayoutInfo{};
+            setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            setLayoutInfo.flags = 0;
+            setLayoutInfo.pNext = nullptr;
+            setLayoutInfo.bindingCount = bindings.getSize();
+            setLayoutInfo.pBindings = bindings.getBuffer();
+
+            res = vkCreateDescriptorSetLayout(device, &setLayoutInfo, callbacks, &m_descritorSetLayout);
+            ASSERT_SUCCESS(res, "Failed to create descriptor set layout");
+
+            VkDescriptorSetAllocateInfo setAllocInfo{};
+            setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            setAllocInfo.pNext = nullptr;
+            setAllocInfo.descriptorPool = m_descriptorPool;
+            setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
+            setAllocInfo.pSetLayouts = &m_descritorSetLayout;
+
+            res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
+            ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
+
+            // Finally create a pipeline layout that'll be used by this pipeline
             VkPipelineLayoutCreateInfo layoutInfo{};
             layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             layoutInfo.pNext = nullptr;
             //TODO: Add push constants
             layoutInfo.pushConstantRangeCount = 0;
             layoutInfo.pPushConstantRanges = nullptr;
+
+            layoutInfo.setLayoutCount = 1; /* TODO: Currently only supporting a single descriptor set */
+            layoutInfo.pSetLayouts = &m_descritorSetLayout;
             
-            VkDescriptorSetLayout setLayout{};
-            //setLayout.
-
-            //vkCreatePipelineLayout(device, , callbacks, &m_layout);
-        }
-        void VulkanGraphicsPipeline::buildDescriptors(const RenderScene* const scene)
-        {
-
+            res = vkCreatePipelineLayout(device, &layoutInfo, callbacks, &m_layout);
+            ASSERT_SUCCESS(res, "Failed to create pipeline layout");
         }
         void VulkanGraphicsPipeline::addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent)
         {
@@ -297,6 +372,9 @@ namespace Bolt
             info.renderPass = m_renderPass;
             info.subpass = m_subPass;
 
+            //Finally setting up the pipeline layout
+            info.layout = m_layout;
+            
             //Base Pipeline. TODO: Explore
             info.basePipelineHandle = VK_NULL_HANDLE;
 

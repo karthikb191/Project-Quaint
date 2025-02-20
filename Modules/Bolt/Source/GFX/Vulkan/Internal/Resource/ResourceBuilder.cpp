@@ -1,6 +1,8 @@
 #include <GFX/ResourceBuilder.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
+#include <GFX/Entities/Pipeline.h>
+#include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
 
 //Vulkan Specific implementation of resource builder
 //TODO: Surround with VULKAN_API macro
@@ -166,6 +168,28 @@ namespace Bolt {
                             , m_vertShaderPath
                             , std::move(m_attributeMap));
         m_ptr.reset(shaderGroup);
+        return std::move(m_ptr);
+    }
+
+    PipelineResourceBuilder& PipelineResourceBuilder::setPipelineRef(Pipeline* pipeline)
+    {
+        m_pipeline = pipeline;
+        return *this;
+    }
+    ResourceGPUProxyPtr PipelineResourceBuilder::build()
+    {
+        using namespace vulkan;
+
+        RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
+
+        VulkanGraphicsPipelineBuilder builder(m_context);
+        VulkanGraphicsPipeline* pipeline = builder.setupShaders(m_pipeline->getShaderDefinition())
+        .setupRenderStageInfo(scene, m_pipeline->getStageIdx(), true)
+        .setupPrimitiveTopology(false, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+        .build();
+
+        m_ptr.reset(pipeline);
         return std::move(m_ptr);
     }
 

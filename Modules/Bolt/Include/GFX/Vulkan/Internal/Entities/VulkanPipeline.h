@@ -3,6 +3,7 @@
 
 #include <Vulkan/vulkan.h>
 #include <Interface/IMemoryContext.h>
+#include <GFX/Interface/IRenderer.h>
 #include <GFX/Data/ShaderInfo.h>
 #include <Types/QArray.h>
 
@@ -34,14 +35,14 @@ namespace Bolt{
         VulkanGraphicsPipeline* m_pipeline;
     };
     
-    class VulkanGraphicsPipeline
+    class VulkanGraphicsPipeline : public ResourceGPUProxy
     {
         friend class VulkanGraphicsPipelineBuilder;
         
     public:
         VulkanGraphicsPipeline(Quaint::IMemoryContext* context);
         void init();
-        void destroy();
+        virtual void destroy() override;
         
     private:
         void buildShaders(const ShaderDefinition& definition);
@@ -49,11 +50,10 @@ namespace Bolt{
         void setInputAssemblyState(const bool pRestartEnabled, const VkPrimitiveTopology pTopology);
         void setRenderStage(const RenderScene* const scene, const uint32_t stageIndex);
         /*Pipeline should own descriptors and pipeline layout. These should get destroyed with the pipeline*/
-        void buildDescriptors(const RenderScene* const scene);
+        void buildDescriptors(const ShaderDefinition& shaderDefinition);
         void addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent);
         void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
 
-        Quaint::IMemoryContext* m_context;
         VkPipeline  m_pipeline = VK_NULL_HANDLE;
 
         ShaderDefinition m_shaderDefinition;
@@ -77,6 +77,12 @@ namespace Bolt{
         VkPipelineLayout m_layout = VK_NULL_HANDLE;
         VkRenderPass m_renderPass = VK_NULL_HANDLE;
         uint32_t m_subPass = 0;
+
+        //TODO: Move descriptor information to a dedicated descriptor generator
+        VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE; /* Currently only supporting a single descriptor set */
+        VkDescriptorSetLayout m_descritorSetLayout = VK_NULL_HANDLE;
+
         // Does it need shader handle?
         // Need uniform and attribute info here for future validation
     };

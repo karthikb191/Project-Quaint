@@ -3,6 +3,8 @@
 #include "../Interface/IRenderer.h"
 #include "../Data/ResourceInfo.h"
 #include "../Data/ShaderInfo.h"
+#include "../Helpers.h"
+#include <Types/QUniquePtr.h>
 
 #include <assert.h>
 
@@ -113,16 +115,19 @@ namespace Bolt
         }
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
 
-    private:
+    protected:
         const EResourceType m_resourceType = EResourceType::Invalid;
         Quaint::IMemoryContext* m_context = nullptr;
     };
 
     class GraphicsResource : public Resource
     {
-    public:
+        public:
+        typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
+
         GraphicsResource(Quaint::IMemoryContext* context, EResourceType type)
         : Resource(context, type)
+        , m_gpuProxyPtr(nullptr, Deleter<ResourceGPUProxy>(context))
         {}
 
         //TODO: Remove all of these. None of these are required
@@ -151,7 +156,7 @@ namespace Bolt
         static _T* create(Quaint::IMemoryContext* context, ARGS... args)
         {
             _T* resource = QUAINT_NEW(context, _T, context, args...);
-            _PROXY* gpuResource = QUAINT_NEW(context, _PROXY, context, *resource);
+            _PROXY* gpuResource = QUAINT_NEW(context, _PROXY, context, std::ref(*resource));
             resource->assignGpuProxyResource(gpuResource);
             //TODO: Add a log
             return resource;
@@ -168,8 +173,8 @@ namespace Bolt
 
         ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
 
-        virtual void bindToGpu() {/*TODO*/};
-        virtual void unbindFromGPU() {/*TODO*/};
+        virtual void bindToGpu() { assert(false && "Need API specific implementation"); }
+        virtual void unbindFromGPU() { assert(false && "Need API specific implementation"); }
 
         virtual void destroy(Quaint::IMemoryContext* context)
         {
@@ -178,6 +183,11 @@ namespace Bolt
                 //TODO: Add a log
                 m_gpuProxy->destroy();
                 QUAINT_DELETE(m_gpuProxy->getMemoryContext(), m_gpuProxy);
+            }
+            if(m_gpuProxyPtr.get())
+            {
+                m_gpuProxyPtr->destroy();
+                m_gpuProxyPtr.release();
             }
         }
 
@@ -192,8 +202,13 @@ namespace Bolt
             }
             m_gpuProxy = gpuResource;
         }
+        void assignGpuProxyResource(ResourceGPUProxyPtr&& gpuResource)
+        {
+            m_gpuProxyPtr = std::move(gpuResource);
+        }
 
         ResourceGPUProxy*   m_gpuProxy = nullptr;
+        ResourceGPUProxyPtr m_gpuProxyPtr;
     };
 
     class BufferResourceBase : public GraphicsResource

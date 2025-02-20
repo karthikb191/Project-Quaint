@@ -73,12 +73,13 @@ namespace Bolt
         GraphicsResource*       resource = nullptr;
     };
 
-
     struct ShaderUniform
     {
         Quaint::QName name = "";
         EShaderResourceType type = EShaderResourceType::INVALID;
+        EShaderStage stage = EShaderStage::INVALID; /* In which stage is this uniform used */
         uint32_t size = 0;
+        uint32_t count = 1;
     };
     //TODO: Extend the uniforms to more specific types if necessary
 
