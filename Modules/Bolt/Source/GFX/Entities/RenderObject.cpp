@@ -81,76 +81,76 @@ namespace Bolt
         ShaderGroupResourceBuilder sgBuilder = ResourceBuilderFactory::createBuilder<ShaderGroupResourceBuilder>(m_context);
 
         //TODO: Have a way to pass along flags
-        GraphicsResource* texResource = imageBuilder.buildFromPath("C:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
-
-        GraphicsResource* uboResource = 
-        bufferBuilder
-        .setBuffer(nullptr)
-        .setDataSize(sizeof(Quaint::UniformBufferObject))
-        .setDataOffset(0)
-        .copyDataToBuffer(false)
-        .setBufferType(EBufferType::UNIFORM)
-        .setInitiallymapped(true)
-        .build();
-
-        GraphicsResource* vertResource = 
-        bufferBuilder
-        .setBuffer((void*)m_vertices.getBuffer())
-        .setDataSize((uint32_t)m_vertices.getSize() * (uint32_t)sizeof(decltype(m_vertices)::value_type))
-        .setDataOffset(0)
-        .copyDataToBuffer(true)
-        .setBufferType(EBufferType::VERTEX)
-        .setInitiallymapped(false)
-        .build();
-        
-        GraphicsResource* indexResource = 
-        bufferBuilder
-        .setBuffer((void*)m_indices.getBuffer())
-        .setDataSize((uint32_t)m_indices.getSize() * (uint32_t)sizeof(decltype(m_indices)::value_type))
-        .setDataOffset(0)
-        .copyDataToBuffer(true)
-        .setBufferType(EBufferType::INDEX)
-        .setInitiallymapped(false)
-        .build();
-
-        ShaderAttachmentInfo uboAttachInfo;
-        ShaderAttachmentInfo diffuseTexInfo;
-        //UBO Resource
-        uboAttachInfo.set = 0;
-        uboAttachInfo.binding = 0;
-        uboAttachInfo.count = 1;
-        uboAttachInfo.shaderStage = EShaderStage::VERTEX;
-        uboAttachInfo.resourceType = EShaderResourceType::UNIFORM_BUFFER;
-        uboAttachInfo.resource = uboResource;
-
-        // Diffuse Texture resource
-        diffuseTexInfo.set = 0;
-        diffuseTexInfo.binding = 1;
-        diffuseTexInfo.count = 1;
-        diffuseTexInfo.shaderStage = EShaderStage::FRAGMENT;
-        diffuseTexInfo.resourceType = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
-        diffuseTexInfo.resource = texResource;
-
-        //GraphicsResource* shaderGroupResource = 
-        //sgBuilder
-        //.setVertShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
-        //.setFragShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
-        //.addAttchmentRef(uboAttachInfo)
-        //.addAttchmentRef(diffuseTexInfo)
+        //GraphicsResource* texResource = imageBuilder.buildFromPath("C:\\Works\\Project-Quaint\\Data\\Textures\\Test\\test.jpg");
+//
+        //GraphicsResource* uboResource = 
+        //bufferBuilder
+        //.setBuffer(nullptr)
+        //.setDataSize(sizeof(Quaint::UniformBufferObject))
+        //.setDataOffset(0)
+        //.copyDataToBuffer(false)
+        //.setBufferType(EBufferType::UNIFORM)
+        //.setInitiallymapped(true)
         //.build();
-        
-        m_RenderInfo.drawType = EPrimitiveDrawType::INDEXED;
-        m_RenderInfo.vertBufferResource = vertResource;
-        m_RenderInfo.indexBufferResource = indexResource;
-        //m_RenderInfo.shaderGroupResource = shaderGroupResource;
-        
-
-        //TODO: Application map interface
-        mapBufferResource(uboResource, &mappedMVPBuffer);
-        //vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
-
-        m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
-        m_impl->build(m_RenderInfo);
+//
+        //GraphicsResource* vertResource = 
+        //bufferBuilder
+        //.setBuffer((void*)m_vertices.getBuffer())
+        //.setDataSize((uint32_t)m_vertices.getSize() * (uint32_t)sizeof(decltype(m_vertices)::value_type))
+        //.setDataOffset(0)
+        //.copyDataToBuffer(true)
+        //.setBufferType(EBufferType::VERTEX)
+        //.setInitiallymapped(false)
+        //.build();
+        //
+        //GraphicsResource* indexResource = 
+        //bufferBuilder
+        //.setBuffer((void*)m_indices.getBuffer())
+        //.setDataSize((uint32_t)m_indices.getSize() * (uint32_t)sizeof(decltype(m_indices)::value_type))
+        //.setDataOffset(0)
+        //.copyDataToBuffer(true)
+        //.setBufferType(EBufferType::INDEX)
+        //.setInitiallymapped(false)
+        //.build();
+//
+        //ShaderAttachmentInfo uboAttachInfo;
+        //ShaderAttachmentInfo diffuseTexInfo;
+        ////UBO Resource
+        //uboAttachInfo.set = 0;
+        //uboAttachInfo.binding = 0;
+        //uboAttachInfo.count = 1;
+        //uboAttachInfo.shaderStage = EShaderStage::VERTEX;
+        //uboAttachInfo.resourceType = EShaderResourceType::UNIFORM_BUFFER;
+        //uboAttachInfo.resource = uboResource;
+//
+        //// Diffuse Texture resource
+        //diffuseTexInfo.set = 0;
+        //diffuseTexInfo.binding = 1;
+        //diffuseTexInfo.count = 1;
+        //diffuseTexInfo.shaderStage = EShaderStage::FRAGMENT;
+        //diffuseTexInfo.resourceType = EShaderResourceType::COMBINED_IMAGE_SAMPLER;
+        //diffuseTexInfo.resource = texResource;
+//
+        ////GraphicsResource* shaderGroupResource = 
+        ////sgBuilder
+        ////.setVertShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv")
+        ////.setFragShaderPath("C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv")
+        ////.addAttchmentRef(uboAttachInfo)
+        ////.addAttchmentRef(diffuseTexInfo)
+        ////.build();
+        //
+        //m_RenderInfo.drawType = EPrimitiveDrawType::INDEXED;
+        //m_RenderInfo.vertBufferResource = vertResource;
+        //m_RenderInfo.indexBufferResource = indexResource;
+        ////m_RenderInfo.shaderGroupResource = shaderGroupResource;
+        //
+//
+        ////TODO: Application map interface
+        //mapBufferResource(uboResource, &mappedMVPBuffer);
+        ////vkMapMemory(VulkanRenderer::get()->getDevice(), mvpBufferDeviceMemory, 0, sizeof(UniformBufferObject), 0, &mappedMVPBuffer);
+//
+        //m_impl = RenderModule::get().getBoltRenderer()->getRenderObjectBuilder()->buildRenderObjectImplFor(this);
+        //m_impl->build(m_RenderInfo);
     }
 
     void RenderQuad::draw()

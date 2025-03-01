@@ -32,6 +32,7 @@ namespace Bolt
         SHADER_GROUP,
         COMBINED_IMAGE_SAMPLER,
         BUFFER,
+        IMAGE2D,
         MODEL,
         PIPELINE,
         Invalid

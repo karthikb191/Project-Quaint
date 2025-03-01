@@ -5,6 +5,8 @@
 #include <Vulkan/vulkan.h>
 #include <GFX/Texture/BoltTexture.h>
 #include <GFX/Vulkan/Internal/DeviceManager.h>
+#include <GFX/Helpers.h>
+#include <GFX/Interface/IRenderer.h>
 #include <Types/QUniquePtr.h>
 
 namespace Bolt { 
@@ -24,20 +26,19 @@ namespace Bolt {
     };
 
     /* Copy-able entity */
-    class VulkanTexture : public BoltTextureBase
+    class VulkanTexture : public Bolt::ResourceGPUProxy
     {
         friend class VulkanTextureBuilder;
 
     public:
         /* Default Texure */
-        VulkanTexture();
-        VulkanTexture(const VulkanImageCreateInfo& info);
+        VulkanTexture(Quaint::IMemoryContext* context);
+        VulkanTexture(Quaint::IMemoryContext* context, const VulkanImageCreateInfo& info);
         /* Takes ownership of the VkImage passed */
-        VulkanTexture(const VulkanImageCreateInfo& info, VkImage image, bool isSwapchainImage = false);
+        VulkanTexture(Quaint::IMemoryContext* context, const VulkanImageCreateInfo& info, VkImage image, bool isSwapchainImage = false);
         ~VulkanTexture();
         void destroy();
 
-        static VulkanTexture create();
         static VulkanTexture* create(Quaint::IMemoryContext* context);
         VulkanTexture& defaultInit();
         
@@ -79,11 +80,12 @@ namespace Bolt {
         VkImageLayout               m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         bool                        m_isSwapchainImage =  false;
     };
+    using VulkanTextureRef = Quaint::QUniquePtr<VulkanTexture, Deleter<VulkanTexture>>;
     
     class VulkanTextureBuilder
     {
     public:
-        VulkanTextureBuilder();
+        VulkanTextureBuilder(Quaint::IMemoryContext* context);
         VulkanTextureBuilder& setWidth(const uint32_t width);
         VulkanTextureBuilder& setHeight(const uint32_t height);
         VulkanTextureBuilder& setFormat(const VkFormat format);
@@ -105,6 +107,7 @@ namespace Bolt {
         VulkanTexture build();
 
     private:
+        Quaint::IMemoryContext*         m_context = nullptr;
         VulkanImageCreateInfo           m_createInfo{};
         VkImage                         m_swapchainImage = VK_NULL_HANDLE;
         bool                            m_buildImage = false;

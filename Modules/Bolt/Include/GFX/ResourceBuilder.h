@@ -9,6 +9,7 @@
 
 namespace Bolt
 {
+    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
     class ResourceBuilderFactory
     {
     public:
@@ -39,7 +40,8 @@ namespace Bolt
         {}
         //CombinedImageSamplerTextureBuilder& setSamplerInfo(); TODO: APP level sampler info structure
         
-        GraphicsResource* buildFromPath(const char* path);
+        ResourceGPUProxyPtr buildFromPath(const char* path);
+        ResourceGPUProxyPtr buildFromPixels(unsigned char* pixels, int width, int height);
 
     private:
 
@@ -105,7 +107,6 @@ namespace Bolt
 //====================================================================================
 //====================================================================================
     class Pipeline;
-    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
     class PipelineResourceBuilder : public GraphicsResourceBuilderBase
     {
     public:

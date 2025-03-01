@@ -16,7 +16,7 @@
     }
 
     /*Effective C++ Item-4. Converted this to local-static. object is created on first usage*/
-    #define DEFINE_LOG_CATEGORY(name) Logger_##name& Logger_##name::get()\
+    #define DEFINE_LOG_CATEGORY(name) inline Logger_##name& Logger_##name::get()\
     { \
         static Logger_##name logger;\
         return logger;\

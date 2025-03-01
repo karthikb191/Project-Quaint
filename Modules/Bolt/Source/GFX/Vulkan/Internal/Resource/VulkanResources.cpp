@@ -2,11 +2,6 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 
 namespace Bolt { namespace vulkan{
-    void VulkanCombinedImageSamplerResource::wrap(VkSampler sampler, VulkanTexture& texture)
-    {
-        m_sampler = sampler;
-        m_texture = texture;
-    }
     
     void VulkanCombinedImageSamplerResource::destroy()
     {
@@ -17,7 +12,11 @@ namespace Bolt { namespace vulkan{
             vkDestroySampler(device, m_sampler, callbacks);
         }
 
-        m_texture.destroy();
+        if(m_texture.get())
+        {
+            m_texture->destroy();
+            m_texture.release();
+        }
         m_sampler = VK_NULL_HANDLE;
     }
 

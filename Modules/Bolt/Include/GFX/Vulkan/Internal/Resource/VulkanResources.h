@@ -10,25 +10,27 @@ namespace Bolt{
 
     namespace vulkan {
     
+    //TODO: Should other resource class also be created and have a separation with entities?
+    
     // Resource would own the enclosing API onbject created
     class VulkanCombinedImageSamplerResource : public Bolt::ResourceGPUProxy
     {
     public:
-        VulkanCombinedImageSamplerResource(Quaint::IMemoryContext* context)
+        VulkanCombinedImageSamplerResource(Quaint::IMemoryContext* context, VkSampler sampler, VulkanTextureRef& textureRef)
         : Bolt::ResourceGPUProxy(context)
+        , m_sampler(sampler)
+        , m_texture(std::move(textureRef))
         {}
+
         virtual void destroy() override;
         
         VkSampler getSampler() const { return m_sampler; }
-        const VulkanTexture& getTexture() { return m_texture; }
+        const VulkanTextureRef& getTexture() { return m_texture; }
 
     private:
-        friend class CombinedImageSamplerTextureBuilder;
 
-        void wrap(VkSampler sampler, VulkanTexture& texture);
-
-        VkSampler           m_sampler = VK_NULL_HANDLE;
-        VulkanTexture       m_texture;
+        VkSampler               m_sampler = VK_NULL_HANDLE;
+        VulkanTextureRef        m_texture;
     };
 
     class VulkanBufferObjectResource : public Bolt::ResourceGPUProxy

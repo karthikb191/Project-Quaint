@@ -7,10 +7,13 @@
 #include <Types/QUniquePtr.h>
 
 #include <assert.h>
+#include <QuaintLogger.h>
 
 namespace Bolt
 {
-
+    DECLARE_LOG_CATEGORY(RESOURCE);
+    DEFINE_LOG_CATEGORY(RESOURCE);
+    
 // Forward Declarations ================================================================    
     class ShaderResourceBase;
     class BufferResourceBase;
@@ -94,8 +97,14 @@ namespace Bolt
 //=======================================================================================
 //=======================================================================================
 
-    //!!!! TODO: This probably has a terrible memory leak problem. Use unique, shared ptr structures later
 
+    //TODO: Use this to extend
+    class IGPUBindable
+    {
+        public:
+        
+    };
+    //!!!! TODO: This probably has a terrible memory leak problem. Use unique, shared ptr structures later
     //Should be implemented for specific resources on API side
     class Resource
     {
@@ -118,6 +127,7 @@ namespace Bolt
     protected:
         const EResourceType m_resourceType = EResourceType::Invalid;
         Quaint::IMemoryContext* m_context = nullptr;
+        Quaint::QName m_name = "";
     };
 
     class GraphicsResource : public Resource
@@ -204,6 +214,14 @@ namespace Bolt
         }
         void assignGpuProxyResource(ResourceGPUProxyPtr&& gpuResource)
         {
+            if(m_gpuProxyPtr.get())
+            {
+                Quaint::QString256 logBuf;
+                sprintf_s(logBuf.getBuffer_NonConst(), logBuf.size(), "Destroying and replacing gpu resource in: %s", m_name.getBuffer());
+                QLOG_W(RESOURCE, logBuf.getBuffer());
+                m_gpuProxyPtr->destroy();
+                m_gpuProxyPtr.release();
+            }
             m_gpuProxyPtr = std::move(gpuResource);
         }
 

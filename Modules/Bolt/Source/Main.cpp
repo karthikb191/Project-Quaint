@@ -14,6 +14,8 @@
 #include <GFX/Entities/RenderObject.h>
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/Entities/Pipeline.h>
+#include <GFX/Entities/Model.h>
+#include <GFX/Entities/Image.h>
 
 namespace Quaint
 {

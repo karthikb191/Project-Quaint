@@ -232,6 +232,7 @@ namespace Bolt
         VkBuffer& buffer);
 
         void createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
+        void createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
 
         //TODO:
         void crateShaderInputTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);

@@ -330,8 +330,8 @@ namespace Bolt
         vkQueueSubmit(m_queue, 1, &submitinfo, m_internalFence);
     }
 
-    GraphicsContextInternal testContext;
-    VulkanTexture testTexture;
+    //GraphicsContextInternal testContext;
+    //VulkanTexture testTexture;
 
     auto validationLayers = Quaint::createFastArray<Quaint::QString256>(
         {
@@ -515,26 +515,26 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //createCommandBuffer();
         //createSyncObjects();
 
-        VulkanTextureBuilder builder;
-        VulkanTexture testTexture = builder
-        .setWidth(128)
-        .setHeight(128)
-        .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        .setBuildImage()
-        .setBackingMemory()
-        .setBuildImageView()
-        .build();
-        //.setTiling(VK_IMAGE_TILING_OPTIMAL)
-        //.build()
-        //.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        //.createImageView();
-        //testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        //testTexture.createImageView();
-
-        testContext.setup(this);
-        testContext.initializeCommandRecordCapability(EQueueType::Graphics);
-        testContext.initialize(testTexture.getWidth(), testTexture.getHeight(), &testTexture);
+        //VulkanTextureBuilder builder(m_context);
+        //VulkanTexture testTexture = builder
+        //.setWidth(128)
+        //.setHeight(128)
+        //.setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        //.setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        //.setBuildImage()
+        //.setBackingMemory()
+        //.setBuildImageView()
+        //.build();
+        ////.setTiling(VK_IMAGE_TILING_OPTIMAL)
+        ////.build()
+        ////.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        ////.createImageView();
+        ////testTexture.createBackingMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        ////testTexture.createImageView();
+//
+        //testContext.setup(this);
+        //testContext.initializeCommandRecordCapability(EQueueType::Graphics);
+        //testContext.initialize(testTexture.getWidth(), testTexture.getHeight(), &testTexture);
 
         QLOG_V(VULKAN_RENDERER_LOGGER, "Vulkan Renderer Running");
 
@@ -547,8 +547,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         m_running = false;
         vkDeviceWaitIdle(m_device);
 
-        testContext.destroy();
-        testTexture.destroy();
+        //testContext.destroy();
+        //testTexture.destroy();
 
         if(quadRef != nullptr)
         {
@@ -1806,7 +1806,12 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
     {
         int width = 0, height = 0, comp = 0;
         stbi_uc* pixels = stbi_load(path, &width, &height, &comp, STBI_rgb_alpha);
+        createShaderTextureFromPixels(outTexuture, pixels, width, height, flags);
+        stbi_image_free(pixels);
+    }
 
+    void VulkanRenderer::createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags)
+    {
         size_t bufferSize = width * height * 4;
         VkBuffer stagingBuffer; 
         VkDeviceMemory stagingBufferGpuMemory;
@@ -1823,7 +1828,7 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         uint32_t family = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily();
         VkQueue queue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
 
-        VulkanTextureBuilder builder;
+        VulkanTextureBuilder builder(m_context);
         outTexuture = builder
         .setFormat(VK_FORMAT_R8G8B8A8_SRGB)
         .setWidth(width)
@@ -1862,7 +1867,6 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
         vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
-        stbi_image_free(pixels);
     }
 
     void VulkanRenderer::mapBufferToMemory()

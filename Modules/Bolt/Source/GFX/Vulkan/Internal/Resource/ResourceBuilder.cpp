@@ -10,12 +10,11 @@ namespace Bolt {
     using namespace vulkan;
 
     //Image Resource builder
-    GraphicsResource* CombinedImageSamplerTextureBuilder::buildFromPath(const char* path)
+    ResourceGPUProxyPtr CombinedImageSamplerTextureBuilder::buildFromPath(const char* path)
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        VulkanCombinedImageSamplerResource* proxy = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context);
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
@@ -41,16 +40,53 @@ namespace Bolt {
         VkSampler sampler;
         VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &sampler);
 
-        VulkanTexture texture;
+        VulkanTexture* texture = QUAINT_NEW(m_context, VulkanTexture, m_context);
         //TODO: Hardcoding flag for now. Create a comming enum for that later
-        VulkanRenderer::get()->createTextureFromFile(path, texture, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        VulkanRenderer::get()->createTextureFromFile(path, *texture, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        VulkanTextureRef textureRef(texture, Deleter<VulkanTexture>(m_context));
 
-        proxy->wrap(sampler, texture);
+        VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(textureRef));
+        ResourceGPUProxyPtr imgSplrRes(combinedImageSampler, Deleter<ResourceGPUProxy>(m_context));
+        return std::move(imgSplrRes);
+    }
+    ResourceGPUProxyPtr CombinedImageSamplerTextureBuilder::buildFromPixels(unsigned char* pixels, int width, int height)
+    {
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
-        GraphicsResource* resource = GraphicsResource::create<GraphicsResource>(m_context, EResourceType::COMBINED_IMAGE_SAMPLER);
-        
-        //TODO: Should refactor this to only build the Vulkan Resource
-        return resource;
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE; // We are using normalized coordinates
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+
+        samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.maxAnisotropy = 0;
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+        //TODO: Not entirely sure of the way this functions. Need to read more on this
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0;
+        samplerInfo.minLod = 0;
+        samplerInfo.maxLod = 0;
+
+        VkSampler sampler;
+        VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &sampler);
+
+        VulkanTexture* texPtr = QUAINT_NEW(m_context, VulkanTexture, m_context);
+        VulkanRenderer::get()->createShaderTextureFromPixels(*texPtr, pixels, width, height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+        VulkanTextureRef texRef(texPtr, Deleter<VulkanTexture>(m_context));
+
+        VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(texRef));
+        ResourceGPUProxyPtr imgSplrRes(combinedImageSampler, Deleter<ResourceGPUProxy>(m_context));
+        return std::move(imgSplrRes);
     }
 
     //UB resource builder

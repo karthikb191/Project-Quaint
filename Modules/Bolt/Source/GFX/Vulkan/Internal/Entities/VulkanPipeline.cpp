@@ -186,14 +186,15 @@ namespace Bolt
             {
                 VkDescriptorPoolSize poolSize{};
                 poolSize.type = pool.first;
-                poolSize.descriptorCount = pool.second;
+                //poolSize.descriptorCount = pool.second;
+                poolSize.descriptorCount = 50; //TODO: Remove this from here and move to a central descriptor pool allocator class
                 poolSizes.pushBack(poolSize);
             }
             
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolInfo.flags = 0;
-            poolInfo.maxSets = 1; /* TODO: Only allowing a single set for now */
+            poolInfo.maxSets = 100; /* TODO: Only allowing a single set for now */
             poolInfo.poolSizeCount = poolSizes.getSize();
             poolInfo.pPoolSizes = poolSizes.getBuffer();
 
@@ -222,15 +223,15 @@ namespace Bolt
             res = vkCreateDescriptorSetLayout(device, &setLayoutInfo, callbacks, &m_descritorSetLayout);
             ASSERT_SUCCESS(res, "Failed to create descriptor set layout");
 
-            VkDescriptorSetAllocateInfo setAllocInfo{};
-            setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            setAllocInfo.pNext = nullptr;
-            setAllocInfo.descriptorPool = m_descriptorPool;
-            setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
-            setAllocInfo.pSetLayouts = &m_descritorSetLayout;
-
-            res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
-            ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
+            //VkDescriptorSetAllocateInfo setAllocInfo{};
+            //setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            //setAllocInfo.pNext = nullptr;
+            //setAllocInfo.descriptorPool = m_descriptorPool;
+            //setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
+            //setAllocInfo.pSetLayouts = &m_descritorSetLayout;
+//
+            //res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
+            //ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
 
             // Finally create a pipeline layout that'll be used by this pipeline
             VkPipelineLayoutCreateInfo layoutInfo{};
@@ -385,7 +386,7 @@ namespace Bolt
 
         void VulkanGraphicsPipeline::destroy()
         {
-
+            //TODO:
         }
     }
 }

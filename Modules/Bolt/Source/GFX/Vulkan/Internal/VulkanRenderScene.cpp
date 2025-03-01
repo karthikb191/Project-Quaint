@@ -292,7 +292,7 @@ namespace Bolt {
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 
         //Creates, sets backing memory and creates image view
-        VulkanTextureBuilder builder;
+        VulkanTextureBuilder builder(m_context);
         VulkanTexture tex = 
         builder.setFormat(toVulkanVkFormat(def.format))
         .setWidth((uint32_t)def.extents.x)

@@ -61,7 +61,8 @@ namespace Bolt
         return info;
     }
 
-    VulkanTextureBuilder::VulkanTextureBuilder()
+    VulkanTextureBuilder::VulkanTextureBuilder(Quaint::IMemoryContext* context)
+    : m_context(context)
     {
         m_createInfo = getDefaultCreateInfo();
     }
@@ -136,7 +137,7 @@ namespace Bolt
         //If it's a swapchain image
         if(m_createInfo.isSwapchainImage)
         {
-            VulkanTexture texture(m_createInfo, m_swapchainImage, true);
+            VulkanTexture texture(m_context, m_createInfo, m_swapchainImage, true);
             if(m_setBackingMemory)
             {
                 texture.createBackingMemory();
@@ -152,7 +153,7 @@ namespace Bolt
             return texture;
         }
 
-        VulkanTexture texture(m_createInfo);
+        VulkanTexture texture(m_context, m_createInfo);
         if(m_buildImage)
         {
             texture.createImage();
@@ -174,13 +175,16 @@ namespace Bolt
 
 // ==================================================================================
 
-    VulkanTexture::VulkanTexture() 
+    VulkanTexture::VulkanTexture(Quaint::IMemoryContext* context) 
+    : ResourceGPUProxy(context)
     {}
-    VulkanTexture::VulkanTexture(const VulkanImageCreateInfo& info)
-    : m_createInfo(info)
+    VulkanTexture::VulkanTexture(Quaint::IMemoryContext* context, const VulkanImageCreateInfo& info)
+    : ResourceGPUProxy(context)
+    , m_createInfo(info)
     {}
-    VulkanTexture::VulkanTexture(const VulkanImageCreateInfo& info, VkImage image, bool isSwapchainImage)
-    : m_createInfo(info)
+    VulkanTexture::VulkanTexture(Quaint::IMemoryContext* context, const VulkanImageCreateInfo& info, VkImage image, bool isSwapchainImage)
+    : ResourceGPUProxy(context)
+    , m_createInfo(info)
     , m_isSwapchainImage(isSwapchainImage)
     {
         m_image = image;
@@ -212,13 +216,9 @@ namespace Bolt
         m_gpuMemory = VK_NULL_HANDLE;
     }
 
-    VulkanTexture VulkanTexture::create()
-    {
-        return VulkanTexture();
-    }
     VulkanTexture* VulkanTexture::create(Quaint::IMemoryContext* context)
     {
-        return QUAINT_NEW(context, VulkanTexture);
+        return QUAINT_NEW(context, VulkanTexture, context);
     }
 
     VkImageCreateInfo VulkanTexture::getDefaultImageCreateInfo()
