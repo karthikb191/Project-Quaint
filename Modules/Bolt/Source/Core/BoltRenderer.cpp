@@ -3,6 +3,7 @@
 #include <MemCore/GlobalMemoryOverrides.h>
 #include <RenderModule.h>
 #include <chrono>
+#include <GFX/Entities/Painters.h>
 
 namespace Bolt
 {
@@ -34,6 +35,7 @@ namespace Bolt
     {
         std::cout << "Renderer Started Successfully!!!\n";
         m_context = context;
+        m_painters = Quaint::QArray<Painter*>(context);
 
         //TODO: Move window creation to Application Module
         Bolt::WindowCreationParams params;
@@ -48,7 +50,6 @@ namespace Bolt
         //Initialize renderer
         VulkanRenderer* vulkanRenderer = QUAINT_NEW(context, VulkanRenderer, context);
         m_renderer_impl = vulkanRenderer;
-        m_renderObjectBuilder = vulkanRenderer;
 
         initCamera();
         m_renderer_impl->init();
@@ -65,6 +66,11 @@ namespace Bolt
         info.nearClipDist = 0.1f;
         info.farClipDist = 10000.0f;
         m_camera.init(info);
+    }
+
+    void BoltRenderer::addPainter(Painter* painter)
+    {
+        m_painters.pushBack(painter);
     }
 
     void BoltRenderer::update()

@@ -25,6 +25,7 @@ namespace Quaint
 namespace Bolt
 {
     class RenderModule;
+    class Painter;
 
     class BoltRenderer
     {
@@ -44,11 +45,11 @@ namespace Bolt
 
         const Window& getWindow() { return m_window; }
         IRenderer* GetRenderer() { return m_renderer_impl; }
-        IRenderObjectBuilder* getRenderObjectBuilder() { return m_renderObjectBuilder; }
         Camera& getCamera() { return m_camera; }
         const Quaint::UniformBufferObject& getMVPMatrix() { return m_ubo; }
+        void addPainter(Painter* painter);
+        const Quaint::QArray<Painter*>& getPainters() const { return m_painters; }
 
-        void mapBufferResource(GraphicsResource* resource, void* out);
     private:
         BoltRenderer();
         ~BoltRenderer();
@@ -56,12 +57,12 @@ namespace Bolt
         void updateUniformBufferProxy();
 
         IRenderer*                          m_renderer_impl         = nullptr;
-        IRenderObjectBuilder*               m_renderObjectBuilder   = nullptr;
         Quaint::IMemoryContext*             m_context               = nullptr;
 
         Window                              m_window;
         Camera                              m_camera;
         Quaint::UniformBufferObject         m_ubo;
+        Quaint::QArray<Painter*>            m_painters;
 
         bool m_engineRunning;
     };

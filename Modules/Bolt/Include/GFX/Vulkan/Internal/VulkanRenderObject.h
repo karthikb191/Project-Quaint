@@ -6,22 +6,29 @@
 #include <memory>
 #include <GFX/Helpers.h>
 
-namespace Bolt{ namespace vulkan{
+namespace Bolt{ 
+    
+    class Model;
 
-    class Bolt::RenderObject;
+    namespace vulkan{
+
     class VulkanShaderGroupResource;
 
     class VulkanRenderObject : public IRenderObjectImpl
     {
     typedef std::unique_ptr<VulkanShaderGroup, Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
+    //typedef Quaint::QUniquePtr<VulkanBufferObjectResource, Deleter<VulkanBufferObjectResource>> BufferResourceRef;
+    
+    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
 
     public:
-        VulkanRenderObject(RenderObject* ro);
+        VulkanRenderObject(Quaint::IMemoryContext* context);
         virtual void build(const GeometryRenderInfo& renderInfo) override;
-        virtual void draw(const GeometryRenderInfo& info) override;
+        virtual void draw(RenderScene* scene) override;
         virtual void destroy() override;
 
     private:
+        void createBuffersFromModel(Model* model);
         void createShaderGroup(const ShaderInfo& shaderinfo);
         void createDescriptorLayoutInformation(const ShaderInfo& shaderinfo);
         void allocateDescriptorPool(const ShaderInfo& shaderInfo);
@@ -29,7 +36,13 @@ namespace Bolt{ namespace vulkan{
         void writeDescriptorSets();
         void createPipeline();
 
+        friend class RenderObjectBuilder;
         //VulkanShaderGroupRef                    m_shaderGroup;
+
+        ResourceGPUProxyPtr                       m_vertexBuffer;
+        ResourceGPUProxyPtr                       m_indexBuffer;
+
+
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts; //Represents layout for the respective set
         Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;

@@ -141,7 +141,7 @@ namespace Bolt
         VkFence                 m_internalFence = VK_NULL_HANDLE;
     };
 
-    class alignas(16) VulkanRenderer : public IRenderer, public IRenderObjectBuilder
+    class alignas(16) VulkanRenderer : public IRenderer
     {
         friend class BoltRenderer;
         
@@ -212,8 +212,6 @@ namespace Bolt
         static VulkanRenderer* get() { return s_Instance; }
 
         IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
-
-        IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) override;
         //vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
 
         VulkanSwapchain* getSwapchain() { return m_vulkanSwapchain.get(); }

@@ -16,6 +16,7 @@
 #include <GFX/Entities/Pipeline.h>
 #include <GFX/Entities/Model.h>
 #include <GFX/Entities/Image.h>
+#include <GFX/Entities/Painters.h>
 
 namespace Quaint
 {
@@ -67,7 +68,7 @@ int main()
     uint32_t width = rect.right - rect.left;
     uint32_t height = rect.bottom - rect.top;
 
-    Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
+    //Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     Bolt::RenderInfo info;
     info.extents = Quaint::QVec2(~0, ~0);

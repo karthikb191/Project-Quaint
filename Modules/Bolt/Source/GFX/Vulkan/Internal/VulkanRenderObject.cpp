@@ -1,18 +1,22 @@
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
-#include <GFX/Entities/RenderObject.h>
+#include <GFX/Entities/Model.h>
+#include <GFX/ResourceBuilder.h>
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/VulkanRenderScene.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Entities/Resources.h>
+#include <GFX/Entities/RenderScene.h>
 #include <Types/QMap.h>
 
 namespace Bolt { namespace vulkan {
-    VulkanRenderObject::VulkanRenderObject(RenderObject* ro)
-    : IRenderObjectImpl(ro)
+    VulkanRenderObject::VulkanRenderObject(Quaint::IMemoryContext* context)
+    : IRenderObjectImpl(context)
     //, m_shaderGroup(nullptr,  Deleter<VulkanShaderGroup>(ro->getMemoryContext()))
-    , m_setLayouts(ro->getMemoryContext())
-    , m_sets(ro->getMemoryContext())
+    , m_setLayouts(context)
+    , m_sets(context)
+    , m_vertexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
+    , m_indexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
     {
 
     }
@@ -63,18 +67,37 @@ namespace Bolt { namespace vulkan {
         }
     }
 
+    void VulkanRenderObject::createBuffersFromModel(Model* model)
+    {
+        BufferResourceBuilder builder(m_context);
+        builder.setBuffer((void*)model->getMesh()->getVertexBuffer())
+        .setDataSize(model->getMesh()->getVertexBufferSize())
+        .copyDataToBuffer(true)
+        .setBufferType(EBufferType::VERTEX)
+        .setDataOffset(0)
+        .setInitiallymapped(false);
+        m_vertexBuffer.swap(builder.build());
+
+        builder.setBuffer((void*)model->getMesh()->getIndexBuffer())
+        .setDataSize(model->getMesh()->getIndexBufferSize())
+        .copyDataToBuffer(true)
+        .setBufferType(EBufferType::INDEX)
+        .setDataOffset(0)
+        .setInitiallymapped(false);
+        m_indexBuffer = std::move(builder.build());
+    }
+
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
     {
-        Quaint::IMemoryContext* memContext = m_renderObject->getMemoryContext();
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
         Quaint::QArray<
-        Quaint::QArray<VkDescriptorSetLayoutBinding>> setBindingInfos(memContext, shaderinfo.maxResourceSets);
+        Quaint::QArray<VkDescriptorSetLayoutBinding>> setBindingInfos(m_context, shaderinfo.maxResourceSets);
         //Initialize Inner array
         for(auto& it : setBindingInfos)
         {
-            it = Quaint::QArray<VkDescriptorSetLayoutBinding>(memContext);
+            it = Quaint::QArray<VkDescriptorSetLayoutBinding>(m_context);
         }
 
         for(auto& resource : shaderinfo.resources)
@@ -121,11 +144,10 @@ namespace Bolt { namespace vulkan {
 
     void VulkanRenderObject::allocateDescriptorPool(const ShaderInfo& shaderInfo)
     {
-        Quaint::IMemoryContext* memContext = m_renderObject->getMemoryContext();
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         
-        Quaint::QMap<VkDescriptorType, uint32_t> numTypes(m_renderObject->getMemoryContext());
+        Quaint::QMap<VkDescriptorType, uint32_t> numTypes(m_context);
         for(auto& resource : shaderInfo.resources)
         {
             VkDescriptorType type = toVulkanDescriptorType(resource.resourceType);
@@ -140,7 +162,7 @@ namespace Bolt { namespace vulkan {
             }
         }
 
-        Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_renderObject->getMemoryContext());
+        Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_context);
 
         for(auto& entry : numTypes)
         {
@@ -430,8 +452,24 @@ namespace Bolt { namespace vulkan {
 //         , "Failed to create Graphics pipeline");
     }
 
-    void VulkanRenderObject::draw(const GeometryRenderInfo& info)
+    void VulkanRenderObject::draw(RenderScene* scene)
     {
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VulkanBufferObjectResource* vertResource = static_cast<VulkanBufferObjectResource*>(m_vertexBuffer.get());
+        VulkanBufferObjectResource* indexResource = static_cast<VulkanBufferObjectResource*>(m_indexBuffer.get());
+
+        VkBuffer vertBuffer = vertResource->getBufferhandle();
+        VkDeviceSize offsets[] = {0};
+        if(vertResource)
+        {
+            vkCmdBindVertexBuffers(vulkanScene->getSceneParams().commandBuffer,
+            0, 1, &vertBuffer, offsets);
+        }
+        if (indexResource)
+        {
+            vkCmdBindIndexBuffer(vulkanScene->getSceneParams().commandBuffer, indexResource->getBufferhandle(), 0, VK_INDEX_TYPE_UINT16);
+        }
+
         // RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
         // VkDeviceSize offsets[] = {0};
         // VulkanBufferObjectResource* vertRes = static_cast<VulkanBufferObjectResource*> (info.vertBufferResource->getGpuResourceProxy());

@@ -61,7 +61,7 @@ namespace Bolt
         BufferResourceBuilder& setInitiallymapped(const bool map) { m_initiallyMapped = map; return *this; }
         BufferResourceBuilder& copyDataToBuffer(const bool shouldCopy) { m_copyDataTobuffer = shouldCopy; return *this; }
 
-        GraphicsResource* build();
+        ResourceGPUProxyPtr build();
 
     protected:
         ResourceGPUProxy* buildBuffer();
@@ -122,6 +122,28 @@ namespace Bolt
         ResourceGPUProxyPtr       m_ptr;
         Pipeline*                 m_pipeline = nullptr;
     };
+
+//====================================================================================
+//====================================================================================
+
+    class Model;
+    class IRenderObjectImpl;
+    using RenderObjectRef = Quaint::QUniquePtr<IRenderObjectImpl, Deleter<IRenderObjectImpl>>;
+    class RenderObjectBuilder : public GraphicsResourceBuilderBase
+    {
+    public:
+        RenderObjectBuilder(Quaint::IMemoryContext* context)
+        : GraphicsResourceBuilderBase(context)
+        {}
+        RenderObjectRef buildFromModel(Model* model);
+
+    private:
+        
+    };
+
+//====================================================================================
+//====================================================================================
+
 }
 
 #endif //_H_RESOURCE_BUILDER

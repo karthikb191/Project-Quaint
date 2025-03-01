@@ -5,7 +5,7 @@
 #ifndef USE_CUSTOM_MEMORY_PTRS
  #define USE_CUSTOM_MEMORY_PTRS 0
 #endif
-#if USE_CUSTOM_MEMORY_PTRS
+#if !USE_CUSTOM_MEMORY_PTRS
     #include <memory>
 #endif
 

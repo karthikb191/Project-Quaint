@@ -20,6 +20,7 @@
 //TODO: Remove this from here
 #include <Gfx/Entities/RenderObject.h>
 #include <Gfx/Entities/Resources.h>
+#include <Gfx/Entities/Painters.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 
 namespace Bolt
@@ -408,7 +409,7 @@ namespace Bolt
         s_Instance = this;
     }
 
-RenderQuad* quadRef = nullptr; //TODO: Remove this
+//RenderQuad* quadRef = nullptr; //TODO: Remove this
     void VulkanRenderer::init()
     {
         DeviceManager::Create(m_context);
@@ -550,10 +551,10 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         //testContext.destroy();
         //testTexture.destroy();
 
-        if(quadRef != nullptr)
-        {
-            QUAINT_DELETE(m_context, quadRef);
-        }
+        //if(quadRef != nullptr)
+        //{
+        //    QUAINT_DELETE(m_context, quadRef);
+        //}
 
         for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
@@ -2444,6 +2445,8 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
         uint32_t swapchainImage = m_vulkanSwapchain->getNextSwapchainImage(VK_NULL_HANDLE, m_imageAvailableFence);
         VkResult res = vkWaitForFences(m_device, 1, &m_imageAvailableFence, VK_TRUE, UINT64_MAX);
 
+        auto painters = RenderModule::get().getBoltRenderer()->getPainters();
+
         Quaint::QArray<VkSemaphore> semaphoresToWaitOn(m_context);
         //Draw each render scene and wait for it to finish
         for(auto& scene : m_renderScenes)
@@ -2463,7 +2466,13 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
             auto& stages = scene->getRenderStages();
             for(auto& stage : stages)
             {
-                //TODO: Pass the scene ans stage info to a specific sub-renderer
+                //TODO: selectively fetch painters compatible with scene and stage
+                for(auto& painter : painters)
+                {
+                    painter->preRender(scene.get(), stage.index);
+                    painter->render(scene.get());
+                    painter->postRender();
+                }
             }
 
             vulkanScene->end(m_graphicsQueue);
@@ -2592,11 +2601,6 @@ RenderQuad* quadRef = nullptr; //TODO: Remove this
 
         createImageViews();
         createFrameBuffers();
-    }
-
-    IRenderObjectImpl* VulkanRenderer::buildRenderObjectImplFor(RenderObject* obj)
-    {
-        return QUAINT_NEW(m_context, VulkanRenderObject, obj);
     }
 
     void mapBufferResource(GraphicsResource* resource, void** out)

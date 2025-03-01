@@ -31,29 +31,6 @@ namespace Bolt
         //virtual void unmapBuffer() = 0;
     };
 
-    class RenderObject;
-    class IRenderObjectImpl
-    {
-    public:
-        IRenderObjectImpl(RenderObject* ro)
-        : m_renderObject(ro)
-        {}
-
-        virtual void build(const GeometryRenderInfo& shaderinfo) = 0;
-        virtual void draw(const GeometryRenderInfo& info) = 0;
-        virtual void destroy() = 0;
-
-        RenderObject* getRenderObject() { return m_renderObject; }
-    protected:
-        RenderObject*       m_renderObject = nullptr;
-    };
-
-    class IRenderObjectBuilder
-    {
-    public:
-        virtual IRenderObjectImpl*  buildRenderObjectImplFor(RenderObject* obj) = 0;
-    };
-
     class ResourceGPUProxy
     {
     public:
@@ -66,6 +43,17 @@ namespace Bolt
     
     protected:
         Quaint::IMemoryContext* m_context = nullptr;
+    };
+
+    class IRenderObjectImpl : public ResourceGPUProxy
+    {
+    public:
+        IRenderObjectImpl(Quaint::IMemoryContext* context)
+        : ResourceGPUProxy(context)
+        {}
+
+        virtual void build(const GeometryRenderInfo& shaderinfo) = 0;
+        virtual void draw(RenderScene* scene) = 0;
     };
 }
 

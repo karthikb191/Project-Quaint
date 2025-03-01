@@ -2,7 +2,9 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Entities/Pipeline.h>
+#include <GFX/Entities/Model.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
+#include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 
 //Vulkan Specific implementation of resource builder
 //TODO: Surround with VULKAN_API macro
@@ -90,7 +92,7 @@ namespace Bolt {
     }
 
     //UB resource builder
-    GraphicsResource* BufferResourceBuilder::build()
+    ResourceGPUProxyPtr BufferResourceBuilder::build()
     {
         assert(m_dataSize > 0 && "invalid data");
 
@@ -100,31 +102,33 @@ namespace Bolt {
 
         ResourceGPUProxy* proxy = nullptr;
         GraphicsResource* resource = nullptr;
+        ResourceGPUProxyPtr gpuRes(nullptr, Deleter<ResourceGPUProxy>(m_context));
+
         switch(m_bufferType)
         {
             case EBufferType::VERTEX:
                 proxy = buildVertexBuffer();
-                resource = GraphicsResource::create<BufferResource<EBufferType::VERTEX>>(m_context, proxy);
+                //resource = GraphicsResource::create<BufferResource<EBufferType::VERTEX>>(m_context, proxy);
             break;
             
             case EBufferType::INDEX:
                 proxy = buildIndexBuffer();
-                resource = GraphicsResource::create<BufferResource<EBufferType::INDEX>>(m_context, proxy);
+                //resource = GraphicsResource::create<BufferResource<EBufferType::INDEX>>(m_context, proxy);
             break;
             
             case EBufferType::UNIFORM:
                 proxy = buildUniformBuffer();
-                resource = GraphicsResource::create<BufferResource<EBufferType::UNIFORM>>(m_context, proxy);
+                //resource = GraphicsResource::create<BufferResource<EBufferType::UNIFORM>>(m_context, proxy);
             break;
 
             default:
                 assert(false && "Unsupported buffer type provided");
-                return nullptr;
+                return gpuRes;
             break;
         }
         assert(proxy != nullptr && "could not build graphics proxy buffer object");
-
-        return resource;
+        gpuRes.reset(proxy);
+        return std::move(gpuRes);
     }
 
     ResourceGPUProxy* BufferResourceBuilder::buildVertexBuffer()
@@ -228,5 +232,25 @@ namespace Bolt {
         m_ptr.reset(pipeline);
         return std::move(m_ptr);
     }
+
+//====================================================================================
+//============================ RENDER OBJECT BUILDER =================================
+
+    RenderObjectRef RenderObjectBuilder::buildFromModel(Model* model)
+    {
+        RenderObjectRef ro(nullptr, Deleter<IRenderObjectImpl>(m_context));
+        VulkanRenderObject* proxy = QUAINT_NEW(m_context, VulkanRenderObject, m_context);
+        // Building Vertex Buffer
+        Mesh* mesh = model->getMesh();
+        proxy->createBuffersFromModel(model);
+
+        // Building Index Buffer
+
+        ro.reset(proxy);
+        return std::move(ro);
+    }
+
+//====================================================================================
+//====================================================================================
 
 }
