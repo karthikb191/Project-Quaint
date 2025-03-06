@@ -11,6 +11,7 @@ namespace Bolt
     class GraphicsResource;
     class RenderScene;
     class RenderStage;
+    class Pipeline;
 
     class IRenderer
     {
@@ -26,6 +27,9 @@ namespace Bolt
         /* Adds and builds the render scenes */
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, const uint32_t numStages, const RenderStage* pStages) = 0;
         virtual RenderScene* getRenderScene(Quaint::QName name) = 0;
+
+        virtual void addPipeline(Bolt::Pipeline* pipeline) = 0;
+        virtual Bolt::Pipeline* getPipeline(const Quaint::QName& name) = 0;
         //TODO:
         //virtual void mapBuffer() = 0;
         //virtual void unmapBuffer() = 0;

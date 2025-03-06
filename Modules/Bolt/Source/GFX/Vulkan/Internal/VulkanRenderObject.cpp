@@ -85,6 +85,8 @@ namespace Bolt { namespace vulkan {
         .setDataOffset(0)
         .setInitiallymapped(false);
         m_indexBuffer = std::move(builder.build());
+
+        m_indexSize = model->getMesh()->getIndexCount();
     }
 
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
@@ -469,6 +471,8 @@ namespace Bolt { namespace vulkan {
         {
             vkCmdBindIndexBuffer(vulkanScene->getSceneParams().commandBuffer, indexResource->getBufferhandle(), 0, VK_INDEX_TYPE_UINT16);
         }
+
+        vkCmdDrawIndexed(vulkanScene->getSceneParams().commandBuffer, m_indexSize, 1, 0, 0, 0);
 
         // RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
         // VkDeviceSize offsets[] = {0};

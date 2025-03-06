@@ -198,6 +198,9 @@ namespace Bolt
         typedef Quaint::QUniquePtr<RenderScene, Deleter<RenderScene>> TRenderScenePtr;
         typedef Quaint::QArray<TRenderScenePtr> TRenderSceneArray;
 
+        typedef Quaint::QUniquePtr<Bolt::Pipeline, Deleter<Bolt::Pipeline>> PipelineRef;
+        typedef Quaint::QArray<PipelineRef> PipelineRefArray;
+
         void init() override;
         void shutdown() override;
         void render() override;
@@ -240,6 +243,10 @@ namespace Bolt
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual RenderScene* getRenderScene(Quaint::QName name) override;
         void constructPendingRenderScenes();
+
+        //TODO: Update to take individual params
+        virtual void addPipeline(Bolt::Pipeline* pipeline) override;
+        virtual Bolt::Pipeline* getPipeline(const Quaint::QName& name) override;
 
         /*Only supports primary command buffers for now*/
         Quaint::QArray<VkCommandBuffer> getGraphicsCommandBuffers(uint32_t count);
@@ -411,6 +418,7 @@ namespace Bolt
         vulkan::GraphicsContext             m_immediateContext;
         Quaint::QUniquePtr<VulkanSwapchain> m_vulkanSwapchain = nullptr;
         TRenderSceneArray                   m_renderScenes;
+        PipelineRefArray                    m_pipelines;
 
     #ifdef DEBUG_BUILD      
         VkDebugUtilsMessengerEXT            m_debugMessenger = VK_NULL_HANDLE;

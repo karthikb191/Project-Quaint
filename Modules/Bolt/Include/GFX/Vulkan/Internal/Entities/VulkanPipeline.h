@@ -43,6 +43,7 @@ namespace Bolt{
         VulkanGraphicsPipeline(Quaint::IMemoryContext* context);
         void init();
         virtual void destroy() override;
+        VkPipeline getPipelineHandle() { return m_pipeline; }
         
     private:
         void buildShaders(const ShaderDefinition& definition);

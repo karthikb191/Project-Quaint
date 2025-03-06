@@ -18,7 +18,7 @@ namespace Bolt
         //Initially setting it up with defaults
         m_pipeline->setInputAssemblyState(false, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         // Fill the polygons and discard backfaces by default
-        m_pipeline->setRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        m_pipeline->setRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
     }
     
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupShaders(const ShaderDefinition& definition)
@@ -120,6 +120,7 @@ namespace Bolt
                 if(stride <= 0) continue; 
 
                 bindingDesc.binding = i; 
+                bindingDesc.stride = stride;
                 bindingDesc.inputRate = pInputRate;
                 m_bindingDescs.pushBack(bindingDesc);
             }
@@ -241,8 +242,8 @@ namespace Bolt
             layoutInfo.pushConstantRangeCount = 0;
             layoutInfo.pPushConstantRanges = nullptr;
 
-            layoutInfo.setLayoutCount = 1; /* TODO: Currently only supporting a single descriptor set */
-            layoutInfo.pSetLayouts = &m_descritorSetLayout;
+            layoutInfo.setLayoutCount = 0; /* TODO: Currently only supporting a single descriptor set */
+            layoutInfo.pSetLayouts = nullptr;//&m_descritorSetLayout;
             
             res = vkCreatePipelineLayout(device, &layoutInfo, callbacks, &m_layout);
             ASSERT_SUCCESS(res, "Failed to create pipeline layout");
@@ -361,6 +362,14 @@ namespace Bolt
             blendInfo.pNext = nullptr;
             blendInfo.logicOpEnable = VK_FALSE;
             blendInfo.logicOp = VK_LOGIC_OP_COPY;
+            blendInfo.blendConstants[0] = 0.0f;
+            blendInfo.blendConstants[1] = 0.0f;
+            blendInfo.blendConstants[2] = 0.0f;
+            blendInfo.blendConstants[3] = 0.0f;
+
+            VkPipelineColorBlendAttachmentState blendAttachmentState{};
+            blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            blendAttachmentState.blendEnable = VK_FALSE;
             blendInfo.attachmentCount = m_blendAttachments.getSize();
             blendInfo.pAttachments = m_blendAttachments.getBuffer();
 

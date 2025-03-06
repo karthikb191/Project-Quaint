@@ -16,6 +16,9 @@
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Entities/RenderScene.h>
+#include <GFX/Entities/Pipeline.h>
+
+#include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
 
 //TODO: Remove this from here
 #include <Gfx/Entities/RenderObject.h>
@@ -405,6 +408,7 @@ namespace Bolt
     //, m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
     , m_immediateContext(context)
     , m_renderScenes(context)
+    , m_pipelines(context)
     {
         s_Instance = this;
     }
@@ -1176,6 +1180,24 @@ namespace Bolt
         return nullptr;
     }
 
+    
+    void VulkanRenderer::addPipeline(Bolt::Pipeline* pipeline)
+    {
+        assert(pipeline != nullptr && "NULL pipeline passed");
+        PipelineRef ref(pipeline, Bolt::Deleter<Bolt::Pipeline>(pipeline->getMemoryContext()));
+        m_pipelines.pushBack(std::move(ref));
+    }
+    Bolt::Pipeline* VulkanRenderer::getPipeline(const Quaint::QName& name)
+    {
+        for(auto& pipeRef : m_pipelines)
+        {
+            if(pipeRef->getName() == name)
+            {
+                return pipeRef.get();
+            }
+        }
+        return nullptr;
+    }
 
     // void VulkanRenderer::createScene()
     // {
@@ -2464,11 +2486,25 @@ namespace Bolt
             }
 
             auto& stages = scene->getRenderStages();
+            Quaint::QName boundPipeline = "";
             for(auto& stage : stages)
             {
                 //TODO: selectively fetch painters compatible with scene and stage
                 for(auto& painter : painters)
                 {
+                    const Quaint::QName& nextPipeline = painter->getPipelineName();
+                    if(boundPipeline != nextPipeline)
+                    {
+                        //Get pipeline and bind
+                        Bolt::Pipeline* pipeline = getPipeline(nextPipeline);
+                        assert(pipeline != nullptr && "Could not fetch the required pipeline. Exiting");
+
+                        VulkanGraphicsPipeline* vulkanPipeline = static_cast<VulkanGraphicsPipeline*>(pipeline->getGpuResourceProxy());
+                        
+                        //TODO: currently only supporting graphics bind point. Update as required later
+                        vkCmdBindPipeline(vulkanScene->getSceneParams().commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->getPipelineHandle());
+                    }
+                    
                     painter->preRender(scene.get(), stage.index);
                     painter->render(scene.get());
                     painter->postRender();

@@ -29,6 +29,7 @@ namespace Bolt
         Quaint::QName m_pipeline = "";
     };
 
+    /* Geometry pipeline doesn't own models. Calling code should ensure the model is not destroyed as it's being used by the pipeline*/
     class GeometryPainter : public Painter
     {
     public:

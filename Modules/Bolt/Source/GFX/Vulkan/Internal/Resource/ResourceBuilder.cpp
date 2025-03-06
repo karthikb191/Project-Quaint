@@ -226,7 +226,7 @@ namespace Bolt {
         VulkanGraphicsPipeline* pipeline = builder.setupShaders(m_pipeline->getShaderDefinition())
         .setupRenderStageInfo(scene, m_pipeline->getStageIdx(), true)
         .setupPrimitiveTopology(false, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
         .build();
 
         m_ptr.reset(pipeline);

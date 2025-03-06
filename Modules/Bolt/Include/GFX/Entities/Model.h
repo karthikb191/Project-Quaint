@@ -57,7 +57,7 @@ namespace Bolt
     class Model : public GraphicsResource
     {
     public:
-        Model(Quaint::IMemoryContext* context);
+        Model(Quaint::IMemoryContext* context, MeshRef& mesh);
 
         void draw(RenderScene* scene);
         virtual void bindToGpu() override;
@@ -70,7 +70,7 @@ namespace Bolt
         MeshRef m_mesh; //TODO: Extend to support multiple meshes
         Quaint::QArray<MeshRef> m_meshes;
     };
-    using ModelRef = Quaint::QUniquePtr<Model, Deleter<Mesh>>;
+    using ModelRef = Quaint::QUniquePtr<Model, Deleter<Model>>;
 
 }
 

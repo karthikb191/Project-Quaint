@@ -32,13 +32,13 @@ T* allocArrayFromContext(Quaint::IMemoryContext* context, size_t elements, ARGS.
 }
 
 template<typename T>
-void deleteFromContext(Quaint::IMemoryContext* context, T* mem)
+inline void deleteFromContext(Quaint::IMemoryContext* context, T* mem)
 {
     mem->~T();
     context->Free(mem);
 }
 template<typename T>
-void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
+inline void deleteArrayFromContext(Quaint::IMemoryContext* context, T* mem)
 {
 #ifndef Q_DISABLE_CUSTOM_MEMORY_ALLOCATION
     size_t numElems = context->GetBlockSize(mem) / sizeof(T);

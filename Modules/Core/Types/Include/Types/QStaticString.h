@@ -95,9 +95,18 @@ public:
         }
         return strcmp(m_rawData, other.getBuffer()) == 0;
     }
+    template<size_t SZ>
+    bool operator!=(const QStaticString<SZ>& other) const
+    {
+        return !this->operator==(other);
+    }
     bool operator==(const char* other) const
     {
         return strcmp(m_rawData, other) == 0;
+    }
+    bool operator!=(const char* other) const
+    {
+        return !this->operator==(other);
     }
     bool operator<(const QStaticString<N>& other) const
     {

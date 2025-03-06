@@ -51,6 +51,8 @@ namespace Bolt{
         VkSampler                               m_sampler = VK_NULL_HANDLE;
         
         VulkanShaderGroupResource*              m_shaderGroupResource = nullptr;
+
+        uint32_t                                m_indexSize = 0;
     };
     
 }}

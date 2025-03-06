@@ -100,6 +100,8 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
     def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    //info.extents = Quaint::QVec2(~0, ~0);
+    //info.offset = Quaint::QVec2({0, 0});
     info.extents = Quaint::QVec2(256, 560);
     info.offset = {40, 0};
     info.attachments.clear();
@@ -132,12 +134,38 @@ int main()
 
     shaderDef.attributeSets.pushBack(attributes);
 
-    Bolt::Pipeline pipeline = Bolt::Pipeline(context, "GeoPipeline", "graphics", 0, shaderDef);
-    /*Creates a vulkan resource*/
-    pipeline.bindToGpu();
+    Bolt::ShaderDefinition shaderDef2{};
+    shaderDef2.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+    shaderDef2.attributeSets = shaderDef.attributeSets;
 
-    // Pipeline(name, scene, stageIndex, shaderDefinition, PrimitiveInformation, BlendInformation)
-    // 1. Create a pipeline from shader
+
+    /*Creates pipeline and generate a graphic API specific object*/
+    Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    pipeline->bindToGpu();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
+
+
+    //Creating a painter for a specific pipeline and adding model to it
+    Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
+    
+    //Had Horrible memory leak
+    Quaint::QArray<Bolt::ModelRef> modelHolder(context);
+    auto AddModelFunc = [&]()
+    {
+        Bolt::MeshRef meshRef(QUAINT_NEW(context, Bolt::QuadMesh, context), Bolt::Deleter<Bolt::Mesh>(context));
+        Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
+        Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
+        model->bindToGpu();
+        geoPainter->AddModel(model.get());
+        modelHolder.pushBack(std::move(model));
+    };
+
+    for(int i = 0; i < 10; ++i)
+    {
+        AddModelFunc();
+    }
+
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
 
     //TODO: Loop through application module 
     //TODO: Move this to Application Module

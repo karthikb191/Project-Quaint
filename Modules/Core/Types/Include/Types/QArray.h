@@ -89,8 +89,12 @@ public:
             m_context = other.getMemoryContext();
 
             reserve(other.getReservedSize());
-            memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
+            //memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
             m_size = other.getSize();
+            for(size_t i = 0; i < m_size; ++i)
+            {
+                new(m_rawData + i)T(other[i]);
+            }
         }
         /*Uses memory context of object being copied from and simply points to the internal data of other*/
         QArray(QArray<T>&& other)
@@ -110,8 +114,12 @@ public:
             m_rawData = nullptr;
             m_context = other.getMemoryContext();
             reserve(other.getReservedSize());
-            memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
+            //memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
             m_size = other.getSize();
+            for(size_t i = 0; i < m_size; ++i)
+            {
+                new(m_rawData + i)T(other[i]);
+            }
             return *this;
         }
         /*Reclaims storage in current object and simply points to data in the other structure*/

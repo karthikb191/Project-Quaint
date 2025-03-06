@@ -181,7 +181,15 @@ namespace Bolt
             return resource;
         }
 
-        ResourceGPUProxy* getGpuResourceProxy() { return m_gpuProxy; }
+        //TODO: Remove raw pointer m_gpuProxy
+        ResourceGPUProxy* getGpuResourceProxy() 
+        {
+            if(m_gpuProxyPtr.get())
+            {
+                return m_gpuProxyPtr.get();
+            }
+            return m_gpuProxy; 
+        }
 
         virtual void bindToGpu() { assert(false && "Need API specific implementation"); }
         virtual void unbindFromGPU() { assert(false && "Need API specific implementation"); }
