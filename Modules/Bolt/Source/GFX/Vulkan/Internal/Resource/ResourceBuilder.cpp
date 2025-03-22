@@ -240,11 +240,11 @@ namespace Bolt {
     {
         RenderObjectRef ro(nullptr, Deleter<IRenderObjectImpl>(m_context));
         VulkanRenderObject* proxy = QUAINT_NEW(m_context, VulkanRenderObject, m_context);
-        // Building Vertex Buffer
+        
+        // Building Vertex and Index buffers
         Mesh* mesh = model->getMesh();
         proxy->createBuffersFromModel(model);
-
-        // Building Index Buffer
+        
 
         ro.reset(proxy);
         return std::move(ro);

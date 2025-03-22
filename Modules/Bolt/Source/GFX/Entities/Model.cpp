@@ -1,6 +1,7 @@
 #include <GFX/Entities/Model.h>
 #include <GFX/ResourceBuilder.h>
 #include <chrono>
+#include <random>
 
 namespace Bolt
 {
@@ -28,21 +29,37 @@ namespace Bolt
             -------------
         1(-.5,.5)       3(.5, .5)
         */
-        float p0 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p1 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p2 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p3 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p4 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p5 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p6 = (float)std::rand()/(float)RAND_MAX; std::srand((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
-        float p7 = (float)std::rand()/(float)RAND_MAX;
+
+        std::random_device rd;
+        std::mt19937 mt(rd());
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+
+        //std::srand((uint32_t)std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        float rSide = (float)dist(mt)/8.f; //(float)std::rand()/((float)RAND_MAX*4); std::srand((uint32_t)std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        float rXPos = (float)((dist(mt) * 2.f)- 1); //((((float)std::rand()/((float)RAND_MAX)) * 2.f) - 1.f)/2.f; std::srand(std::time(0));
+        float rYPos = (float)((dist(mt) * 2.f)- 1);// ((((float)std::rand()/((float)RAND_MAX)) * 2.f) - 1.f)/2.f; std::srand((uint32_t)std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        
+        float p0 = rSide;
+        float p1 = p0;
+        float p2 = p0;
+        float p3 = p0;
+        float p4 = p0;
+        float p5 = p0;
+        float p6 = p0;
+        float p7 = p0;
+
+        float rCol0 = (float)(dist(mt)) * 0.5f;
+        float rCol1 = (float)(dist(mt)) * 0.5f;
+        float rCol2 = (float)(dist(mt)) * 0.5f;
+        float rCol3 = (float)(dist(mt)) * 0.5f;
 
         m_vertices.insertRangeAt(0,
         {
-            { {-p0, -p1, 0.f, 1.f}, {p0, p3, p1, 1.f}, {0.f, 0.f} },
-            { {-p2, p3, 0.f, 1.f}, {p1, p1, p1, 1.f}, {0.f, 1.0f} },
-            { {p4, -p5, 0.f, 1.f}, {p2, p5, p7, 1.f}, {1.f, 0.f} },
-            { {p6, p7, 0.f, 1.f}, {p4, p6, p4, 1.f}, {1.f, 1.f} }
+            { {-p0 + rXPos, -p1 + rYPos, 0.f, 1.f}, {rCol0, rCol2, rCol3, 1.f}, {0.f, 0.f} },
+            { {-p2 + rXPos, p3 + rYPos, 0.f, 1.f}, {rCol0, rCol1, rCol2, 1.f}, {0.f, 1.0f} },
+            { {p4 + rXPos, -p5 + rYPos, 0.f, 1.f}, {rCol1, rCol0, rCol3, 1.f}, {1.f, 0.f} },
+            { {p6 + rXPos, p7 + rYPos, 0.f, 1.f}, {rCol3, rCol2, rCol0, 1.f}, {1.f, 1.f} }
         }
         );
 
@@ -98,6 +115,25 @@ namespace Bolt
         {
             m_gpuProxyPtr->destroy();
         }
+    }
+
+    void PreDraw()
+    {
+        /*
+        
+        Each API implementation should contain the required implementation overload. The default, if hit should throw an assert
+
+
+        Create a UniformBufferHandler that contains a UniformBuffer. <- Takes in Shader Uniform structure Reference for validation
+        Create a UniformBuffer Structure that can be bound to GPU
+
+
+        roPtr->PushUniform(<Uniform buffer data>)
+        roPtr->PushUniform(<Image data>)
+
+        roPtr->UpdateUniforms(); <- Should actually issue a vulkan command to update uniforms
+
+        */
     }
 
     void Model::draw(RenderScene* scene)

@@ -122,6 +122,22 @@ public:
             }
             return *this;
         }
+        template<int N>
+        QArray& operator=(const T(&other)[N])
+        {
+            assert(m_context && "No context set");
+            clear();
+            //deep copy from other
+            m_rawData = nullptr;
+            reserve(N);
+            //memcpy(m_rawData, other.getBuffer(), other.getSize() * TYPE_SIZE);
+            m_size = N;
+            for(size_t i = 0; i < m_size; ++i)
+            {
+                new(m_rawData + i)T(other[i]);
+            }
+            return *this;
+        }
         /*Reclaims storage in current object and simply points to data in the other structure*/
         QArray& operator=(QArray<T>&& other)
         {

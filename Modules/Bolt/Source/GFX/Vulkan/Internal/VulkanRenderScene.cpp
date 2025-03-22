@@ -112,9 +112,19 @@ namespace Bolt {
     {
          return VulkanRenderer::get()->getSwapchain();
     }
+
+    //TODO: Handle getting previous attachment layout somehow
     void SwapchainAttachment::buildAttachmentDescription()
     {
-        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //We don't care
+        if(!info.storePrevious)
+        {
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //We don't care
+        }
+        else
+        {
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+
         attachmentDescription.format = getSwapchain()->getFormat();
         attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
         if(info.clearImage)
@@ -125,9 +135,18 @@ namespace Bolt {
         {
             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         }
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        if(!info.storePrevious)
+        {
+            attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+        else
+        {
+            attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        }
     }
     void SwapchainAttachment::buildAttachmentReference()
     {

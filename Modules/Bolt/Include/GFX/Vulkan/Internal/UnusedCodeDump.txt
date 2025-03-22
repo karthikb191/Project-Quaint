@@ -1,0 +1,107 @@
+
+
+
+struct Element
+{
+    const uint32_t offset = 0;
+    const uint32_t size = 0;
+};
+
+//This should represent the shader data
+
+using CTName = Quaint::QCTString<64>;
+
+template<typename T, int SZ>
+constexpr int GetCount(const T(&t)[SZ])
+{
+    return SZ;
+}
+
+struct DecriptorItem
+{
+    uint32_t offset = 0;
+    uint32_t size = 0;
+};
+
+struct Descriptor
+{
+    uint32_t set = 0;
+    uint32_t location = 0;
+    Quaint::QArray<DecriptorItem> items;
+};
+
+struct SimpleTriShader
+{
+    /*descriptor set*/
+    struct UBO
+    {
+        static const uint32_t set = 0;
+        static const uint32_t location = 0;
+
+        struct Data
+        {
+            const Element model{0, 10};
+            const Element view{10, 10};
+            const Element proj{20, 20};
+        };
+
+        const Data data{};
+    };
+
+    Quaint::QFastArray<CTName, GetCount({CTName("ubo")})> descriptors{CTName("ubo")};
+
+};
+
+#define BEGIN_SHADER_INTERFACE(pName)                   \
+        struct pName                                    \
+        {                                               \
+
+#define NUMARGS_NAME(...)  (sizeof((Quaint::QName[]){__VA_ARGS__})/sizeof(Quaint::QName))
+
+
+#define DECLARE_STATIC_ITEMS(name, ...) \
+        const Quaint::QFastArray<Quaint::QName, GetCount({__VA_ARGS__})> name{__VA_ARGS__}; \
+
+#define END_SHADER_INTERFACE()                          \
+        };                                              \
+
+#define BEGIN_DESCRIPTOR_INTERFACE(pName, pSet, pLoc)   \
+        struct pName{                                   \
+            static const uint32_t set = pSet;           \
+            static const uint32_t location = pLoc;      \
+            struct {                                    \
+
+#define END_DESCRIPTOR_INTERFACE()                      \
+            }static constexpr Data{};                   \
+        };                                              \
+
+#define ADD_ELEMENT(pName, pOffset, pSize) const Element pName{pOffset, pSize};
+
+
+BEGIN_SHADER_INTERFACE(SimpleTriTest)
+
+   DECLARE_STATIC_ITEMS(descriptors, Quaint::QName("ubo"), Quaint::QName("sampler"))
+
+    BEGIN_DESCRIPTOR_INTERFACE(ubo, 0, 1)
+        
+        ADD_ELEMENT(model, 0, 32)
+        ADD_ELEMENT(view, model.offset + model.size, 32)
+        ADD_ELEMENT(proj, view.offset + view.size, 32)
+    END_DESCRIPTOR_INTERFACE()
+
+    BEGIN_DESCRIPTOR_INTERFACE(texSampler, 0, 2)
+    END_DESCRIPTOR_INTERFACE()
+END_SHADER_INTERFACE()
+
+template<int N>
+class TestStr
+{
+public:
+    constexpr TestStr()
+    : buffer{'\0'}
+    {
+    }
+
+private:
+    char buffer[N];
+};

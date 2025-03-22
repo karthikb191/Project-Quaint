@@ -79,6 +79,8 @@ namespace Bolt
         Quaint::QName name = "";
         EShaderResourceType type = EShaderResourceType::INVALID;
         EShaderStage stage = EShaderStage::INVALID; /* In which stage is this uniform used */
+        
+        //TODO: Consider adding an array here containing individual elements  
         uint32_t size = 0;
         uint32_t count = 1;
     };

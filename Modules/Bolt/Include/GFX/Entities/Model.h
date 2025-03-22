@@ -20,6 +20,15 @@ namespace Quaint
 
 namespace Bolt
 {
+    class UniformStorage
+    {
+    public:
+        
+
+    private:
+        
+    };
+
     /*Mesh contains vertex information and other sort*/
     class Mesh
     {

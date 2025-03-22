@@ -21,7 +21,7 @@ namespace Bolt
         virtual void render() = 0;
         virtual ~IRenderer(){}
 
-        virtual IShaderGroupConstructor* getShaderGroupConstructor() = 0;
+        //virtual IShaderGroupConstructor* getShaderGroupConstructor() = 0;
 
         //TODO: Implement these
         /* Adds and builds the render scenes */
@@ -55,6 +55,10 @@ namespace Bolt
         IRenderObjectImpl(Quaint::IMemoryContext* context)
         : ResourceGPUProxy(context)
         {}
+
+        template<typename T>
+        void pushUniform(const Quaint::QName& name, T* data);
+        void pushUniformBuffer(const Quaint::QName& name, void* data, uint32_t size);
 
         virtual void build(const GeometryRenderInfo& shaderinfo) = 0;
         virtual void draw(RenderScene* scene) = 0;

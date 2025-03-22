@@ -18,7 +18,6 @@
 
 #include "Internal/DeviceManager.h"
 #include "Internal/PipelineManager.h"
-#include "Internal/ShaderManager.h"
 #include "Internal/VulkanRenderPass.h"
 #include "Internal/VulkanRenderScene.h"
 #include "Internal/VulkanGraphicsContext.h"
@@ -214,7 +213,7 @@ namespace Bolt
         
         static VulkanRenderer* get() { return s_Instance; }
 
-        IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
+        //IShaderGroupConstructor* getShaderGroupConstructor() { return m_shaderManager; }
         //vulkan::RenderFrameScene* getRenderFrameScene() { return &m_renderScene; }
 
         VulkanSwapchain* getSwapchain() { return m_vulkanSwapchain.get(); }
@@ -409,7 +408,7 @@ namespace Bolt
         VkDeviceMemory                      m_textureGpuMemory;
 
         DeviceManager*                      m_deviceManager = nullptr;
-        ShaderManager*                      m_shaderManager = nullptr;
+        //ShaderManager*                      m_shaderManager = nullptr;
 
         vulkan::VulkanRenderPass            m_customRenderPass;
         //vulkan::RenderFrameScene            m_renderScene;                     

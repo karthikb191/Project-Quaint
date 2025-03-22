@@ -6,6 +6,7 @@
 #include <GFX/Interface/IRenderer.h>
 #include <GFX/Data/ShaderInfo.h>
 #include <Types/QArray.h>
+#include <GFX/Vulkan/Internal/ShaderInterface.h>
 
 namespace Bolt{ 
     
@@ -44,6 +45,8 @@ namespace Bolt{
         void init();
         virtual void destroy() override;
         VkPipeline getPipelineHandle() { return m_pipeline; }
+        ShaderInterface::Interface& getShaderInterface() { return m_shaderInterface; }
+        VkPipelineLayout getPipelineLayout() { return m_layout; }
         
     private:
         void buildShaders(const ShaderDefinition& definition);
@@ -83,9 +86,34 @@ namespace Bolt{
         VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE; /* Currently only supporting a single descriptor set */
         VkDescriptorSetLayout m_descritorSetLayout = VK_NULL_HANDLE;
-
+        
+        ShaderInterface m_totalShaderInterface;
+        ShaderInterface::Interface m_shaderInterface;
         // Does it need shader handle?
         // Need uniform and attribute info here for future validation
+    };
+
+
+    //TODO: Move these to a new file
+    //Should be able to update descriptors
+    /* Handles a single descriptor set */
+    class DescriptorsHandler
+    {
+    public:
+        DescriptorsHandler(Quaint::IMemoryContext* context, const Quaint::QName& setName, VulkanGraphicsPipeline* pipeline);
+        
+        void pushData(const Quaint::QName& descriptorName, const Quaint::QName& name /* Pass uniform buffer */);
+        //void pushData(const Quaint::QName& name, Image2d* image);
+
+        void updateDescriptors();
+        void dispatch(VkCommandBuffer buffer, VkPipelineBindPoint bindPoint);
+
+    private:
+        Quaint::IMemoryContext* m_context;
+        VulkanGraphicsPipeline* m_pipeline;
+        VkDescriptorSet m_set = VK_NULL_HANDLE;
+        ShaderInterface::DescriptorSetInfo m_descriptorInfo;
+        Quaint::QArray<VkWriteDescriptorSet> m_writes;
     };
 
 }}

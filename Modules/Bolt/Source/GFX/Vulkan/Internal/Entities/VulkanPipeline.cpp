@@ -4,6 +4,7 @@
 #include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/Internal/VulkanShader.h>
 #include <GFX/Entities/RenderScene.h>
+#include <GFX/Entities/Image.h>
 #include <GFX/ResourceBuilder.h>
 
 //TODO: Remove this map once map structure is throughly tested
@@ -74,6 +75,8 @@ namespace Bolt
         , m_scissors(context)
         , m_blendAttachments(context)
         {
+            m_totalShaderInterface.setup(context);
+            m_shaderInterface = m_totalShaderInterface.getShaderInterface("simpleTri");
         }
         void VulkanGraphicsPipeline::buildShaders(const ShaderDefinition& definition)
         {
@@ -167,9 +170,11 @@ namespace Bolt
         {
             VkDevice device = VulkanRenderer::get()->getDevice();
             VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
-            
+
             std::map<VkDescriptorType, uint32_t> poolTypeMap;
+
             auto& attachments = shaderDefinition.uniforms;
+
             for(const ShaderUniform& uniform : attachments)
             {
                 VkDescriptorType type = toVulkanDescriptorType(uniform.type);
@@ -180,28 +185,31 @@ namespace Bolt
 
                 ++poolTypeMap[type];
             }
+
             
             Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_context);
+            
             
             for(auto& pool : poolTypeMap)
             {
                 VkDescriptorPoolSize poolSize{};
                 poolSize.type = pool.first;
                 //poolSize.descriptorCount = pool.second;
-                poolSize.descriptorCount = 50; //TODO: Remove this from here and move to a central descriptor pool allocator class
+                poolSize.descriptorCount = 1000; //TODO: Remove this from here and move to a central descriptor pool allocator class
                 poolSizes.pushBack(poolSize);
             }
             
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolInfo.flags = 0;
-            poolInfo.maxSets = 100; /* TODO: Only allowing a single set for now */
+            poolInfo.maxSets = 1000; /* TODO: Only allowing a single set for now */
             poolInfo.poolSizeCount = poolSizes.getSize();
             poolInfo.pPoolSizes = poolSizes.getBuffer();
 
             VkResult res = vkCreateDescriptorPool(device, &poolInfo, callbacks, &m_descriptorPool);
             ASSERT_SUCCESS(res, "Failed to create descriptor pool");
 
+            //TODO: This logic is wrong. Needs to be addressed quickly
             Quaint::QArray<VkDescriptorSetLayoutBinding> bindings(m_context);
             for(uint32_t i = 0; i < attachments.getSize(); ++i)
             {
@@ -397,5 +405,94 @@ namespace Bolt
         {
             //TODO:
         }
+
+
+        /*
+        1. From shader definition, build descriptors information. Later: Push constant info (Done)
+        2. For now, add descriptor handler to VRO. Should create a single descriptor set for each object instance. Takes pipeline and descriptor name as input
+        3. Establish vkWriteDescSet and VkCmdupdateDescSet points
+        4. push some dummy data
+        5. Establish flowfrom bolt
+        */
+
+        //TODO: Move these to a new file
+        DescriptorsHandler::DescriptorsHandler(Quaint::IMemoryContext* context, const Quaint::QName& setName, VulkanGraphicsPipeline* pipeline)
+        : m_context(context)
+        , m_pipeline(pipeline)
+        , m_writes(context)
+        {
+            auto shaderInterface = pipeline->getShaderInterface();
+            for(auto& set : shaderInterface.descriptorSets)
+            {
+                if(set.name == setName)
+                {
+                    m_descriptorInfo = set;
+                    break;
+                }
+            }
+        }
+
+        void DescriptorsHandler::pushData(const Quaint::QName& descriptorName, const Quaint::QName& name /* Pass uniform buffer*/)
+        {
+            //TODO: Should be optimized ALOT
+            //Get information about current
+            bool valid = false;
+            ShaderInterface::DescriptorElementInfo info;
+            for(auto& set : m_descriptorInfo.items)
+            {
+                if(set.name == descriptorName)
+                {
+                    info = set;
+                    valid = true;
+                    break;
+                }
+            }
+            if(!valid)
+            {
+                return;
+            }
+
+            valid = false;
+            ShaderInterface::UniformElement unifElement;
+            //Look for uniform element in struct
+            for(auto& element : info.elements)
+            {
+                if(element.name == name)
+                {
+                    valid = true;
+                    unifElement = element;
+                    break;
+                }
+            }
+
+            if(!valid)
+            {
+                return;
+            }
+
+            //TODO: memcpy bound data
+            
+
+            //Validate that size is not greater than what's setup
+
+        }
+
+        void pushData(const Quaint::QName& name, Image2d* image)
+        {
+            VulkanTexture* texture = static_cast<VulkanTexture*>(image->getGpuResourceProxy());
+
+        }
+
+        void DescriptorsHandler::updateDescriptors()
+        {
+
+        }
+
+        void DescriptorsHandler::dispatch(VkCommandBuffer buffer, VkPipelineBindPoint bindPoint)
+        {
+            vkCmdBindDescriptorSets(buffer, bindPoint, m_pipeline->getPipelineLayout(), 0, 1, &m_set, 0, nullptr);
+        }
+
+
     }
 }

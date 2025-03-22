@@ -35,6 +35,17 @@ namespace Bolt
 
 int main()
 {
+    //constexpr size_t offset = offsetof(SimpleTriShader, descriptors);
+
+    //constexpr int tt = sizeof("ubo", "sampler", "tete", "trttrsfsdgsdfsdgdg");
+    //constexpr int sz = GetCount<int>({1, 2});
+    //constexpr Quaint::QName name("test");
+
+    //constexpr int sz = GetCount<Quaint::QCTString<64>>({Quaint::QCTString<64>("tetete"), Quaint::QCTString<64>("tettte")});
+    //constexpr int sz = GetCount<Quaint::QName>({Quaint::QName("ubo"), Quaint::QName("sampler")});
+
+    //constexpr auto data = test.descriptors;
+
     std::cout << "Hello Renderer!" << std::endl;
 
     constexpr auto str1 = Quaint::createCTString("Test String");
@@ -77,7 +88,7 @@ int main()
     Bolt::AttachmentDefinition def;
     def.binding = 0;
     def.name = "swapchain";
-    def.clearColor = Quaint::QVec4(.0f, 1.0f, 0.0f, 1.0f);
+    def.clearColor = Quaint::QVec4(.0f, 0.01f, 0.05f, 1.0f);
     def.clearImage = true;
     def.type = Bolt::AttachmentDefinition::Type::Swapchain;
     def.format = Bolt::EFormat::R8G8B8A8_SRGB;
@@ -99,7 +110,8 @@ int main()
 
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
-    def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    def.clearColor = Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f);
+    def.storePrevious = true;
     //info.extents = Quaint::QVec2(~0, ~0);
     //info.offset = Quaint::QVec2({0, 0});
     info.extents = Quaint::QVec2(256, 560);
@@ -147,7 +159,9 @@ int main()
 
     //Creating a painter for a specific pipeline and adding model to it
     Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
-    
+
+    //Goal: To create concrete representations of combined image samplers and UniformBuffer
+
     //Had Horrible memory leak
     Quaint::QArray<Bolt::ModelRef> modelHolder(context);
     auto AddModelFunc = [&]()
@@ -160,7 +174,7 @@ int main()
         modelHolder.pushBack(std::move(model));
     };
 
-    for(int i = 0; i < 10; ++i)
+    for(int i = 0; i < 100; ++i)
     {
         AddModelFunc();
     }

@@ -9,6 +9,25 @@ namespace Bolt
 {
     class RenderScene;
 
+    class GPUDataDispatcher
+    {
+    public:
+        GPUDataDispatcher(Quaint::IMemoryContext*);
+
+        template<typename T>
+        void pushUniform(const Quaint::QName& name, const T& data)
+        {
+            //How to send this over to vulkan API?
+        }
+        void pushUniformBufferData(const Quaint::QName& name, void* data, const uint32_t size)
+        {
+            //Same question
+        }
+
+    private:
+        Quaint::IMemoryContext* m_context;
+    };
+
     /* Would not actually construct or own any shader resources */
     class Pipeline : public GraphicsResource
     {
@@ -40,6 +59,8 @@ namespace Bolt
         Quaint::QName       m_sceneName = "";
         uint32_t            m_stageIdx = 0;
         ShaderDefinition    m_shaderDefinition;
+
+        //GPUDataDispatcher   m_dataDispatcher;
     };
 }
 

@@ -9,6 +9,29 @@
 #include <GFX/Entities/RenderScene.h>
 #include <Types/QMap.h>
 
+/*
+Image ownership should be maintained separately
+
+Uniform BUFFERS need their own structure as they can be mapped
+
+Other Uniforms: UniformImage, UniformSampledImage
+
+CommonInterface to handle these: 
+UniformHandler.update("Name", UniformBuffer)
+UniformHandler.update("Name2", UniformImage)
+UniformHandler.update("Name3", UniformSampledImage)
+
+-- Where to create these buffers/images and who owns them ???
+
+- Create Image2D and bind To GPU [This is simple. Only one instance]
+
+- How and where to create the buffer? 
+    This is MVP buffer, so it's model/mesh specific. Let's have Model take ownership of it for now
+
+
+
+*/
+
 namespace Bolt { namespace vulkan {
     VulkanRenderObject::VulkanRenderObject(Quaint::IMemoryContext* context)
     : IRenderObjectImpl(context)
@@ -18,7 +41,6 @@ namespace Bolt { namespace vulkan {
     , m_vertexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
     , m_indexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
     {
-
     }
 
     void VulkanRenderObject::build(const GeometryRenderInfo& renderInfo)

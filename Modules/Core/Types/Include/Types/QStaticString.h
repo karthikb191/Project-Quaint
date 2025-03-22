@@ -11,14 +11,20 @@ class QStaticString
 {
 public:
     constexpr QStaticString()
+    : m_rawData{'\0'}
     {
-        static_assert(N > 0, "Expected string of non-zero size");
-        memset(m_rawData, '\0', N);
+        //static_assert(N > 0, "Expected string of non-zero size");
+        //memset(m_rawData, '\0', N);
     }
 
     constexpr QStaticString(const QStaticString<N>& other)
+    : m_rawData{'\0'}
     {
-        strcpy_s(m_rawData, N, other.getBuffer());
+        //strcpy_s(m_rawData, N, other.getBuffer());
+        for(int i = 0; i < N; ++i)
+        {
+            m_rawData[i] = other.m_rawData[i];
+        }
     }
     
     template<size_t SZ>
@@ -27,7 +33,11 @@ public:
     {
         static_assert(SZ > 0, "Assigning an empty string is invalid");
         static_assert(N >= SZ, "Passed string is larger than the type can hold");
-        strcpy_s(m_rawData, SZ, str);
+        //strcpy_s(m_rawData, SZ, str);
+        for(int i = 0; i < SZ; ++i)
+        {
+            m_rawData[i] = str[i];
+        }
     }
 
     const char* getBuffer() const { return m_rawData; }

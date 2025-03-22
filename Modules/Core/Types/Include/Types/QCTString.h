@@ -40,19 +40,34 @@ namespace Quaint
     class QCTString
     {
     public:
+        constexpr QCTString()
+        : buffer{'\0'}
+        {}
+
         template<int ... ARGS>
         constexpr QCTString(const ArgsPack<ARGS...>)
         {
         }
-        template<int ... ARGS>
-        constexpr QCTString(const char* c)
-        //: buffer { c[ARGS]... }
+        
+        template<size_t SZ>
+        constexpr QCTString(const char (&str)[SZ])
+        : buffer { }
         {
-            for(int i = 0; i < N; ++i)
+            for(int i = 0; i < SZ; ++i)
             {
-                buffer[i] = c[i];
+                buffer[i] = str[i];
             }
         }
+
+        //template<int ... ARGS>
+        //constexpr QCTString(const char* c)
+        ////: buffer { c[ARGS]... }
+        //{
+        //    for(int i = 0; i < N; ++i)
+        //    {
+        //        buffer[i] = c[i];
+        //    }
+        //}
         template<int ... ARGS>
         constexpr QCTString(const int P, const int Q, const char* first, const char* second, const ArgsPack<ARGS...>)
         //: buffer { '\0' }

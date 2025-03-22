@@ -100,6 +100,7 @@ namespace Bolt
         Quaint::QVec4 clearColor = {1.f, 0.f, 0.5f, 1.f};
         Quaint::QVec2 extents = {256, 256};
         bool clearImage = false;
+        bool storePrevious = false;
         //bool forEachSwapcahinImage = false;
     };
 

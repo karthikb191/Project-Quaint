@@ -5,6 +5,8 @@
 #include <GFX/Vulkan/Internal/VulkanShaderGroup.h>
 #include <memory>
 #include <GFX/Helpers.h>
+#include <GFX/Vulkan/Internal/Entities/UniformBuffer.h>
+#include <GFX/Vulkan/Internal/Entities/Descriptor.h>
 
 namespace Bolt{ 
     
