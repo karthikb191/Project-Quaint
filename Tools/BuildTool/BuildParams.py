@@ -9,6 +9,7 @@ class ModuleType(Enum):
     BUILD_INTERFACE = 5
     MODULE = 6
     EXECUTABLE = 7
+    CMAKELISTS = 8
 
 class BuildSystem(Enum):
     CMAKE = 1

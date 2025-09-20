@@ -38,6 +38,10 @@ namespace Quaint
         { 
             return m_MemoryContexts[0].Alloc(allocSize); 
         }
+        inline void* defaultAllocAligned(size_t allocSize, size_t alignment)
+        {
+            return m_MemoryContexts[0].AllocAligned(allocSize, alignment);
+        }
         inline void     defaultFree(void* mem) 
         { 
             m_MemoryContexts[0].Free(mem); 

@@ -23,6 +23,11 @@
         "Name" : "Memory",
         "Type" : "MODULE",
         "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.buildTmpl"
+    },
+    {
+        "Name" : "EASTL",
+        "Type" : "CMAKELISTS",
+        "Path" : "External\Libs\EASTL-3.21.23\CMakeLists.txt"
     }
 ]
 :@

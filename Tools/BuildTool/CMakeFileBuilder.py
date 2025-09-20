@@ -283,6 +283,16 @@ class CMakeBuilder:
             self.AddNewLines(fd, 2)
 
             pass
+        elif (depModule.Type is ModuleType.CMAKELISTS):
+            cmakeListsPath = os.path.join(self._BuildSettings.RootDirectory, depModule.Params.ModulePath)
+            cmakeListsPath = cmakeListsPath.replace('\\', '/')
+            cmakeListsDir = os.path.dirname(cmakeListsPath)
+            modName = depModule.Params.Name
+            fd.write(f"add_subdirectory(\"{cmakeListsDir}\" \"${{CMAKE_CURRENT_BINARY_DIR}}/{modName}\")\n")
+            fd.write(f"get_target_property({modName}_INCLUDES {modName} INCLUDE_DIRECTORIES)\n")
+            fd.write(f"target_include_directories(${{PROJECT_NAME}} PUBLIC ${{{modName}_INCLUDES}})\n")
+            fd.write(f"target_link_libraries(${{PROJECT_NAME}} PRIVATE {modName})\n")
+
         #TODO: Add code to include and handle dlls
         pass
 
