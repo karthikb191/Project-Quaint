@@ -131,6 +131,7 @@ int main()
     Bolt::ShaderDefinition shaderDef{};
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
     shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
 
     shaderDef.shaders.pushBack({"simpleTri.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
@@ -161,6 +162,7 @@ int main()
     shaderDef = Bolt::ShaderDefinition();
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
     shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
 
     shaderDef.shaders.pushBack({"glsl_shader.vert.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.vert.spv"
@@ -168,9 +170,8 @@ int main()
     shaderDef.shaders.pushBack({"glsl_shader.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.frag.spv"
         , "main", Bolt::EShaderStage::FRAGMENT});
 
-    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
-    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
-    
+    shaderDef.uniforms.pushBack({"sTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+        
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes2(context);
 
     attributes2.pushBack({"aPos", 8, Bolt::EFormat::R32G32_SFLOAT});
@@ -178,8 +179,7 @@ int main()
     attributes2.pushBack({"aColor", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
     shaderDef.attributeSets.pushBack(attributes2);
 
-    shaderDef.uniforms.pushBack({"sTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
-
+    shaderDef.pushConstants.pushBack({"imgui_pushConstant", Bolt::EShaderStage::VERTEX, sizeof(Bolt::ImguiHandler::PushConstant), 0});
     //TODO: Add support for push constants
     
 
@@ -194,7 +194,7 @@ int main()
 
 
     //TODO: Create IMGUI handler
-    Bolt::ImguiHandler::Create(context, context);
+    Bolt::ImguiHandler::Create(context);
     Bolt::ImguiHandler::Get()->Initialize(Bolt::RenderModule::get().getBoltRenderer()->getWindow());
 
     //TODO: Create IMGUI painter

@@ -55,7 +55,6 @@ namespace Bolt
 
     private:
         Pipeline*   m_pipeline = nullptr;
-        Quaint::QArray<Model*> m_models = nullptr;
     };
 
 }

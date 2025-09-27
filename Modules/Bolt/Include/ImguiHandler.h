@@ -2,6 +2,7 @@
 #define _H_IMGUI_HANDLER
 
 #include <Singleton.h>
+#include <imgui.h>
 
 struct ImDrawData;
 //TODO: Maybe this could be a different module
@@ -12,7 +13,13 @@ namespace Bolt
     {
         DECLARE_SINGLETON(Bolt::ImguiHandler);
     public:
-        ImguiHandler(Quaint::IMemoryContext* context);
+        struct PushConstant
+        {
+            ImVec2 uScale;
+            ImVec2 uTranslate;
+        };
+
+        ImguiHandler();
         ~ImguiHandler();
         void Initialize(const Window& window);
         void StartFrame();
@@ -21,7 +28,10 @@ namespace Bolt
         void DeInitialize();
 
     private:
-        Quaint::IMemoryContext* m_context;
+        Quaint::IMemoryContext* GetMemoryContext(){ return m_context; }
+
+        static void* Imgui_Alloc(size_t sz, void* user_data);
+        static void Imgui_Free(void* ptr, void* user_data);
     };
 }
 

@@ -99,6 +99,8 @@ namespace Bolt
         void VulkanGraphicsPipeline::setVertexAttributes(const ShaderDefinition& definition, VkVertexInputRate pInputRate)
         {
             //TODO: This could be improved to be able to validate data much better
+            // TODO: binding<->Location are independent of each other.
+            // If there are multiple bindings, this would probably break. REVISIT
             uint32_t bindingIdx = 0;
             for(uint32_t i = 0; i < definition.attributeSets.getSize(); ++i)
             {
@@ -175,6 +177,7 @@ namespace Bolt
 
             auto& attachments = shaderDefinition.uniforms;
 
+            //Gets number of attachments of a type
             for(const ShaderUniform& uniform : attachments)
             {
                 VkDescriptorType type = toVulkanDescriptorType(uniform.type);
@@ -186,10 +189,9 @@ namespace Bolt
                 ++poolTypeMap[type];
             }
 
-            
+            //Allocates arbitrary number of descriptors for each descriptor found
+            //TODO: Address the arbitrary number
             Quaint::QArray<VkDescriptorPoolSize> poolSizes(m_context);
-            
-            
             for(auto& pool : poolTypeMap)
             {
                 VkDescriptorPoolSize poolSize{};
@@ -199,10 +201,12 @@ namespace Bolt
                 poolSizes.pushBack(poolSize);
             }
             
+            // Creates descriptor pools, which contains sets containing descriptors.
+            // TODO: Address single descriptor set limitation
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolInfo.flags = 0;
-            poolInfo.maxSets = 1000; /* TODO: Only allowing a single set for now */
+            poolInfo.maxSets = 1; /* TODO: Only allowing a single set for now */
             poolInfo.poolSizeCount = poolSizes.getSize();
             poolInfo.pPoolSizes = poolSizes.getBuffer();
 
@@ -221,37 +225,66 @@ namespace Bolt
                 binding.stageFlags = toVulkanShaderStageFlagBits(uniform.stage);
                 bindings.pushBack(binding);
             }
+            
+            if(attachments.getSize() > 0)
+            {
+                VkDescriptorSetLayoutCreateInfo setLayoutInfo{};
+                setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                setLayoutInfo.flags = 0;
+                setLayoutInfo.pNext = nullptr;
+                setLayoutInfo.bindingCount = bindings.getSize();
+                setLayoutInfo.pBindings = bindings.getBuffer();
+                res = vkCreateDescriptorSetLayout(device, &setLayoutInfo, callbacks, &m_descritorSetLayout);
+                ASSERT_SUCCESS(res, "Failed to create descriptor set layout");
+            
+                VkDescriptorSetAllocateInfo setAllocInfo{};
+                setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                setAllocInfo.pNext = nullptr;
+                setAllocInfo.descriptorPool = m_descriptorPool;
+                setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
+                setAllocInfo.pSetLayouts = &m_descritorSetLayout;
 
-            VkDescriptorSetLayoutCreateInfo setLayoutInfo{};
-            setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            setLayoutInfo.flags = 0;
-            setLayoutInfo.pNext = nullptr;
-            setLayoutInfo.bindingCount = bindings.getSize();
-            setLayoutInfo.pBindings = bindings.getBuffer();
-
-            res = vkCreateDescriptorSetLayout(device, &setLayoutInfo, callbacks, &m_descritorSetLayout);
-            ASSERT_SUCCESS(res, "Failed to create descriptor set layout");
-
-            //VkDescriptorSetAllocateInfo setAllocInfo{};
-            //setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            //setAllocInfo.pNext = nullptr;
-            //setAllocInfo.descriptorPool = m_descriptorPool;
-            //setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
-            //setAllocInfo.pSetLayouts = &m_descritorSetLayout;
-//
-            //res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
-            //ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
+                res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
+                ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
+            }
 
             // Finally create a pipeline layout that'll be used by this pipeline
             VkPipelineLayoutCreateInfo layoutInfo{};
             layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             layoutInfo.pNext = nullptr;
             //TODO: Add push constants
-            layoutInfo.pushConstantRangeCount = 0;
-            layoutInfo.pPushConstantRanges = nullptr;
 
-            layoutInfo.setLayoutCount = 0; /* TODO: Currently only supporting a single descriptor set */
-            layoutInfo.pSetLayouts = nullptr;//&m_descritorSetLayout;
+            Quaint::QArray<VkPushConstantRange> pcRanges(m_context);
+            if(shaderDefinition.pushConstants.getSize() > 0)
+            {
+                for(auto& pc : shaderDefinition.pushConstants)
+                {
+                    VkPushConstantRange range{};
+                    range.size = pc.size;
+                    range.offset = pc.offset;
+                    range.stageFlags = toVulkanShaderStageFlagBits(pc.stage);
+                    pcRanges.pushBack(range);
+                }
+                
+                layoutInfo.pushConstantRangeCount = shaderDefinition.pushConstants.getSize();
+                layoutInfo.pPushConstantRanges = pcRanges.getBuffer();
+            }
+            else
+            {
+                layoutInfo.pushConstantRangeCount = 0;
+                layoutInfo.pPushConstantRanges = nullptr;
+            }
+            
+            if(attachments.getSize() > 0)
+            {
+                layoutInfo.setLayoutCount = 1; /* TODO: Currently only supporting a single descriptor set */
+                layoutInfo.pSetLayouts = &m_descritorSetLayout;
+            }
+            else
+            {
+                layoutInfo.setLayoutCount = 0;
+                layoutInfo.pSetLayouts = nullptr;
+            }
             
             res = vkCreatePipelineLayout(device, &layoutInfo, callbacks, &m_layout);
             ASSERT_SUCCESS(res, "Failed to create pipeline layout");

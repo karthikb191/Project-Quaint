@@ -23,7 +23,6 @@ namespace Bolt
     {
         COMBINED_IMAGE_SAMPLER,
         UNIFORM_BUFFER,
-        PUSH_CONSTANT,
         INVALID
     };
 
@@ -85,6 +84,14 @@ namespace Bolt
         //uint32_t size = 0;
         uint32_t count = 1;
     };
+
+    struct PushConstant
+    {
+        Quaint::QName name = "";
+        EShaderStage stage = EShaderStage::INVALID;
+        uint32_t size = 0;
+        uint32_t offset = 0;
+    };
     //TODO: Extend the uniforms to more specific types if necessary
 
     struct ShaderAttributeInfo
@@ -107,6 +114,7 @@ namespace Bolt
         Quaint::QArray<ShaderFileInfo>                          shaders;
         Quaint::QArray<ShaderUniform>                           uniforms;
         Quaint::QArray<Quaint::QArray<ShaderAttributeInfo>>     attributeSets;
+        Quaint::QArray<PushConstant>                            pushConstants;
     };
 
     struct ShaderInfo
