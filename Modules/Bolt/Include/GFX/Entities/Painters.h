@@ -44,6 +44,20 @@ namespace Bolt
         Pipeline*   m_pipeline = nullptr;
         Quaint::QArray<Model*> m_models = nullptr;
     };
+
+    class ImguiPainter : public Painter
+    {
+    public:
+        ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual void render(RenderScene* scene) override;
+        virtual void preRender(RenderScene* scene, uint32_t stage) override;
+        virtual void postRender() override;
+
+    private:
+        Pipeline*   m_pipeline = nullptr;
+        Quaint::QArray<Model*> m_models = nullptr;
+    };
+
 }
 
 #endif //_H_BOLT_PAINTERS

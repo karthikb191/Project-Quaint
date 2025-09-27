@@ -17,6 +17,9 @@
 #include <GFX/Entities/Model.h>
 #include <GFX/Entities/Image.h>
 #include <GFX/Entities/Painters.h>
+#include <EASTL/vector.h>
+#include <imgui.h>
+#include <ImguiHandler.h>
 
 namespace Quaint
 {
@@ -45,7 +48,7 @@ int main()
     //constexpr int sz = GetCount<Quaint::QName>({Quaint::QName("ubo"), Quaint::QName("sampler")});
 
     //constexpr auto data = test.descriptors;
-
+    
     std::cout << "Hello Renderer!" << std::endl;
 
     constexpr auto str1 = Quaint::createCTString("Test String");
@@ -88,7 +91,7 @@ int main()
     Bolt::AttachmentDefinition def;
     def.binding = 0;
     def.name = "swapchain";
-    def.clearColor = Quaint::QVec4(.0f, 0.01f, 0.05f, 1.0f);
+    def.clearColor = Quaint::QVec4(0.0f, 0.01f, 0.15f, 1.0f);
     def.clearImage = true;
     def.type = Bolt::AttachmentDefinition::Type::Swapchain;
     def.format = Bolt::EFormat::R8G8B8A8_SRGB;
@@ -108,9 +111,11 @@ int main()
     stage.dependentStage = ~0;
     stages.pushBack(stage);
 
+    //TODO: Maybe move construction to a separate function
+
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
-    def.clearColor = Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f);
+    def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
     def.storePrevious = true;
     //info.extents = Quaint::QVec2(~0, ~0);
     //info.offset = Quaint::QVec2({0, 0});
@@ -128,14 +133,13 @@ int main()
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
     shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
 
-
     shaderDef.shaders.pushBack({"simpleTri.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
         , "main", Bolt::EShaderStage::VERTEX});
     shaderDef.shaders.pushBack({"simpleTri.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.frag.spv"
         , "main", Bolt::EShaderStage::FRAGMENT});
 
-    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 256, 1});
-    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 0, 1});
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
 
@@ -146,10 +150,6 @@ int main()
 
     shaderDef.attributeSets.pushBack(attributes);
 
-    Bolt::ShaderDefinition shaderDef2{};
-    shaderDef2.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
-    shaderDef2.attributeSets = shaderDef.attributeSets;
-
 
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
@@ -157,8 +157,49 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
 
+    // IMGUI SETUP. TODO: Should be moved to a different file
+    shaderDef = Bolt::ShaderDefinition();
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    shaderDef.shaders.pushBack({"glsl_shader.vert.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"glsl_shader.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes2(context);
+
+    attributes2.pushBack({"aPos", 8, Bolt::EFormat::R32G32_SFLOAT});
+    attributes2.pushBack({"aCol", 16, Bolt::EFormat::R32G32_SFLOAT});
+    attributes2.pushBack({"aColor", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes2);
+
+    shaderDef.uniforms.pushBack({"sTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+
+    //TODO: Add support for push constants
+    
+
+    //IMGUI pipeline uses the same stage and subpass
+    Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    imguiPipleline->bindToGpu();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(imguiPipleline);
+
+
     //Creating a painter for a specific pipeline and adding model to it
     Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
+
+
+    //TODO: Create IMGUI handler
+    Bolt::ImguiHandler::Create(context, context);
+    Bolt::ImguiHandler::Get()->Initialize(Bolt::RenderModule::get().getBoltRenderer()->getWindow());
+
+    //TODO: Create IMGUI painter
+    Bolt::ImguiPainter* imguiPainter = QUAINT_NEW(context, Bolt::ImguiPainter, context, Quaint::QName("IMGUIPipeline"));
+
 
     //Goal: To create concrete representations of combined image samplers and UniformBuffer
 
@@ -180,6 +221,7 @@ int main()
     }
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);
 
     //TODO: Loop through application module 
     //TODO: Move this to Application Module
@@ -211,8 +253,15 @@ int main()
         }
         if(quitApplication) break;
 
+        //TODO: update IMGUI Handler
+
         Bolt::RenderModule::get().getBoltRenderer()->update();
     }
+
+    //TODO: VERY BAD. Convert to RAII
+    QUAINT_DELETE(context, geoPainter);
+    QUAINT_DELETE(context, imguiPainter);
+     Bolt::ImguiHandler::Get()->Shutdown();
 
     Bolt::RenderModule::get().stop();
     Bolt::RenderModule::shutdown();

@@ -403,7 +403,16 @@ namespace Bolt {
             }
             else 
             {
-                dep.srcSubpass = stage.index;
+                assert(stage.dependentStage > stage.index && "Invalid dependency. Later stages can only depend on stages that came before it");
+                if(stage.dependentStage != ~0)
+                {
+                    dep.srcSubpass = stage.dependentStage;
+                }
+                else
+                {
+                    dep.srcSubpass = stage.index;
+                }
+                
                 dep.dstSubpass = stage.index + 1; // Dependency with the next subpass
                 //Dst will have shader read access
             }

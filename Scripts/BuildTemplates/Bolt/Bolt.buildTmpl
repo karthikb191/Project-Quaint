@@ -62,6 +62,26 @@
         ]
     },
     {
+        "Settings" : {
+            "Name" : "imgui",
+            "Type" : "BUILD_STATIC",
+            "Path" : "External/Libs/imgui-1.92.3"
+        },
+        
+        "HeaderPaths" : [
+            "./"
+        ],
+        "SrcPaths" : [
+            "./"
+        ],
+        "SrcExcludePaths" : [
+            "backends/*",
+            "docs/*",
+            "examples/*",
+            "misc/*"
+        ]
+    },
+    {
         "Name" : "Core",
         "Type" : "MODULE",
         "Path" : "Scripts/BuildTemplates/Core/Core.buildTmpl"

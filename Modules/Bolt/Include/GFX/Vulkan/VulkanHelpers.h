@@ -47,6 +47,8 @@ namespace Bolt{ namespace vulkan{
         {
             case Bolt::EFormat::R32G32B32A32_UINT:
                 return VK_FORMAT_R32G32B32A32_UINT;
+            case Bolt::EFormat::R32G32_SFLOAT:
+                return VK_FORMAT_R32G32_SFLOAT; 
             case Bolt::EFormat::R32G32B32A32_SFLOAT:
                 return VK_FORMAT_R32G32B32A32_SFLOAT;
             case Bolt::EFormat::R8G8B8A8_SRGB:

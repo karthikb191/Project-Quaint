@@ -11,18 +11,18 @@ import CMakeFileBuilder
 
 #TODO: Read this from a settings file
 GlobalSettings = BuildSettings()
-RootDirectory = "D:\\Works\\Project-Quaint\\"
+RootDirectory = "C:\\Works\\Project-Quaint\\"
 BuildTemplatesDirectory = RootDirectory + "Scripts\\BuildTemplates\\"
 ExtensionName = ".buildTmpl"
 
 BuildTargetDirectory = BuildTemplatesDirectory
 #BuildTarget = "Core\\Core" + ExtensionName
-#BuildTarget = "Bolt\\Bolt" + ExtensionName
+BuildTarget = "Bolt\\Bolt" + ExtensionName
 #BuildTarget = "Core\\Types" + ExtensionName
 #BuildTarget = "Media\\Media" + ExtensionName
-BuildTarget = "Media\\Video" + ExtensionName
+#BuildTarget = "Media\\Video" + ExtensionName
 
-BuildDirectory = "D:\\Works\\Project-Quaint\\Build\\"
+BuildDirectory = "C:\\Works\\Project-Quaint\\Build\\"
 IntermediateDirectory = BuildDirectory + "Intermediates\\"
 OutputDirectory = BuildDirectory + "Output\\"
 BinaryDirectory = BuildDirectory + "Bin\\"

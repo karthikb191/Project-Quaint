@@ -158,9 +158,11 @@ class CMakeBuilder:
         for path in dirList:
             fullPath = os.path.join(dirPath, path)
             fullPath = fullPath.replace('\\', '/')
+            fullPath = fullPath.replace("./", "")
 
             mustExclude = False
             for exclExpr in excludeRegex:
+                exclExpr = exclExpr.replace('\\','/')
                 RES = re.search(exclExpr, fullPath)
                 if re.search(exclExpr, fullPath) != None:
                     mustExclude = True
@@ -291,7 +293,7 @@ class CMakeBuilder:
             fd.write(f"add_subdirectory(\"{cmakeListsDir}\" \"${{CMAKE_CURRENT_BINARY_DIR}}/{modName}\")\n")
             fd.write(f"get_target_property({modName}_INCLUDES {modName} INCLUDE_DIRECTORIES)\n")
             fd.write(f"target_include_directories(${{PROJECT_NAME}} PUBLIC ${{{modName}_INCLUDES}})\n")
-            fd.write(f"target_link_libraries(${{PROJECT_NAME}} PRIVATE {modName})\n")
+            fd.write(f"target_link_libraries(${{PROJECT_NAME}} PUBLIC {modName})\n")
 
         #TODO: Add code to include and handle dlls
         pass

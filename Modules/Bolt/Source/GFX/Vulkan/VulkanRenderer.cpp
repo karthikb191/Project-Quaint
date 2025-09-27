@@ -2454,7 +2454,8 @@ namespace Bolt
     {
         //updateUniformBufferProxy();
 
-        //Wait for all scenes to finish rendering
+        //Wait for all scenes to finish rendering.
+        //TODO: There's no frames in flight.  
         Quaint::QArray<VkFence> fencesToWaiton(m_context);
         if(m_sceneFences.getSize() > 0)
         {
@@ -2465,6 +2466,7 @@ namespace Bolt
 
         vkResetFences(m_device, 1, &m_imageAvailableFence);
         uint32_t swapchainImage = m_vulkanSwapchain->getNextSwapchainImage(VK_NULL_HANDLE, m_imageAvailableFence);
+
         VkResult res = vkWaitForFences(m_device, 1, &m_imageAvailableFence, VK_TRUE, UINT64_MAX);
 
         auto painters = RenderModule::get().getBoltRenderer()->getPainters();

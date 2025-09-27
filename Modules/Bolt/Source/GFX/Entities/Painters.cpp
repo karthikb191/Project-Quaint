@@ -32,4 +32,24 @@ namespace Bolt
         m_models.pushBack(model);
     }
 
+
+    //IMGGUI Painter
+    ImguiPainter::ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
+    : Painter(context, pipeline)
+    {
+        
+    }
+    void ImguiPainter::render(RenderScene* scene)
+    {
+
+    }
+    void ImguiPainter::preRender(RenderScene* scene, uint32_t stage)
+    {
+
+    }
+    void ImguiPainter::postRender()
+    {
+
+    }
+
 }

@@ -22,22 +22,24 @@ void* operator new[](size_t size, const char* pName, int flags, unsigned debugFl
 
 void* operator new[](size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
 {
-    //return Quaint::MemoryModule::get().getMemoryManager().defaultAllocAligned(size, alignment);
-    EA_UNUSED(alignmentOffset); EA_UNUSED(flags);
-
-    size_t adjustedAlignment = (alignment > EA_PLATFORM_PTR_SIZE) ? alignment : EA_PLATFORM_PTR_SIZE;
-
-    void* p = new char[size + adjustedAlignment + EA_PLATFORM_PTR_SIZE];
-    void* pPlusPointerSize = (void*)((uintptr_t)p + EA_PLATFORM_PTR_SIZE);
-    void* pAligned = (void*)(((uintptr_t)pPlusPointerSize + adjustedAlignment - 1) & ~(adjustedAlignment - 1));
-
-    void** pStoredPtr = (void**)pAligned - 1;
-    EASTL_ASSERT(pStoredPtr >= p);
-    *(pStoredPtr) = p;
-
-    EASTL_ASSERT(((size_t)pAligned & ~(alignment - 1)) == (size_t)pAligned);
-
-    return pAligned;
+    return Quaint::MemoryModule::get().getMemoryManager().defaultAllocAligned(size, alignment);
+    
+    //TODO: Add proper bypasses to use system allocated memory
+    //EA_UNUSED(alignmentOffset); EA_UNUSED(flags);
+//
+    //size_t adjustedAlignment = (alignment > EA_PLATFORM_PTR_SIZE) ? alignment : EA_PLATFORM_PTR_SIZE;
+//
+    //void* p = new char[size + adjustedAlignment + EA_PLATFORM_PTR_SIZE];
+    //void* pPlusPointerSize = (void*)((uintptr_t)p + EA_PLATFORM_PTR_SIZE);
+    //void* pAligned = (void*)(((uintptr_t)pPlusPointerSize + adjustedAlignment - 1) & ~(adjustedAlignment - 1));
+//
+    //void** pStoredPtr = (void**)pAligned - 1;
+    //EASTL_ASSERT(pStoredPtr >= p);
+    //*(pStoredPtr) = p;
+//
+    //EASTL_ASSERT(((size_t)pAligned & ~(alignment - 1)) == (size_t)pAligned);
+//
+    //return pAligned;
 }
 
 void operator delete(void* mem)
