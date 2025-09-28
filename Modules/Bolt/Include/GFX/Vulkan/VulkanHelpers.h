@@ -53,6 +53,9 @@ namespace Bolt{ namespace vulkan{
                 return VK_FORMAT_R32G32B32A32_SFLOAT;
             case Bolt::EFormat::R8G8B8A8_SRGB:
                 return VK_FORMAT_R8G8B8A8_SRGB;
+            case Bolt::EFormat::R8G8B8A8_UNORM:
+                return VK_FORMAT_R8G8B8A8_UNORM;
+                
             default:
             {
                 assert(false && "Format conversion not available. invalid format passed");

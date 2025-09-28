@@ -223,11 +223,17 @@ namespace Bolt {
         RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
 
         VulkanGraphicsPipelineBuilder builder(m_context);
-        VulkanGraphicsPipeline* pipeline = builder.setupShaders(m_pipeline->getShaderDefinition())
+        builder.setupShaders(m_pipeline->getShaderDefinition())
         .setupRenderStageInfo(scene, m_pipeline->getStageIdx(), true)
         .setupPrimitiveTopology(false, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-        .build();
+        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        auto& features = m_pipeline->getDynamicStages();
+        for(auto& feature : features)
+        {
+            builder.addDynamicFeature(feature);
+        }
+    
+        VulkanGraphicsPipeline* pipeline =  builder.build();
 
         m_ptr.reset(pipeline);
         return std::move(m_ptr);

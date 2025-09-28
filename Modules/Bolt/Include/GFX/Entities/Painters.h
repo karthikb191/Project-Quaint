@@ -4,6 +4,10 @@
 #include <Interface/IMemoryContext.h>
 #include <Types/QArray.h>
 #include <Types/QStaticString.h>
+#include <imgui.h>
+
+//TODO: Remove this from here
+#include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 
 namespace Bolt
 {
@@ -47,6 +51,18 @@ namespace Bolt
 
     class ImguiPainter : public Painter
     {
+        struct ImguiDescriptorSet
+        {
+            vulkan::VulkanTexture texture;
+            VkDescriptorSet set;
+        };
+        struct BufferData
+        {
+            VkBuffer buffer;
+            VkDeviceMemory memory;
+            uint32_t size;
+        };
+
     public:
         ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
@@ -54,7 +70,16 @@ namespace Bolt
         virtual void postRender() override;
 
     private:
+        void ProcessTexture(RenderScene* scene, ImDrawData* data, ImTextureData* textureData);
+        void setupRenderState(RenderScene* scene, ImDrawData* data, VkCommandBuffer cmdBuffer);
+
+
         Pipeline*   m_pipeline = nullptr;
+        Quaint::QArray<ImguiDescriptorSet> m_descriptorInfo;
+        VkCommandBuffer m_oneTimeCommandBuffer;
+        VkSampler m_sampler;
+        BufferData m_vertexBuffer;
+        BufferData m_indexBuffer;
     };
 
 }

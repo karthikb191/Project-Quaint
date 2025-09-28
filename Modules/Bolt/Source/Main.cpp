@@ -36,6 +36,8 @@ namespace Bolt
     INIT_MODULE(RenderModule);
 }
 
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 int main()
 {
     //constexpr size_t offset = offsetof(SimpleTriShader, descriptors);
@@ -72,6 +74,7 @@ int main()
     Quaint::QStaticString_W<64> testStr(L"Test Test");
     testStr.length();
 
+
     Quaint::IMemoryContext* context = Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext();
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
@@ -97,6 +100,7 @@ int main()
     def.format = Bolt::EFormat::R8G8B8A8_SRGB;
     def.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
     info.attachments.pushBack(def);
+    def.storePrevious = false;
 
     Quaint::QArray<Bolt::RenderStage> stages(context);
     Bolt::RenderStage stage;
@@ -116,14 +120,14 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
     def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
-    def.storePrevious = true;
+    def.storePrevious = false;
     //info.extents = Quaint::QVec2(~0, ~0);
     //info.offset = Quaint::QVec2({0, 0});
     info.extents = Quaint::QVec2(256, 560);
     info.offset = {40, 0};
     info.attachments.clear();
     info.attachments.pushBack(def);
-    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics2", info, stages.getSize(), stages.getBuffer());
+    //Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("TESTTEST", info, stages.getSize(), stages.getBuffer());
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 
@@ -175,8 +179,8 @@ int main()
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes2(context);
 
     attributes2.pushBack({"aPos", 8, Bolt::EFormat::R32G32_SFLOAT});
-    attributes2.pushBack({"aCol", 16, Bolt::EFormat::R32G32_SFLOAT});
-    attributes2.pushBack({"aColor", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes2.pushBack({"aCol", 8, Bolt::EFormat::R32G32_SFLOAT});
+    attributes2.pushBack({"aColor", 4, Bolt::EFormat::R8G8B8A8_UNORM});
     shaderDef.attributeSets.pushBack(attributes2);
 
     shaderDef.pushConstants.pushBack({"imgui_pushConstant", Bolt::EShaderStage::VERTEX, sizeof(Bolt::ImguiHandler::PushConstant), 0});
@@ -185,6 +189,8 @@ int main()
 
     //IMGUI pipeline uses the same stage and subpass
     Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    imguiPipleline->addDynamicStage("viewport");
+    imguiPipleline->addDynamicStage("scissor");
     imguiPipleline->bindToGpu();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(imguiPipleline);
 
@@ -226,36 +232,30 @@ int main()
     //TODO: Loop through application module 
     //TODO: Move this to Application Module
     MSG msg = { };
+    bool done = false;
     while (true)
     {
-        bool quitApplication = false;
-
-        while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
         {
-            switch (msg.message)
-            {
-            case WM_DESTROY:
-                PostQuitMessage(0);
-                break;
-            case WM_QUIT:
-                quitApplication = true;
-                break;
-            case WM_PAINT:
-                std::cout << "Painting!!!!\n"; 
-                break; 
-            
-            default:
-                break;
-            }
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            if (msg.message == WM_QUIT)
+                done = true;
         }
-        if(quitApplication) break;
+        if (done)
+            break;
 
         //TODO: update IMGUI Handler
+        Bolt::ImguiHandler::Get()->StartFrame();
+
+        //ImGui::ShowDemoWindow();
+        ImGui::LabelText("TESTSTEST", "It Works!!!");
+        ImGui::LabelText("TESTSTEST", "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        ImGui::LabelText("TESTSTEST", "abcdefghijklmnopqrstuvwxyz 123456789");
+        ImGui::ShowDemoWindow();
 
         Bolt::RenderModule::get().getBoltRenderer()->update();
+        Bolt::ImguiHandler::Get()->EndFrame();
     }
 
     //TODO: VERY BAD. Convert to RAII
@@ -271,7 +271,6 @@ int main()
     
     return 0;
 }
-
 
 /*
 Some Learnings:

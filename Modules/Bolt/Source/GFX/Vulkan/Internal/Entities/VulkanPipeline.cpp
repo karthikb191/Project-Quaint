@@ -55,6 +55,11 @@ namespace Bolt
         m_pipeline->setRasterizationInfo(polyMode, cullMode, frontFace);
         return *this;
     }
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::addDynamicFeature(Quaint::QName feature)
+    {
+        m_pipeline->addDynamicFeature(feature);
+        return *this;
+    }
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
     {
         m_pipeline->init();
@@ -74,6 +79,7 @@ namespace Bolt
         , m_viewports(context)
         , m_scissors(context)
         , m_blendAttachments(context)
+        , m_dynamicFeatures(context)
         {
             m_totalShaderInterface.setup(context);
             m_shaderInterface = m_totalShaderInterface.getShaderInterface("simpleTri");
@@ -156,11 +162,12 @@ namespace Bolt
                 if(attachmentRefs[i].attachmentName == "swapchain")
                 {
                     state.blendEnable = VK_TRUE;
-                    state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-                    state.dstColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+                    state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                    state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                     state.colorBlendOp = VK_BLEND_OP_ADD;
                     state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-                    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                    state.alphaBlendOp = VK_BLEND_OP_ADD;
                     state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
                 }
                 m_blendAttachments.pushBack(state);
@@ -197,6 +204,7 @@ namespace Bolt
                 VkDescriptorPoolSize poolSize{};
                 poolSize.type = pool.first;
                 //poolSize.descriptorCount = pool.second;
+                //TODO: This should be set to pool.second. Check later
                 poolSize.descriptorCount = 1000; //TODO: Remove this from here and move to a central descriptor pool allocator class
                 poolSizes.pushBack(poolSize);
             }
@@ -206,7 +214,7 @@ namespace Bolt
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             poolInfo.flags = 0;
-            poolInfo.maxSets = 1; /* TODO: Only allowing a single set for now */
+            poolInfo.maxSets = 1000; /* TODO: Handle hardcoded max sets. Basically allows 1000 instances right now of this set */
             poolInfo.poolSizeCount = poolSizes.getSize();
             poolInfo.pPoolSizes = poolSizes.getBuffer();
 
@@ -237,15 +245,16 @@ namespace Bolt
                 res = vkCreateDescriptorSetLayout(device, &setLayoutInfo, callbacks, &m_descritorSetLayout);
                 ASSERT_SUCCESS(res, "Failed to create descriptor set layout");
             
-                VkDescriptorSetAllocateInfo setAllocInfo{};
-                setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                setAllocInfo.pNext = nullptr;
-                setAllocInfo.descriptorPool = m_descriptorPool;
-                setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
-                setAllocInfo.pSetLayouts = &m_descritorSetLayout;
-
-                res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
-                ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
+                //No need to allocate descriptor set here
+                //VkDescriptorSetAllocateInfo setAllocInfo{};
+                //setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                //setAllocInfo.pNext = nullptr;
+                //setAllocInfo.descriptorPool = m_descriptorPool;
+                //setAllocInfo.descriptorSetCount = 1; /* Currently only supporting a single descriptor set*/
+                //setAllocInfo.pSetLayouts = &m_descritorSetLayout;
+//
+                //res = vkAllocateDescriptorSets(device, &setAllocInfo, &m_descriptorSet);
+                //ASSERT_SUCCESS(res, "Failed to allocate descriptor sets");
             }
 
             // Finally create a pipeline layout that'll be used by this pipeline
@@ -312,7 +321,10 @@ namespace Bolt
             m_cullMode = cullMode;
             m_frontFace = frontFace;
         }
-
+        void VulkanGraphicsPipeline::addDynamicFeature(Quaint::QName feature)
+        {
+            m_dynamicFeatures.pushBack(feature);
+        }
 
         void VulkanGraphicsPipeline::init()
         {
@@ -399,25 +411,58 @@ namespace Bolt
             // Blend
             VkPipelineColorBlendStateCreateInfo blendInfo{};
             blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            blendInfo.flags = 0;
-            blendInfo.pNext = nullptr;
-            blendInfo.logicOpEnable = VK_FALSE;
-            blendInfo.logicOp = VK_LOGIC_OP_COPY;
-            blendInfo.blendConstants[0] = 0.0f;
-            blendInfo.blendConstants[1] = 0.0f;
-            blendInfo.blendConstants[2] = 0.0f;
-            blendInfo.blendConstants[3] = 0.0f;
+
+            //TODO: Address this properly
+            //blendInfo.flags = 0;
+            //blendInfo.pNext = nullptr;
+            //blendInfo.logicOpEnable = VK_FALSE;
+            //blendInfo.logicOp = VK_LOGIC_OP_COPY;
+            //blendInfo.blendConstants[0] = 0.0f;
+            //blendInfo.blendConstants[1] = 0.0f;
+            //blendInfo.blendConstants[2] = 0.0f;
+            //blendInfo.blendConstants[3] = 0.0f;
 
             VkPipelineColorBlendAttachmentState blendAttachmentState{};
             blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            blendAttachmentState.blendEnable = VK_FALSE;
+            blendAttachmentState.blendEnable = VK_TRUE;
             blendInfo.attachmentCount = m_blendAttachments.getSize();
             blendInfo.pAttachments = m_blendAttachments.getBuffer();
 
             info.pColorBlendState = &blendInfo;
 
-            // No dynamic state for now
-            info.pDynamicState = nullptr;
+
+            //TODO: Only supporting dynamic viewport for now. 
+            bool dynamicViewport = false;
+            bool dynamicScissor = false;
+            for(size_t i = 0; i < m_dynamicFeatures.getSize(); ++i)
+            {
+                if(m_dynamicFeatures[i] == "viewport")
+                {
+                    dynamicViewport = true;
+                }
+                if(m_dynamicFeatures[i] == "scissor")
+                {
+                    dynamicScissor = true;
+                }
+            }
+            Quaint::QArray<VkDynamicState> dynamicStates(m_context);
+
+            if(dynamicViewport)
+            {
+                dynamicStates.pushBack(VK_DYNAMIC_STATE_VIEWPORT);
+            }
+            if(dynamicScissor)
+            {
+                dynamicStates.pushBack(VK_DYNAMIC_STATE_SCISSOR);
+            }
+
+            VkPipelineDynamicStateCreateInfo dynInfo{};
+            dynInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+            dynInfo.dynamicStateCount = dynamicStates.getSize();
+            dynInfo.pDynamicStates = dynamicStates.getBuffer();
+            
+            info.pDynamicState = &dynInfo;
+
 
             //RenderPass, Subpass setup
             info.renderPass = m_renderPass;

@@ -42,6 +42,7 @@ namespace Bolt
         R32G32B32A32_SFLOAT,
         R32G32_SFLOAT,
         R8G8B8A8_SRGB,
+        R8G8B8A8_UNORM,
         INVALID = 0x7FFFFFFF
     };
 

@@ -111,6 +111,7 @@ namespace Bolt {
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
         VkRenderPass getRenderpass() const { return m_renderpass; }
+        FrameBuffer* getFrameBuffer() { return m_framebuffer.get(); }
 
         AttachmentInfo&     beginAttachmentSetup();
         Attachment* getAttachment(const Quaint::QName& name);

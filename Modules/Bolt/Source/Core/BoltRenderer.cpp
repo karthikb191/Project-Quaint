@@ -5,6 +5,7 @@
 #include <chrono>
 #include <GFX/Entities/Painters.h>
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 namespace Bolt
 {
 
@@ -20,15 +21,36 @@ namespace Bolt
     //TODO: This should be moved to Application Module
     LRESULT CALLBACK msgHandleLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        switch(uMsg)
+        if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+            return true;
+
+        switch (uMsg)
         {
-            case WM_DESTROY:
-            {
-                PostQuitMessage(0);
+        case WM_SIZE:
+            //TODO:
+            //if (g_Device != VK_NULL_HANDLE && wParam != SIZE_MINIMIZED)
+            //{
+            //    // Resize swap chain
+            //    int fb_width = (UINT)LOWORD(lParam);
+            //    int fb_height = (UINT)HIWORD(lParam);
+            //    if (fb_width > 0 && fb_height > 0 && (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height))
+            //    {
+            //        ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+            //        ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount);
+            //        g_MainWindowData.FrameIndex = 0;
+            //        g_SwapChainRebuild = false;
+            //    }
+            //}
+            return 0;
+        case WM_SYSCOMMAND:
+            if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
                 return 0;
-            }
+            break;
+        case WM_DESTROY:
+            ::PostQuitMessage(0);
+            return 0;
         }
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        return ::DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
     void BoltRenderer::startEngine(Quaint::IMemoryContext* context)

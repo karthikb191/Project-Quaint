@@ -49,16 +49,16 @@ namespace Bolt {
         void transitionLayout(const VkImageLayout from, const VkImageLayout to);
         void transferOwnership(const EQueueType from, const EQueueType to);
 
-        VkImage* getImageRef() { return &m_image; }
-        VkImageView* getImageViewRef() { return &m_imageView; }
-        VkImage getHandle() { return m_image; }
-        VkImageView getImageView() const { return m_imageView; }
-        bool isValid() { return m_image != VK_NULL_HANDLE; }
-        bool isBacked() { return m_isBacked || getIsSwapchainImage(); }
-        uint32_t getWidth() const { return m_createInfo.imageInfo.extent.width; }
-        uint32_t getHeight() const { return m_createInfo.imageInfo.extent.height; }
-        const VulkanImageCreateInfo& getCreateInfo() { return m_createInfo; }
-        bool getIsSwapchainImage() { return m_isSwapchainImage; }
+        const VkImage* getImageRef() const { return &m_image; }
+        const VkImageView* getImageViewRef() const { return &m_imageView; }
+        const VkImage getHandle() const { return m_image; }
+        const VkImageView getImageView() const { return m_imageView; }
+        const bool isValid() const { return m_image != VK_NULL_HANDLE; }
+        const bool isBacked() const { return m_isBacked || getIsSwapchainImage(); }
+        const uint32_t getWidth() const { return m_createInfo.imageInfo.extent.width; }
+        const uint32_t getHeight() const { return m_createInfo.imageInfo.extent.height; }
+        const VulkanImageCreateInfo& getCreateInfo() const { return m_createInfo; }
+        const bool getIsSwapchainImage() const { return m_isSwapchainImage; }
         VkAttachmentDescription buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout,
                                                             VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
                                                             VkAttachmentDescriptionFlags flags);

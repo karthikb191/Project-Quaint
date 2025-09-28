@@ -2081,6 +2081,15 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer)
     {
+        if(buffer != VK_NULL_HANDLE)
+        {
+            vkDestroyBuffer(m_device, buffer, m_allocationPtr);
+        }
+        if(deviceMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(m_device, deviceMemory, m_allocationPtr);
+        }
+
         // Creates a husk.
         createBuffer2(bufferSize, usageFlags, propertyFlags, deviceMemory, buffer);
 
@@ -2092,8 +2101,8 @@ namespace Bolt
         if(propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         {
             //Use staging buffer to copy data to. Use Vulkan command to move data to device local memory
-            VkBuffer stagingBuffer;
-            VkDeviceMemory gpuMemory;
+            VkBuffer stagingBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory gpuMemory = VK_NULL_HANDLE;
             createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, gpuMemory, stagingBuffer);
 
@@ -2127,6 +2136,15 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer)
     {
+        if(buffer != VK_NULL_HANDLE)
+        {
+            vkDestroyBuffer(m_device, buffer, m_allocationPtr);
+        }
+        if(deviceMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(m_device, deviceMemory, m_allocationPtr);
+        }
+
         uint32_t family = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily();
         VkQueue queue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
 

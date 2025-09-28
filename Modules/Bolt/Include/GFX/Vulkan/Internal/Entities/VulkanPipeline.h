@@ -26,6 +26,7 @@ namespace Bolt{
         VulkanGraphicsPipelineBuilder& setupRenderStageInfo(const RenderScene* const scene, const uint32_t stageIndex, const bool addViewport);
         //TODO: Add viewport override
         VulkanGraphicsPipelineBuilder& setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
+        VulkanGraphicsPipelineBuilder& addDynamicFeature(Quaint::QName feature);
         
         //TODO: Add dynamic state support
         VulkanGraphicsPipeline* build();
@@ -47,6 +48,8 @@ namespace Bolt{
         VkPipeline getPipelineHandle() { return m_pipeline; }
         ShaderInterface::Interface& getShaderInterface() { return m_shaderInterface; }
         VkPipelineLayout getPipelineLayout() { return m_layout; }
+        VkDescriptorPool getDescriptorPool() { return m_descriptorPool; }
+        VkDescriptorSetLayout getDescriptorSetLayout() { return m_descritorSetLayout; }
         
     private:
         void buildShaders(const ShaderDefinition& definition);
@@ -57,6 +60,7 @@ namespace Bolt{
         void buildDescriptors(const ShaderDefinition& shaderDefinition);
         void addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent);
         void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
+        void addDynamicFeature(Quaint::QName feature);
 
         VkPipeline  m_pipeline = VK_NULL_HANDLE;
 
@@ -69,6 +73,7 @@ namespace Bolt{
         Quaint::QArray<VkPipelineColorBlendAttachmentState> m_blendAttachments;
         Quaint::QArray<VkViewport> m_viewports;
         Quaint::QArray<VkRect2D> m_scissors;
+        Quaint::QArray<Quaint::QName> m_dynamicFeatures;
 
         bool m_restartEnabled = false;
         VkPrimitiveTopology m_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

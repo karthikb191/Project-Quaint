@@ -48,6 +48,9 @@ namespace Bolt
         //Uses builder to bind this pipeline to GPU
         virtual void bindToGpu() override;
         virtual void unbindFromGPU() override { /*TODO:*/ }
+        
+        Quaint::QArray<Quaint::QName>& getDynamicStages() { return m_dyanmicStages; }
+        void addDynamicStage(Quaint::QName name) { m_dyanmicStages.pushBack(name); } 
 
         const Quaint::QName& getName() { return m_name; }
         const Quaint::QName& getSceneName() { return m_sceneName; }
@@ -59,6 +62,7 @@ namespace Bolt
         Quaint::QName       m_sceneName = "";
         uint32_t            m_stageIdx = 0;
         ShaderDefinition    m_shaderDefinition;
+        Quaint::QArray<Quaint::QName> m_dyanmicStages; 
 
         //GPUDataDispatcher   m_dataDispatcher;
     };

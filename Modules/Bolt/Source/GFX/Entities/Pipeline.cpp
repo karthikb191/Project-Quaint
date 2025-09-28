@@ -9,6 +9,7 @@ namespace Bolt
     , m_sceneName(renderScene)
     , m_stageIdx(stageIdx)
     , m_shaderDefinition(shaderDef)
+    , m_dyanmicStages(context)
     {
         
     }
