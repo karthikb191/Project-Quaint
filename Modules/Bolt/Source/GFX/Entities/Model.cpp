@@ -2,6 +2,7 @@
 #include <GFX/ResourceBuilder.h>
 #include <chrono>
 #include <random>
+#include <iostream>
 
 namespace Bolt
 {
@@ -10,6 +11,40 @@ namespace Bolt
     , m_vertices(context)
     , m_indices(context)
     {}
+    
+    Mesh::Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts, int* indices, uint32_t numIndices, float* uvs, uint32_t numUVs)
+    : Mesh(context)
+    {
+        for(size_t i = 0; i < numVerts/3; ++i)
+        {
+            Quaint::QVertex vertex;
+            vertex.position.x = vertices[3 * i + 0];
+            vertex.position.y = vertices[3 * i + 1];
+            vertex.position.z = vertices[3 * i + 2];
+            m_vertices.pushBack(vertex);
+        }
+
+        //for(int i = 0; i < numIndices; ++i)
+        //{
+        //    m_indices.pushBack(indices[i]);
+        //}
+
+        //TODO: There's something very wrong here. Check
+        m_indices.clear();
+        m_indices.resize(numIndices);
+        memcpy(m_indices.getBuffer_NonConst(), indices, numIndices * 4);
+
+        std::cout << "Stored indices: \n";
+        //for(int i = 0; i < numIndices; ++i)
+        //{
+        //    std::cout << indices[i] << "\n";
+        //}
+        for(int i = 0; i < m_indices.getSize(); ++i)
+        {
+            std::cout << m_indices[i] << "\n";
+        }
+        
+    }
 
     QuadMesh::QuadMesh(Quaint::IMemoryContext* context)
     : Mesh(context)

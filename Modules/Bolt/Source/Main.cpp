@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vulkan/vulkan.h>
 #include <BoltRenderer.h>
 #include <Types/QFastArray.h>
@@ -20,6 +21,9 @@
 #include <EASTL/vector.h>
 #include <imgui.h>
 #include <ImguiHandler.h>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tinyobj/tiny_obj_loader.h>
 
 namespace Quaint
 {
@@ -223,8 +227,57 @@ int main()
 
     for(int i = 0; i < 100; ++i)
     {
-        AddModelFunc();
+        //AddModelFunc();
     }
+
+    //Loading an object
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string error; 
+    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
+
+    bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
+    if(!result)
+    {
+        std::cout << "Failed to load mesh\n";
+    }
+
+    //for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
+    //    printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
+    //        static_cast<const double>(attrib.vertices[3 * v + 0]),
+    //        static_cast<const double>(attrib.vertices[3 * v + 1]),
+    //        static_cast<const double>(attrib.vertices[3 * v + 2]));
+    //}
+
+
+    for(size_t i = 0; i < shapes.size(); ++i)
+    {
+        tinyobj::mesh_t loadedMesh = shapes[i].mesh;
+        //std::cout << "mesh:" << shapes[i].name << "\n";
+
+        std::vector<int> indices;
+        for(size_t j = 0; j < loadedMesh.indices.size(); ++j)
+        {
+            //std::cout << loadedMesh.indices[j].vertex_index << "\n";
+            indices.push_back(loadedMesh.indices[j].vertex_index);
+        }
+
+        Bolt::Mesh* mesh = QUAINT_NEW(context, Bolt::Mesh, context
+            , attrib.vertices.data(), attrib.vertices.size()
+            , indices.data(), indices.size()
+            , attrib.texcoords.data(), attrib.texcoords.size());
+            
+        Bolt::MeshRef meshRef(mesh, Bolt::Deleter<Bolt::Mesh>(context));
+        Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
+        Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
+        
+        model->bindToGpu();
+        geoPainter->AddModel(model.get());
+        modelHolder.pushBack(std::move(model));
+    }
+
+
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);

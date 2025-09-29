@@ -55,6 +55,7 @@ namespace Bolt{
         VulkanShaderGroupResource*              m_shaderGroupResource = nullptr;
 
         uint32_t                                m_indexSize = 0;
+        VkIndexType                             m_indexBufferType = VK_INDEX_TYPE_UINT32;
     };
     
 }}

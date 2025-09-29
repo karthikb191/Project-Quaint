@@ -100,6 +100,8 @@ namespace Bolt { namespace vulkan {
         .setInitiallymapped(false);
         m_vertexBuffer.swap(builder.build());
 
+        m_indexBufferType = model->getMesh()->getIndexBufferElementSize() == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+
         builder.setBuffer((void*)model->getMesh()->getIndexBuffer())
         .setDataSize(model->getMesh()->getIndexBufferSize())
         .copyDataToBuffer(true)
@@ -491,7 +493,7 @@ namespace Bolt { namespace vulkan {
         }
         if (indexResource)
         {
-            vkCmdBindIndexBuffer(vulkanScene->getSceneParams().commandBuffer, indexResource->getBufferhandle(), 0, VK_INDEX_TYPE_UINT16);
+            vkCmdBindIndexBuffer(vulkanScene->getSceneParams().commandBuffer, indexResource->getBufferhandle(), 0, m_indexBufferType);
         }
 
         vkCmdDrawIndexed(vulkanScene->getSceneParams().commandBuffer, m_indexSize, 1, 0, 0, 0);

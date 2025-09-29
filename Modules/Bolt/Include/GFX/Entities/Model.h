@@ -34,6 +34,7 @@ namespace Bolt
     {
         public:
         Mesh(Quaint::IMemoryContext* context);
+        Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts, int* indices, uint32_t numIndices, float* uvs, uint32_t numUVs);
 
         //virtual void loadFromFile() override {}
         //virtual void destroy() {} //TODO:
@@ -42,15 +43,16 @@ namespace Bolt
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
 
         virtual uint32_t getIndexCount() const { return (uint32_t)m_indices.getSize(); }
-        virtual const uint16_t* getIndexBuffer() const { return m_indices.getBuffer(); }
-        uint32_t getIndexBufferSize() const { return m_indices.getSize() * sizeof(uint16_t); }
+        virtual const uint32_t* getIndexBuffer() const { return m_indices.getBuffer(); }
+        uint32_t getIndexBufferSize() const { return m_indices.getSize() * sizeof(decltype(m_indices)::value_type); }
+        uint8_t getIndexBufferElementSize() const { return sizeof(decltype(m_indices)::value_type); }
 
         void transform(const Quaint::QVec3& position, const Quaint::QVec3& rotation, Quaint::QVec3& scale);
 
     protected:
         Quaint::IMemoryContext* m_context = nullptr;
         Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
-        Quaint::QArray<uint16_t> m_indices = Quaint::QArray<uint16_t>::GetInvalidPlaceholder();
+        Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
         Quaint::QMat4x4 m_transform;
         GeometryRenderInfo  m_RenderInfo;
     };
