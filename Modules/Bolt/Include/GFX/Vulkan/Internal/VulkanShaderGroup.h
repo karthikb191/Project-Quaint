@@ -20,7 +20,7 @@ namespace Bolt { namespace vulkan{
     public:
         VulkanShaderGroup(Quaint::IMemoryContext* context);
         VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QPath& vertSprvPath, const Quaint::QPath& fragSpirvPath);
-        VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup);
+        //VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup);
 
         virtual ~VulkanShaderGroup();
         void destroy();

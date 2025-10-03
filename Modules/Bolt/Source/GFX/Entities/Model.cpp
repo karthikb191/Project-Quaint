@@ -131,24 +131,24 @@ namespace Bolt
 
 
     Model::Model(Quaint::IMemoryContext* context, MeshRef& mesh)
-    : GraphicsResource(context, EResourceType::MODEL)
+    : IGFXEntity(context)
     , m_mesh(std::move(mesh))
     , m_meshes(context)
+    , m_modelImpl(nullptr, Deleter<IModelImpl>(context))
     {
 
     }
 
-    void Model::bindToGpu()
+    void Model::construct()
     {
         RenderObjectBuilder builder(m_context);
-        RenderObjectRef roRef = builder.buildFromModel(this);
-        assignGpuProxyResource(std::move(roRef));
+        m_modelImpl = std::move(builder.buildFromModel(this));
     }
-    void Model::unbindFromGPU()
+    void Model::destroy()
     {
-        if(m_gpuProxyPtr.get())
+        if(m_modelImpl.get())
         {
-            m_gpuProxyPtr->destroy();
+            m_modelImpl->destroy();
         }
     }
 
@@ -173,10 +173,9 @@ namespace Bolt
 
     void Model::draw(RenderScene* scene)
     {
-        if(m_gpuProxyPtr.get())
+        if(m_modelImpl.get())
         {
-            IRenderObjectImpl* roPtr = static_cast<IRenderObjectImpl*>(m_gpuProxyPtr.get());
-            roPtr->draw(scene);
+            m_modelImpl->draw(scene);
         }
     }
 }

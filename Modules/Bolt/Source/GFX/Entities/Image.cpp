@@ -14,12 +14,30 @@ namespace Bolt
     }
 
     Image2d::Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name)
-    : GraphicsResource(context, EResourceType::IMAGE2D)
+    : IGFXEntity(context)
+    , m_imageImpl(nullptr, Deleter<IImageImpl>(context))
     {
+    }
+
+    void Image2d::construct()
+    {   
+        if(m_imageImpl.get() != nullptr)
+        {
+            QLOG_W(RESOURCE, "Cannot bind to GPU. A resource is already bound. Free it first");
+            return;
+        }
+
+        CombinedImageSamplerTextureBuilder builder(m_context);
+        m_imageImpl = std::move(builder.buildFromPixels(m_data, m_width, m_height));
     }
 
     void Image2d::destroy()
     {
+        if(m_imageImpl.get() != nullptr)
+        {
+            m_imageImpl->destroy();
+            m_imageImpl.release();
+        }
         if(m_data != nullptr)
         {
             stbi_image_free(m_data);
@@ -30,25 +48,5 @@ namespace Bolt
     {
         int compsPerPixel = 0;
         m_data = stbi_load(path.getBuffer(), &m_width, &m_height, &compsPerPixel, STBI_rgb_alpha);
-    }
-
-    void Image2d::bindToGpu()
-    {
-        if(m_gpuProxyPtr.get() != nullptr)
-        {
-            QLOG_W(RESOURCE, "Cannot bind to GPU. A resource is already bound. Free it first");
-            return;
-        }
-
-        CombinedImageSamplerTextureBuilder builder(m_context);
-        assignGpuProxyResource(std::move(builder.buildFromPixels(m_data, m_width, m_height)));
-    }
-    void Image2d::unbindFromGPU()
-    {
-        if(m_gpuProxyPtr)
-        {
-            m_gpuProxyPtr->destroy();
-            m_gpuProxyPtr.release();
-        }
     }
 }

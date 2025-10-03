@@ -2,6 +2,7 @@
 #define _H_BOLT_MODEL
 
 #include <Types/QUniquePtr.h>
+#include <GFX/Interface/IEntityInterfaces.h>
 #include "Resources.h"
 
 namespace Quaint
@@ -65,14 +66,14 @@ namespace Bolt
     };
 
     /* Model is a collection of meshes, materials, etc */
-    class Model : public GraphicsResource
+    class Model : public IGFXEntity
     {
     public:
         Model(Quaint::IMemoryContext* context, MeshRef& mesh);
 
         void draw(RenderScene* scene);
-        virtual void bindToGpu() override;
-        virtual void unbindFromGPU() override;
+        virtual void construct() override;
+        virtual void destroy() override;
         //TODO:  This should later have material information
         //TODO: Hoe to link this to Vulkan API?
 
@@ -80,6 +81,7 @@ namespace Bolt
     private:
         MeshRef m_mesh; //TODO: Extend to support multiple meshes
         Quaint::QArray<MeshRef> m_meshes;
+        TModelImplPtr m_modelImpl;
     };
     using ModelRef = Quaint::QUniquePtr<Model, Deleter<Model>>;
 

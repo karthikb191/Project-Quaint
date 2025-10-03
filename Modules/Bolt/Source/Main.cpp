@@ -162,7 +162,7 @@ int main()
 
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
-    pipeline->bindToGpu();
+    pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
 
@@ -195,7 +195,7 @@ int main()
     Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), 0, shaderDef);
     imguiPipleline->addDynamicStage("viewport");
     imguiPipleline->addDynamicStage("scissor");
-    imguiPipleline->bindToGpu();
+    imguiPipleline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(imguiPipleline);
 
 
@@ -220,7 +220,7 @@ int main()
         Bolt::MeshRef meshRef(QUAINT_NEW(context, Bolt::QuadMesh, context), Bolt::Deleter<Bolt::Mesh>(context));
         Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
         Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
-        model->bindToGpu();
+        model->construct();
         geoPainter->AddModel(model.get());
         modelHolder.pushBack(std::move(model));
     };
@@ -272,7 +272,7 @@ int main()
         Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
         Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
         
-        model->bindToGpu();
+        model->construct();
         geoPainter->AddModel(model.get());
         modelHolder.pushBack(std::move(model));
     }
@@ -311,10 +311,21 @@ int main()
         Bolt::ImguiHandler::Get()->EndFrame();
     }
 
+    //Clear all models
+    for(int i = 0; i < modelHolder.getSize(); ++i)
+    {
+        modelHolder[i]->destroy();
+        modelHolder[i].release();
+    }
+
     //TODO: VERY BAD. Convert to RAII
     QUAINT_DELETE(context, geoPainter);
     QUAINT_DELETE(context, imguiPainter);
-     Bolt::ImguiHandler::Get()->Shutdown();
+
+    pipeline->destroy();
+    imguiPipleline->destroy();
+
+    Bolt::ImguiHandler::Get()->Shutdown();
 
     Bolt::RenderModule::get().stop();
     Bolt::RenderModule::shutdown();

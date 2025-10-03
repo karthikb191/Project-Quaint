@@ -1179,7 +1179,6 @@ namespace Bolt
         }
         return nullptr;
     }
-
     
     void VulkanRenderer::addPipeline(Bolt::Pipeline* pipeline)
     {
@@ -2519,7 +2518,7 @@ namespace Bolt
                         Bolt::Pipeline* pipeline = getPipeline(nextPipeline);
                         assert(pipeline != nullptr && "Could not fetch the required pipeline. Exiting");
 
-                        VulkanGraphicsPipeline* vulkanPipeline = static_cast<VulkanGraphicsPipeline*>(pipeline->getGpuResourceProxy());
+                        VulkanGraphicsPipeline* vulkanPipeline = pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
                         
                         //TODO: currently only supporting graphics bind point. Update as required later
                         vkCmdBindPipeline(vulkanScene->getSceneParams().commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->getPipelineHandle());
@@ -2659,11 +2658,10 @@ namespace Bolt
         createFrameBuffers();
     }
 
-    void mapBufferResource(GraphicsResource* resource, void** out)
+    void mapBufferResource(BufferResourceBase* resource, void** out)
     {
-        assert(resource->getResourceType() == EResourceType::BUFFER && "Invalid Resource type");
-        assert(resource->getAs<EResourceType::BUFFER>()->getBufferType() == EBufferType::UNIFORM && "Not a uniform buffer resource");
-        VulkanBufferObjectResource* res = static_cast<VulkanBufferObjectResource*>(resource->getGpuResourceProxy());
+        assert(resource->getBufferType() == EBufferType::UNIFORM && "Not a uniform buffer resource");
+        VulkanBufferObjectResource* res = resource->getBufferImplAs<VulkanBufferObjectResource>();
 
         auto& bufferInfo = res->getBufferInfo();
         assert((bufferInfo.memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && "buffer doesnt have host-visible memory attached");
@@ -2674,10 +2672,9 @@ namespace Bolt
 
     }
 
-    void unmapBufferResource(GraphicsResource* resource)
+    void unmapBufferResource(BufferResourceBase* resource)
     {
-        VulkanBufferObjectResource* res = static_cast<VulkanBufferObjectResource*>(resource->getGpuResourceProxy());
-
+        VulkanBufferObjectResource* res = resource->getBufferImplAs<VulkanBufferObjectResource>();
         vkUnmapMemory(VulkanRenderer::get()->getDevice(), res->getDeviceMemoryHandle());
     }
 

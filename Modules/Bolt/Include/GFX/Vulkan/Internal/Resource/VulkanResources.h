@@ -2,38 +2,45 @@
 #define _H_VULKAN_RESOURCES
 #include <vulkan/vulkan.h>
 #include <GFX/Interface/IRenderer.h>
+#include <GFX/Interface/IEntityInterfaces.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
 #include "../VulkanShaderGroup.h"
 
 namespace Bolt{ 
     class CombinedImageSamplerTextureBuilder;
+    class BufferResourceBuilder;
 
     namespace vulkan {
     
     //TODO: Should other resource class also be created and have a separation with entities?
     
     // Resource would own the enclosing API onbject created
-    class VulkanCombinedImageSamplerResource : public Bolt::ResourceGPUProxy
+    class VulkanCombinedImageSamplerResource : public IImageSamplerImpl
     {
     public:
         VulkanCombinedImageSamplerResource(Quaint::IMemoryContext* context, VkSampler sampler, VulkanTextureRef& textureRef)
-        : Bolt::ResourceGPUProxy(context)
+        : IImageSamplerImpl(context)
         , m_sampler(sampler)
         , m_texture(std::move(textureRef))
         {}
 
+        virtual void constructFromPath(char* path) override;
+        virtual void constructFromPixels(void* pixels, uint32_t width, uint32_t height) override;
         virtual void destroy() override;
         
         VkSampler getSampler() const { return m_sampler; }
         const VulkanTextureRef& getTexture() { return m_texture; }
 
     private:
+        void setSamplerInfo(const VkSamplerCreateInfo& info) { m_samplerInfo = info; }
+
+        VkSamplerCreateInfo     m_samplerInfo;
 
         VkSampler               m_sampler = VK_NULL_HANDLE;
         VulkanTextureRef        m_texture;
     };
 
-    class VulkanBufferObjectResource : public Bolt::ResourceGPUProxy
+    class VulkanBufferObjectResource : public IBufferImpl
     {
     public:
         struct BufferInfo
@@ -45,16 +52,21 @@ namespace Bolt{
         };
 
         VulkanBufferObjectResource(Quaint::IMemoryContext* context)
-        : Bolt::ResourceGPUProxy(context)
+        : IBufferImpl(context)
         {}
 
-        void wrap(VkDeviceMemory deviceMemory, VkBuffer buffer, const BufferInfo& info);
+        virtual void construct() override;
+        virtual void construct(void* data) override;
         virtual void destroy() override;
         VkBuffer getBufferhandle() { return m_buffer; }
         VkDeviceMemory getDeviceMemoryHandle() { return m_gpuMemoryHandle; }
         const BufferInfo& getBufferInfo() { return m_info; }
 
     private:
+        friend class Bolt::BufferResourceBuilder;
+
+        void setBufferInfo(const BufferInfo& info) { m_info = info; }
+
         //TODO: Maybe encapsulate into a buffer obejct?
         VkDeviceMemory          m_gpuMemoryHandle = VK_NULL_HANDLE;
         VkBuffer                m_buffer = VK_NULL_HANDLE;

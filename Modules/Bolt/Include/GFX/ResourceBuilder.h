@@ -1,5 +1,6 @@
 #ifndef _H_RESOURCE_BUILDER
 #define _H_RESOURCE_BUILDER
+#include <GFX/Interface/IEntityInterfaces.h>
 #include "Entities/Resources.h"
 #include "Entities/ShaderGroup.h"
 #include "./Helpers.h"
@@ -40,8 +41,8 @@ namespace Bolt
         {}
         //CombinedImageSamplerTextureBuilder& setSamplerInfo(); TODO: APP level sampler info structure
         
-        ResourceGPUProxyPtr buildFromPath(const char* path);
-        ResourceGPUProxyPtr buildFromPixels(unsigned char* pixels, int width, int height);
+        TImageSamplerImplPtr buildFromPath(const char* path);
+        TImageSamplerImplPtr buildFromPixels(unsigned char* pixels, int width, int height);
 
     private:
 
@@ -61,13 +62,12 @@ namespace Bolt
         BufferResourceBuilder& setInitiallymapped(const bool map) { m_initiallyMapped = map; return *this; }
         BufferResourceBuilder& copyDataToBuffer(const bool shouldCopy) { m_copyDataTobuffer = shouldCopy; return *this; }
 
-        ResourceGPUProxyPtr build();
+        TBufferImplPtr build();
 
     protected:
-        ResourceGPUProxy* buildBuffer();
-        ResourceGPUProxy* buildVertexBuffer();
-        ResourceGPUProxy* buildIndexBuffer();
-        ResourceGPUProxy* buildUniformBuffer();
+        IBufferImpl* buildVertexBuffer();
+        IBufferImpl* buildIndexBuffer();
+        IBufferImpl* buildUniformBuffer();
 
         EBufferType         m_bufferType = EBufferType::INVALID;
         void*               m_data = nullptr;
@@ -78,32 +78,32 @@ namespace Bolt
     };
 //====================================================================================
 //====================================================================================
-    typedef Quaint::QUniquePtr<ShaderGroup, Deleter<ShaderGroup>> ShaderGroupResourceBuilderPtr;
-    class ShaderGroupResourceBuilder : public GraphicsResourceBuilderBase
-    {
-    public:
-        ShaderGroupResourceBuilder(Quaint::IMemoryContext* context)
-        : GraphicsResourceBuilderBase(context)
-        , m_attachmentsRefs(context)
-        , m_attributeMap(context)
-        , m_ptr(nullptr, Deleter<ShaderGroup>(context))
-        {}
+    // typedef Quaint::QUniquePtr<ShaderGroup, Deleter<ShaderGroup>> ShaderGroupResourceBuilderPtr;
+    // class ShaderGroupResourceBuilder : public GraphicsResourceBuilderBase
+    // {
+    // public:
+    //     ShaderGroupResourceBuilder(Quaint::IMemoryContext* context)
+    //     : GraphicsResourceBuilderBase(context)
+    //     , m_attachmentsRefs(context)
+    //     , m_attributeMap(context)
+    //     , m_ptr(nullptr, Deleter<ShaderGroup>(context))
+    //     {}
 
-        ShaderGroupResourceBuilder& setName(const Quaint::QName& name) { m_name = name; }
-        ShaderGroupResourceBuilder& setVertShaderPath(const char* path) { m_vertShaderPath = path; return *this; }
-        ShaderGroupResourceBuilder& setFragShaderPath(const char* path) { m_fragShaderPath = path; return *this; }
-        ShaderGroupResourceBuilder& addAttchmentRef(const ShaderAttachmentInfo& info);
+    //     ShaderGroupResourceBuilder& setName(const Quaint::QName& name) { m_name = name; }
+    //     ShaderGroupResourceBuilder& setVertShaderPath(const char* path) { m_vertShaderPath = path; return *this; }
+    //     ShaderGroupResourceBuilder& setFragShaderPath(const char* path) { m_fragShaderPath = path; return *this; }
+    //     ShaderGroupResourceBuilder& addAttchmentRef(const ShaderAttachmentInfo& info);
 
-        ShaderGroupResourceBuilderPtr&& build();
-    private:
-        Quaint::QName                                   m_name = "";
-        Quaint::QPath                                   m_vertShaderPath = "";
-        Quaint::QPath                                   m_fragShaderPath = "";
-        Quaint::QMap<Quaint::QName, ShaderAttribute>    m_attributeMap;
-        Quaint::QArray<ShaderAttachmentInfo>            m_attachmentsRefs;
-        ShaderGroupResourceBuilderPtr                   m_ptr;
-        //TODO: Add attachment resources somehow
-    };
+    //     ShaderGroupResourceBuilderPtr&& build();
+    // private:
+    //     Quaint::QName                                   m_name = "";
+    //     Quaint::QPath                                   m_vertShaderPath = "";
+    //     Quaint::QPath                                   m_fragShaderPath = "";
+    //     Quaint::QMap<Quaint::QName, ShaderAttribute>    m_attributeMap;
+    //     Quaint::QArray<ShaderAttachmentInfo>            m_attachmentsRefs;
+    //     ShaderGroupResourceBuilderPtr                   m_ptr;
+    //     //TODO: Add attachment resources somehow
+    // };
 //====================================================================================
 //====================================================================================
     class Pipeline;
@@ -112,30 +112,28 @@ namespace Bolt
     public:
         PipelineResourceBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
-        , m_ptr(nullptr, Deleter<ResourceGPUProxy>(context))
+        , m_ptr(nullptr, Deleter<IPipelineImpl>(context))
         {}
 
         PipelineResourceBuilder& setPipelineRef(Pipeline* pipeline);
-        ResourceGPUProxyPtr build();
+        TPipelineImplPtr build();
 
     private:
-        ResourceGPUProxyPtr       m_ptr;
-        Pipeline*                 m_pipeline = nullptr;
+        TPipelineImplPtr      m_ptr;
+        Pipeline*                       m_pipeline = nullptr;
     };
 
 //====================================================================================
 //====================================================================================
 
     class Model;
-    class IRenderObjectImpl;
-    using RenderObjectRef = Quaint::QUniquePtr<IRenderObjectImpl, Deleter<IRenderObjectImpl>>;
     class RenderObjectBuilder : public GraphicsResourceBuilderBase
     {
     public:
         RenderObjectBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
         {}
-        RenderObjectRef buildFromModel(Model* model);
+        TModelImplPtr buildFromModel(Model* model);
 
     private:
         

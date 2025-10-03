@@ -5,6 +5,7 @@
 #include <GFX/Vulkan/Internal/VulkanShaderGroup.h>
 #include <memory>
 #include <GFX/Helpers.h>
+#include <GFX/Interface/IEntityInterfaces.h>
 #include <GFX/Vulkan/Internal/Entities/UniformBuffer.h>
 #include <GFX/Vulkan/Internal/Entities/Descriptor.h>
 
@@ -15,8 +16,9 @@ namespace Bolt{
     namespace vulkan{
 
     class VulkanShaderGroupResource;
-
-    class VulkanRenderObject : public IRenderObjectImpl
+    
+    //TODO: This currently represents a mesh. Maybe it's better to rename this?
+    class VulkanRenderObject : public IModelImpl
     {
     typedef std::unique_ptr<VulkanShaderGroup, Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
     //typedef Quaint::QUniquePtr<VulkanBufferObjectResource, Deleter<VulkanBufferObjectResource>> BufferResourceRef;
@@ -25,11 +27,13 @@ namespace Bolt{
 
     public:
         VulkanRenderObject(Quaint::IMemoryContext* context);
-        virtual void build(const GeometryRenderInfo& renderInfo) override;
-        virtual void draw(RenderScene* scene) override;
+        //virtual void build(const GeometryRenderInfo& renderInfo) override;
+        virtual void construct() override;
         virtual void destroy() override;
+        virtual void draw(RenderScene* scene) override;
 
     private:
+        void addModelRef(Model* model);
         void createBuffersFromModel(Model* model);
         void createShaderGroup(const ShaderInfo& shaderinfo);
         void createDescriptorLayoutInformation(const ShaderInfo& shaderinfo);
@@ -40,11 +44,11 @@ namespace Bolt{
 
         friend class RenderObjectBuilder;
         //VulkanShaderGroupRef                    m_shaderGroup;
+        Model*                                  m_model;
+        TBufferImplPtr                          m_vertexBuffer;
+        TBufferImplPtr                          m_indexBuffer;
 
-        ResourceGPUProxyPtr                       m_vertexBuffer;
-        ResourceGPUProxyPtr                       m_indexBuffer;
-
-
+        GeometryRenderInfo                      m_renderInfo;
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts; //Represents layout for the respective set
         Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;

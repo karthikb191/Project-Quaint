@@ -11,25 +11,27 @@ namespace Bolt
     class Image2d;
     using Image2dRef = Quaint::QUniquePtr<Image2d, Deleter<Image2d>>;
 
-    class Image2d : public GraphicsResource
+    class Image2d : public IGFXEntity
     {
         public:
         static Image2dRef LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name);
         
         Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name);
-        void destroy();
+        virtual void construct() override;
+        virtual void destroy() override;
 
         inline int getWidth() { return m_width; }
         inline int getHeight() { return m_height; }
 
-        /* Currently only generates combined sampler image that can be bound to a shader. Extend this! */
-        virtual void bindToGpu();
-        virtual void unbindFromGPU();
+        template<typename T>
+        T* getImplAs(){ return static_cast<T*>(m_imageImpl.get()); }
 
         private:
         void loadFromPath(const Quaint::QPath& path);
 
         /* TODO: Clear CPU-side data once bound to GPU */
+        //Quaint::IMemoryContext* m_context;
+        TImageImplPtr m_imageImpl;
         unsigned char* m_data = nullptr;
         int m_width = 0;
         int m_height = 0;

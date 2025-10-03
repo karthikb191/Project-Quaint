@@ -27,17 +27,17 @@ namespace Bolt { namespace vulkan
         m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, fragSpirvPath.getBuffer()));
     }
 
-    VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup)
-    : Bolt::ResourceGPUProxy(context)
-    , m_context(context)
-    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
-    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
-    , m_VIBs(context)
-    , m_VIAs(context)
-    {
-        m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, shaderGroup.getVertexShaderPath().getBuffer()));
-        m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, shaderGroup.getFragmentShaderPath().getBuffer()));
-    }
+    // VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Bolt::ShaderGroup& shaderGroup)
+    // : Bolt::ResourceGPUProxy(context)
+    // , m_context(context)
+    // , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
+    // , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    // , m_VIBs(context)
+    // , m_VIAs(context)
+    // {
+    //     m_vertShader.reset(QUAINT_NEW(context, Bolt::VulkanVertexShader, shaderGroup.getVertexShaderPath().getBuffer()));
+    //     m_fragShader.reset(QUAINT_NEW(context, Bolt::VulkanFragmentShader, shaderGroup.getFragmentShaderPath().getBuffer()));
+    // }
 
     VulkanShaderGroup::~VulkanShaderGroup()
     {

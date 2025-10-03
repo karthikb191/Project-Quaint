@@ -12,7 +12,7 @@ namespace Bolt {
     using namespace vulkan;
 
     //Image Resource builder
-    ResourceGPUProxyPtr CombinedImageSamplerTextureBuilder::buildFromPath(const char* path)
+    TImageSamplerImplPtr CombinedImageSamplerTextureBuilder::buildFromPath(const char* path)
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
@@ -48,10 +48,10 @@ namespace Bolt {
         VulkanTextureRef textureRef(texture, Deleter<VulkanTexture>(m_context));
 
         VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(textureRef));
-        ResourceGPUProxyPtr imgSplrRes(combinedImageSampler, Deleter<ResourceGPUProxy>(m_context));
-        return std::move(imgSplrRes);
+        
+        return TImageSamplerImplPtr(combinedImageSampler, Deleter<VulkanCombinedImageSamplerResource>(m_context));
     }
-    ResourceGPUProxyPtr CombinedImageSamplerTextureBuilder::buildFromPixels(unsigned char* pixels, int width, int height)
+    TImageSamplerImplPtr CombinedImageSamplerTextureBuilder::buildFromPixels(unsigned char* pixels, int width, int height)
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
@@ -87,12 +87,11 @@ namespace Bolt {
         VulkanTextureRef texRef(texPtr, Deleter<VulkanTexture>(m_context));
 
         VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(texRef));
-        ResourceGPUProxyPtr imgSplrRes(combinedImageSampler, Deleter<ResourceGPUProxy>(m_context));
-        return std::move(imgSplrRes);
+        return TImageSamplerImplPtr(combinedImageSampler, Deleter<VulkanCombinedImageSamplerResource>(m_context));
     }
 
     //UB resource builder
-    ResourceGPUProxyPtr BufferResourceBuilder::build()
+    TBufferImplPtr BufferResourceBuilder::build()
     {
         assert(m_dataSize > 0 && "invalid data");
 
@@ -100,44 +99,36 @@ namespace Bolt {
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         EBufferType resourcetype = EBufferType::INVALID;
 
-        ResourceGPUProxy* proxy = nullptr;
-        GraphicsResource* resource = nullptr;
-        ResourceGPUProxyPtr gpuRes(nullptr, Deleter<ResourceGPUProxy>(m_context));
-
+        TBufferImplPtr bufferImplPtr(nullptr, Deleter<IBufferImpl>(m_context));
+        IBufferImpl* impl = nullptr;
         switch(m_bufferType)
         {
             case EBufferType::VERTEX:
-                proxy = buildVertexBuffer();
-                //resource = GraphicsResource::create<BufferResource<EBufferType::VERTEX>>(m_context, proxy);
+                impl = buildVertexBuffer();
             break;
             
             case EBufferType::INDEX:
-                proxy = buildIndexBuffer();
-                //resource = GraphicsResource::create<BufferResource<EBufferType::INDEX>>(m_context, proxy);
+                impl = buildIndexBuffer();
             break;
             
             case EBufferType::UNIFORM:
-                proxy = buildUniformBuffer();
-                //resource = GraphicsResource::create<BufferResource<EBufferType::UNIFORM>>(m_context, proxy);
+                impl = buildUniformBuffer();
             break;
 
             default:
                 assert(false && "Unsupported buffer type provided");
-                return gpuRes;
             break;
         }
-        assert(proxy != nullptr && "could not build graphics proxy buffer object");
-        gpuRes.reset(proxy);
-        return std::move(gpuRes);
+        bufferImplPtr.reset(impl);
+        return std::move(bufferImplPtr);
     }
 
-    ResourceGPUProxy* BufferResourceBuilder::buildVertexBuffer()
-    {
+    IBufferImpl* BufferResourceBuilder::buildVertexBuffer()
+    {   
         VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
         VkBuffer buffer = VK_NULL_HANDLE;
         VkBufferUsageFlags usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        VulkanRenderer::get()->createBuffer(m_dataSize, m_data, usage, memFlags, deviceMemory, buffer);
 
         VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
         VulkanBufferObjectResource::BufferInfo info{};
@@ -145,11 +136,12 @@ namespace Bolt {
         info.usageFlags = usage;
         info.size = m_dataSize;
         info.offset = m_dataOffset;
+        proxy->setBufferInfo(info);
+        proxy->construct(m_data);
 
-        proxy->wrap(deviceMemory, buffer, info);
         return proxy;
     }
-    ResourceGPUProxy* BufferResourceBuilder::buildIndexBuffer()
+    IBufferImpl* BufferResourceBuilder::buildIndexBuffer()
     {
         VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
         VkBuffer buffer = VK_NULL_HANDLE;
@@ -163,11 +155,12 @@ namespace Bolt {
         info.usageFlags = usage;
         info.size = m_dataSize;
         info.offset = m_dataOffset;
+        proxy->setBufferInfo(info);
+        proxy->construct(m_data);
 
-        proxy->wrap(deviceMemory, buffer, info);
         return proxy;
     }
-    ResourceGPUProxy* BufferResourceBuilder::buildUniformBuffer()
+    IBufferImpl* BufferResourceBuilder::buildUniformBuffer()
     {
         VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
         VkBuffer buffer = VK_NULL_HANDLE;
@@ -181,8 +174,8 @@ namespace Bolt {
         info.usageFlags = usage;
         info.size = m_dataSize;
         info.offset = m_dataOffset;
-
-        proxy->wrap(deviceMemory, buffer, info);
+        proxy->setBufferInfo(info);
+        proxy->construct(m_data);
 
         //TODO:
         if(m_initiallyMapped)
@@ -193,32 +186,33 @@ namespace Bolt {
         return proxy;
     }
 
-    ShaderGroupResourceBuilder& ShaderGroupResourceBuilder::addAttchmentRef(const ShaderAttachmentInfo& info)
-    {
-        m_attachmentsRefs.pushBack(info);
-        return *this;
-    }
+    // ShaderGroupResourceBuilder& ShaderGroupResourceBuilder::addAttchmentRef(const ShaderAttachmentInfo& info)
+    // {
+    //     m_attachmentsRefs.pushBack(info);
+    //     return *this;
+    // }
 
-    ShaderGroupResourceBuilderPtr&& ShaderGroupResourceBuilder::build()
-    {
-        ShaderGroup* shaderGroup = 
-        GraphicsResource::create<ShaderGroup, VulkanShaderGroup>(m_context
-                            , m_name
-                            , m_fragShaderPath
-                            , m_vertShaderPath
-                            , std::move(m_attributeMap));
-        m_ptr.reset(shaderGroup);
-        return std::move(m_ptr);
-    }
+    // ShaderGroupResourceBuilderPtr&& ShaderGroupResourceBuilder::build()
+    // {
+    //     ShaderGroup* shaderGroup = 
+    //     GraphicsResource::create<ShaderGroup, VulkanShaderGroup>(m_context
+    //                         , m_name
+    //                         , m_fragShaderPath
+    //                         , m_vertShaderPath
+    //                         , std::move(m_attributeMap));
+    //     m_ptr.reset(shaderGroup);
+    //     return std::move(m_ptr);
+    // }
 
     PipelineResourceBuilder& PipelineResourceBuilder::setPipelineRef(Pipeline* pipeline)
     {
         m_pipeline = pipeline;
         return *this;
     }
-    ResourceGPUProxyPtr PipelineResourceBuilder::build()
+    TPipelineImplPtr PipelineResourceBuilder::build()
     {
         using namespace vulkan;
+        //TODO: Depending on pipeline type, this would be the place to branch out
 
         RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
 
@@ -242,18 +236,18 @@ namespace Bolt {
 //====================================================================================
 //============================ RENDER OBJECT BUILDER =================================
 
-    RenderObjectRef RenderObjectBuilder::buildFromModel(Model* model)
+    TModelImplPtr RenderObjectBuilder::buildFromModel(Model* model)
     {
-        RenderObjectRef ro(nullptr, Deleter<IRenderObjectImpl>(m_context));
+        TModelImplPtr impl(nullptr, Deleter<IModelImpl>(m_context));
         VulkanRenderObject* proxy = QUAINT_NEW(m_context, VulkanRenderObject, m_context);
         
         // Building Vertex and Index buffers
-        Mesh* mesh = model->getMesh();
-        proxy->createBuffersFromModel(model);
-        
+        //TODO: Support multiple meshes
+        proxy->addModelRef(model);
+        proxy->construct();
 
-        ro.reset(proxy);
-        return std::move(ro);
+        impl.reset(proxy);
+        return std::move(impl);
     }
 
 //====================================================================================

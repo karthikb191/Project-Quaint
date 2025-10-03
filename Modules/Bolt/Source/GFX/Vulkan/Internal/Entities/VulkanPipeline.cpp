@@ -62,16 +62,15 @@ namespace Bolt
     }
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
     {
-        m_pipeline->init();
+        m_pipeline->construct();
         return m_pipeline;
         //TODO: Initialize with some default information. Can specialize later
     }
 
-
     namespace vulkan
     {
         VulkanGraphicsPipeline::VulkanGraphicsPipeline(Quaint::IMemoryContext* context)
-        : ResourceGPUProxy(context)
+        : IPipelineImpl(context)
         , m_shaders(context)
         , m_shaderStageInfos(context)
         , m_bindingDescs(context)
@@ -326,7 +325,7 @@ namespace Bolt
             m_dynamicFeatures.pushBack(feature);
         }
 
-        void VulkanGraphicsPipeline::init()
+        void VulkanGraphicsPipeline::construct()
         {
             VkDevice device = VulkanRenderer::get()->getDevice();
             VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
@@ -557,8 +556,8 @@ namespace Bolt
 
         void pushData(const Quaint::QName& name, Image2d* image)
         {
-            VulkanTexture* texture = static_cast<VulkanTexture*>(image->getGpuResourceProxy());
-
+            //TODO: Not valid
+            //VulkanTexture* texture = image->getImplAs<VulkanTexture>();
         }
 
         void DescriptorsHandler::updateDescriptors()

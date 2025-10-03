@@ -4,20 +4,35 @@
 namespace Bolt
 {
     Pipeline::Pipeline(Quaint::IMemoryContext* context, const Quaint::QName& name, const Quaint::QName& renderScene, const uint32_t stageIdx, const ShaderDefinition& shaderDef)
-    : GraphicsResource(context, EResourceType::PIPELINE)
+    : IGFXEntity(context)
     , m_name(name)
     , m_sceneName(renderScene)
     , m_stageIdx(stageIdx)
     , m_shaderDefinition(shaderDef)
     , m_dyanmicStages(context)
+    , m_pipelineImpl(nullptr, Deleter<IPipelineImpl>(context))
     {
         
     }
 
-    void Pipeline::bindToGpu()
+    void Pipeline::construct()
     {
         PipelineResourceBuilder builder = ResourceBuilderFactory::createBuilder<PipelineResourceBuilder>(m_context);
         builder.setPipelineRef(this);
-        assignGpuProxyResource(std::move(builder.build()));
+        m_pipelineImpl = std::move(builder.build());
     }
+    void Pipeline::destroy()
+    {
+        if(m_pipelineImpl.get() != nullptr)
+        {
+            m_pipelineImpl->destroy();
+        }
+    }
+
+    //void Pipeline::bindToGpu()
+    //{
+    //    PipelineResourceBuilder builder = ResourceBuilderFactory::createBuilder<PipelineResourceBuilder>(m_context);
+    //    builder.setPipelineRef(this);
+    //    assignGpuProxyResource(std::move(builder.build()));
+    //}
 }

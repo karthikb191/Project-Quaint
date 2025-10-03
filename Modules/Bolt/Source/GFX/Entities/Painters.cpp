@@ -127,7 +127,7 @@ namespace Bolt
 
             //Create descriptor set for it
             VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
-            VulkanGraphicsPipeline* pipeline = (VulkanGraphicsPipeline*)m_pipeline->getGpuResourceProxy();
+            VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
             
             //Only a single set is supported per layout;
             VkDescriptorSetLayout layouts[] = {pipeline->getDescriptorSetLayout()};
@@ -289,7 +289,7 @@ namespace Bolt
                 ImguiDescriptorSet& info = m_descriptorInfo[i];
                 if(info.texture.getHandle() == textureData->GetTexID())
                 {
-                    VulkanGraphicsPipeline* pipeline = (VulkanGraphicsPipeline*)m_pipeline->getGpuResourceProxy();
+                    VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
                     info.texture.destroy();
                     vkFreeDescriptorSets(device, pipeline->getDescriptorPool(), 1, &info.set);
                     break;
@@ -324,7 +324,7 @@ namespace Bolt
         // Setup scale and translation:
         // Our visible imgui space lies from draw_data->DisplayPps (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
         {
-            VulkanGraphicsPipeline* pipeline = (VulkanGraphicsPipeline*)m_pipeline->getGpuResourceProxy();
+            VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
             float scale[2];
             scale[0] = 2.0f / data->DisplaySize.x;
             scale[1] = 2.0f / data->DisplaySize.y;
@@ -343,7 +343,7 @@ namespace Bolt
 
     void ImguiPainter::render(RenderScene* scene)
     {
-        VulkanGraphicsPipeline* pipeline = (VulkanGraphicsPipeline*)m_pipeline->getGpuResourceProxy();
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         VkDevice device = VulkanRenderer::get()->getDevice();
         //TODO: Move all of this to platform agnostic code

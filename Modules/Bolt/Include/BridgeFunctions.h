@@ -6,8 +6,8 @@ namespace Bolt
 {
     class GraphicsResource;
 
-    void mapBufferResource(GraphicsResource* resource, void** out);
-    void unmapBufferResource(GraphicsResource* resource);
+    void mapBufferResource(IBufferImpl* resource, void** out);
+    void unmapBufferResource(IBufferImpl* resource);
 }
 
 

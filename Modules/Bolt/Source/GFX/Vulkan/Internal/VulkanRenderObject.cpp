@@ -34,17 +34,17 @@ UniformHandler.update("Name3", UniformSampledImage)
 
 namespace Bolt { namespace vulkan {
     VulkanRenderObject::VulkanRenderObject(Quaint::IMemoryContext* context)
-    : IRenderObjectImpl(context)
+    : IModelImpl(context)
     //, m_shaderGroup(nullptr,  Deleter<VulkanShaderGroup>(ro->getMemoryContext()))
     , m_setLayouts(context)
     , m_sets(context)
-    , m_vertexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
-    , m_indexBuffer(nullptr, Deleter<ResourceGPUProxy>(context))
+    , m_vertexBuffer(nullptr, Deleter<IBufferImpl>(context))
+    , m_indexBuffer(nullptr, Deleter<IBufferImpl>(context))
     {
     }
 
-    void VulkanRenderObject::build(const GeometryRenderInfo& renderInfo)
-    {
+    //void VulkanRenderObject::build(const GeometryRenderInfo& renderInfo)
+    //{
         //VkDevice device = VulkanRenderer::get()->getDevice();
         //VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         //
@@ -62,12 +62,31 @@ namespace Bolt { namespace vulkan {
         //createDescriptors(shaderInfo);
         //createPipeline();
         //writeDescriptorSets();
+    //}
+
+    void VulkanRenderObject::construct()
+    {
+        if(m_model != nullptr)
+        {
+            createBuffersFromModel(m_model);
+        }
     }
 
     void VulkanRenderObject::destroy()
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        if(m_vertexBuffer != VK_NULL_HANDLE)
+        {
+            m_vertexBuffer->destroy();
+            m_vertexBuffer.release();
+        }
+        if(m_indexBuffer != VK_NULL_HANDLE)
+        {
+            m_indexBuffer->destroy();
+            m_indexBuffer.release();
+        }
 
         //Destroying pipeline layouts
         for(auto& layout : m_setLayouts)
@@ -87,6 +106,11 @@ namespace Bolt { namespace vulkan {
             vkDestroyDescriptorPool(device, m_descriptorPool, callbacks);
             m_descriptorPool = VK_NULL_HANDLE;
         }
+    }
+
+    void VulkanRenderObject::addModelRef(Model* model)
+    {
+        m_model = model;
     }
 
     void VulkanRenderObject::createBuffersFromModel(Model* model)

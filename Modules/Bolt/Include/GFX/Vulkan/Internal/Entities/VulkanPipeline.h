@@ -4,6 +4,7 @@
 #include <Vulkan/vulkan.h>
 #include <Interface/IMemoryContext.h>
 #include <GFX/Interface/IRenderer.h>
+#include <GFX/Interface/IEntityInterfaces.h>
 #include <GFX/Data/ShaderInfo.h>
 #include <Types/QArray.h>
 #include <GFX/Vulkan/Internal/ShaderInterface.h>
@@ -37,13 +38,13 @@ namespace Bolt{
         VulkanGraphicsPipeline* m_pipeline;
     };
     
-    class VulkanGraphicsPipeline : public ResourceGPUProxy
+    class VulkanGraphicsPipeline : public IPipelineImpl
     {
         friend class VulkanGraphicsPipelineBuilder;
         
     public:
         VulkanGraphicsPipeline(Quaint::IMemoryContext* context);
-        void init();
+        virtual void construct() override;
         virtual void destroy() override;
         VkPipeline getPipelineHandle() { return m_pipeline; }
         ShaderInterface::Interface& getShaderInterface() { return m_shaderInterface; }
