@@ -32,6 +32,8 @@ namespace Bolt{
         virtual void destroy() override;
         virtual void draw(RenderScene* scene) override;
 
+        Model* getModel() { return m_model; }
+
     private:
         void addModelRef(Model* model);
         void createBuffersFromModel(Model* model);

@@ -2498,13 +2498,21 @@ namespace Bolt
                 return;
             }
             VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+            auto& stages = scene->getRenderStages();
+
+            for(auto& stage : stages)
+            {
+                //TODO: selectively fetch painters compatible with scene and stage
+                for(auto& painter : painters)
+                {
+                    painter->preRender(scene.get(), stage.index);
+                }
+            }
 
             if(!vulkanScene->begin())
             {
                 return;
             }
-
-            auto& stages = scene->getRenderStages();
             Quaint::QName boundPipeline = "";
             for(auto& stage : stages)
             {
@@ -2524,9 +2532,8 @@ namespace Bolt
                         vkCmdBindPipeline(vulkanScene->getSceneParams().commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->getPipelineHandle());
                     }
                     
-                    painter->preRender(scene.get(), stage.index);
                     painter->render(scene.get());
-                    painter->postRender();
+                    painter->postRender(); //TODO: Move this out
                 }
             }
 

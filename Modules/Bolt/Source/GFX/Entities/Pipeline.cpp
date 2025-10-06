@@ -19,6 +19,19 @@ namespace Bolt
     {
         PipelineResourceBuilder builder = ResourceBuilderFactory::createBuilder<PipelineResourceBuilder>(m_context);
         builder.setPipelineRef(this);
+        if(m_cullFront)
+        {
+            builder.setCullFront();
+        }
+        if(m_cullBack)
+        {
+            builder.setCullBack();
+        }
+        if(m_blendEnabled)
+        {
+            builder.enableBlend();
+        }
+
         m_pipelineImpl = std::move(builder.build());
     }
     void Pipeline::destroy()

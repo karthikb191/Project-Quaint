@@ -26,8 +26,9 @@ namespace Bolt{
         VulkanGraphicsPipelineBuilder& setupPrimitiveTopology(bool primitiveRestartEnabled = false, VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         VulkanGraphicsPipelineBuilder& setupRenderStageInfo(const RenderScene* const scene, const uint32_t stageIndex, const bool addViewport);
         //TODO: Add viewport override
-        VulkanGraphicsPipelineBuilder& setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
+        VulkanGraphicsPipelineBuilder& setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace);
         VulkanGraphicsPipelineBuilder& addDynamicFeature(Quaint::QName feature);
+        VulkanGraphicsPipelineBuilder& setBlendEnabled(bool enabled);
         
         //TODO: Add dynamic state support
         VulkanGraphicsPipeline* build();
@@ -60,8 +61,9 @@ namespace Bolt{
         /*Pipeline should own descriptors and pipeline layout. These should get destroyed with the pipeline*/
         void buildDescriptors(const ShaderDefinition& shaderDefinition);
         void addViewport(float x, float y, float width, float height, float minDepth, float maxDepth, VkOffset2D scissorOffset, VkExtent2D scissorExtent);
-        void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace);
+        void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace);
         void addDynamicFeature(Quaint::QName feature);
+        void setBlendEnabled();
 
         VkPipeline  m_pipeline = VK_NULL_HANDLE;
 
@@ -81,8 +83,9 @@ namespace Bolt{
 
         //Rasterization Info
         VkPolygonMode m_polygonMode = VK_POLYGON_MODE_FILL;
-        VkCullModeFlagBits m_cullMode = VK_CULL_MODE_NONE;
+        VkCullModeFlags m_cullMode = VK_CULL_MODE_NONE;
         VkFrontFace m_frontFace = VK_FRONT_FACE_CLOCKWISE;
+        bool m_blendEnabled = false;
 
         VkPipelineLayout m_layout = VK_NULL_HANDLE;
         VkRenderPass m_renderPass = VK_NULL_HANDLE;

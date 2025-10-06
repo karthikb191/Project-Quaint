@@ -1,11 +1,15 @@
 #include <GFX/Entities/Painters.h>
 #include <GFX/Entities/Model.h>
 #include <ImguiHandler.h>
+#include <RenderModule.h>
+#include <BoltRenderer.h>
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/Entities/Pipeline.h>
+#include <GFX/ResourceBuilder.h>
 
 //TODO: Remove this from here
 #include <GFX/Vulkan/VulkanRenderer.h>
+#include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
 #include <stb/stb_image.h>
 #include <iostream>
@@ -14,20 +18,60 @@ namespace Bolt
 {
     GeometryPainter::GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
     : Painter(context, pipeline)
-    , m_models(context)
+    , m_geoInfo(context)
     {
+        m_pipeline = VulkanRenderer::get()->getPipeline(pipeline);
     }
 
     void GeometryPainter::preRender(RenderScene* scene, uint32_t stage)
     {
+        // Update descriptors here
+        //TODO: Get the binding information from a shader link
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        const Camera& camera = RenderModule::get().getBoltRenderer()->getCamera();
+        Quaint::UniformBufferObject mvp{};
+        mvp.view = camera.getViewMatrix();
+        mvp.proj = camera.getProjectionMatrix();
+        for(size_t i = 0; i < m_geoInfo.getSize(); ++i)
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            VulkanBufferObjectResource* uniformBuffer = (VulkanBufferObjectResource*)m_geoInfo[i].uniformBuffer.get();
+            
+            void** region = uniformBuffer->getMappedRegion();
+            mvp.model = Quaint::QMat4x4::Identity();
+            memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
+            
+            bufferInfo.buffer = uniformBuffer->getBufferhandle();
+            bufferInfo.offset = 0;
+            bufferInfo.range = uniformBuffer->getBufferInfo().size;
 
-        //TODO:
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorCount = 1;
+            write.dstSet = m_geoInfo[i].set;
+            write.dstBinding = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.pBufferInfo = &bufferInfo;
+            
+            //vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+        }
     }
+
     void GeometryPainter::render(RenderScene* scene)
     {
-        for(auto& model : m_models)
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+        
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        for(auto& info : m_geoInfo)
         {
-            model->draw(scene);
+	        // Maybe it's better if this is moved to object that's rendering
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS
+                , pipeline->getPipelineLayout(), 0, 1, &info.set, 0, nullptr);
+            info.model->draw(scene);
             //TODO:
         }
     }
@@ -38,7 +82,51 @@ namespace Bolt
 
     void GeometryPainter::AddModel(Model* model)
     {
-        m_models.pushBack(model);
+        //TODO: It's best if model's update function updates the actual buffer data before rendering starts
+
+        //m_models.pushBack(model);
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        // Create a buffer and map it
+        const uint32_t size = sizeof(Bolt::UniformBufferObject);
+        BufferResourceBuilder builder(m_context);
+        TBufferImplPtr bufferPtr = std::move(builder.setBufferType(EBufferType::UNIFORM)
+        .setDataSize(size)
+        .setDataOffset(0)
+        .build());
+
+        VulkanBufferObjectResource* resource = static_cast<VulkanBufferObjectResource*>(bufferPtr.get());
+        resource->map();
+
+        // Creates descriptor set
+
+        VkDescriptorSetLayout layouts[] = {pipeline->getDescriptorSetLayout()};
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = pipeline->getDescriptorPool();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = layouts;
+        
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &set);
+        ASSERT_SUCCESS(res, "Failed to allocate desctiptor sets");
+        m_geoInfo.pushBack({model, set, std::move(bufferPtr)});
+
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = resource->getBufferhandle();
+        bufferInfo.offset = 0;
+        bufferInfo.range = resource->getBufferInfo().size;
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorCount = 1;
+        write.dstSet = set;
+        write.dstBinding = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write.pBufferInfo = &bufferInfo;    
+        
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
 
 

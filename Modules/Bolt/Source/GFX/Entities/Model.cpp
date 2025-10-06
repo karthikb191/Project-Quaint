@@ -21,6 +21,14 @@ namespace Bolt
             vertex.position.x = vertices[3 * i + 0];
             vertex.position.y = vertices[3 * i + 1];
             vertex.position.z = vertices[3 * i + 2];
+
+            uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
+            srand(static_cast<unsigned int>(timeNow));
+            vertex.color.x = rand() / (float)RAND_MAX;
+            vertex.color.y = rand() / (float)RAND_MAX;
+            vertex.color.z = rand() / (float)RAND_MAX;
+            vertex.color.w = 1;
+
             m_vertices.pushBack(vertex);
         }
 

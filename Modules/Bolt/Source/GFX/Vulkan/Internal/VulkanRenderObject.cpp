@@ -69,6 +69,8 @@ namespace Bolt { namespace vulkan {
         if(m_model != nullptr)
         {
             createBuffersFromModel(m_model);
+
+            //Create descriptor sets here?
         }
     }
 

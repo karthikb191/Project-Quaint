@@ -5,6 +5,7 @@
 #include <Types/QArray.h>
 #include <Types/QStaticString.h>
 #include <imgui.h>
+#include <GFX/Interface/IEntityInterfaces.h>
 
 //TODO: Remove this from here
 #include <GFX/Vulkan/Internal/Entities/VulkanTexture.h>
@@ -37,6 +38,13 @@ namespace Bolt
     class GeometryPainter : public Painter
     {
     public:
+        struct GeometryShaderInfo
+        {
+            Model* model;
+            VkDescriptorSet set;
+            TBufferImplPtr uniformBuffer;
+        };
+
         GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
         virtual void preRender(RenderScene* scene, uint32_t stage) override;
@@ -46,11 +54,13 @@ namespace Bolt
 
     private:
         Pipeline*   m_pipeline = nullptr;
-        Quaint::QArray<Model*> m_models = nullptr;
+        //Quaint::QArray<Model*> m_models = nullptr;
+        Quaint::QArray<GeometryShaderInfo> m_geoInfo;
     };
 
     class ImguiPainter : public Painter
     {
+        //TODO: Should make these platform agnostic
         struct ImguiDescriptorSet
         {
             vulkan::VulkanTexture texture;

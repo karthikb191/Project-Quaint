@@ -50,7 +50,7 @@ namespace Bolt
         }
         return *this;
     }
-    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace)
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace)
     {
         m_pipeline->setRasterizationInfo(polyMode, cullMode, frontFace);
         return *this;
@@ -58,6 +58,14 @@ namespace Bolt
     VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::addDynamicFeature(Quaint::QName feature)
     {
         m_pipeline->addDynamicFeature(feature);
+        return *this;
+    }
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::setBlendEnabled(bool enabled)
+    {
+        if(enabled)
+        {
+            m_pipeline->setBlendEnabled();
+        }
         return *this;
     }
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
@@ -156,11 +164,11 @@ namespace Bolt
             for(size_t i = 0; i < attachmentRefs.getSize(); ++i)
             {
                 VkPipelineColorBlendAttachmentState state {};
-                state.blendEnable = VK_FALSE;
+                state.blendEnable = m_blendEnabled ? VK_TRUE : VK_FALSE;
                 //TODO: Make it generic
                 if(attachmentRefs[i].attachmentName == "swapchain")
                 {
-                    state.blendEnable = VK_TRUE;
+                    state.blendEnable = m_blendEnabled ? VK_TRUE : VK_FALSE;
                     state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                     state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                     state.colorBlendOp = VK_BLEND_OP_ADD;
@@ -204,7 +212,7 @@ namespace Bolt
                 poolSize.type = pool.first;
                 //poolSize.descriptorCount = pool.second;
                 //TODO: This should be set to pool.second. Check later
-                poolSize.descriptorCount = 1000; //TODO: Remove this from here and move to a central descriptor pool allocator class
+                poolSize.descriptorCount = pool.second;// 1000; //TODO: Remove this from here and move to a central descriptor pool allocator class
                 poolSizes.pushBack(poolSize);
             }
             
@@ -314,7 +322,7 @@ namespace Bolt
             m_viewports.pushBack(viewport);
             m_scissors.pushBack(scissor);
         }
-        void VulkanGraphicsPipeline::setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlagBits cullMode, VkFrontFace frontFace)
+        void VulkanGraphicsPipeline::setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace)
         {
             m_polygonMode = polyMode;
             m_cullMode = cullMode;
@@ -323,6 +331,10 @@ namespace Bolt
         void VulkanGraphicsPipeline::addDynamicFeature(Quaint::QName feature)
         {
             m_dynamicFeatures.pushBack(feature);
+        }
+        void VulkanGraphicsPipeline::setBlendEnabled()
+        {
+            m_blendEnabled = true;
         }
 
         void VulkanGraphicsPipeline::construct()
@@ -423,7 +435,7 @@ namespace Bolt
 
             VkPipelineColorBlendAttachmentState blendAttachmentState{};
             blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            blendAttachmentState.blendEnable = VK_TRUE;
+            blendAttachmentState.blendEnable = m_blendEnabled ? VK_TRUE : VK_FALSE;
             blendInfo.attachmentCount = m_blendAttachments.getSize();
             blendInfo.pAttachments = m_blendAttachments.getBuffer();
 

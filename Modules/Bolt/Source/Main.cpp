@@ -148,7 +148,7 @@ int main()
         , "main", Bolt::EShaderStage::FRAGMENT});
 
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
-    shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
 
@@ -162,6 +162,7 @@ int main()
 
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    pipeline->cullBack();
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
@@ -193,6 +194,7 @@ int main()
 
     //IMGUI pipeline uses the same stage and subpass
     Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    imguiPipleline->enableBlend();
     imguiPipleline->addDynamicStage("viewport");
     imguiPipleline->addDynamicStage("scissor");
     imguiPipleline->construct();

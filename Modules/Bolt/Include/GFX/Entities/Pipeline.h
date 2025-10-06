@@ -47,6 +47,10 @@ namespace Bolt
         //Requires API specific implementation
         virtual void construct() override;
         virtual void destroy() override;
+
+        void cullBack() { m_cullBack = true; }
+        void cullFront() { m_cullFront = true; }
+        void enableBlend() { m_blendEnabled = true; }
         
         template<typename T>
         T* GetPipelineImplAs(){ return static_cast<T*>(m_pipelineImpl.get()); }
@@ -68,6 +72,10 @@ namespace Bolt
         ShaderDefinition    m_shaderDefinition;
         Quaint::QArray<Quaint::QName> m_dyanmicStages;
         TPipelineImplPtr    m_pipelineImpl;
+
+        bool                m_cullBack = false;
+        bool                m_cullFront = false;
+        bool                m_blendEnabled = false;
 
         //GPUDataDispatcher   m_dataDispatcher;
     };

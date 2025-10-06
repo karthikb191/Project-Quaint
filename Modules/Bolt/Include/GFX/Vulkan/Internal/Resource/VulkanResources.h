@@ -61,6 +61,12 @@ namespace Bolt{
         VkBuffer getBufferhandle() { return m_buffer; }
         VkDeviceMemory getDeviceMemoryHandle() { return m_gpuMemoryHandle; }
         const BufferInfo& getBufferInfo() { return m_info; }
+        
+        void map();
+        void unmap();
+        bool isUniformBuffer() const { return m_info.usageFlags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
+        bool isMapped() const { return m_isMapped; }
+        void** getMappedRegion() { return &m_mapRegion; }
 
     private:
         friend class Bolt::BufferResourceBuilder;
@@ -73,6 +79,8 @@ namespace Bolt{
         BufferInfo              m_info;
         VkBufferUsageFlags      m_usageFlags;
         VkMemoryPropertyFlags   m_memFlags;
+        bool                    m_isMapped = false;
+        void*                   m_mapRegion;
     };
 }}
 

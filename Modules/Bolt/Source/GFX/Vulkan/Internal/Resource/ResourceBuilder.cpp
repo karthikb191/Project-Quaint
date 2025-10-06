@@ -162,11 +162,11 @@ namespace Bolt {
     }
     IBufferImpl* BufferResourceBuilder::buildUniformBuffer()
     {
-        VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
-        VkBuffer buffer = VK_NULL_HANDLE;
+        //VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+        //VkBuffer buffer = VK_NULL_HANDLE;
         VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        VulkanRenderer::get()->createBuffer(m_dataSize, usage, memFlags, deviceMemory, buffer);
+        //VulkanRenderer::get()->createBuffer(m_dataSize, usage, memFlags, deviceMemory, buffer);
 
         VulkanBufferObjectResource* proxy = QUAINT_NEW(m_context, VulkanBufferObjectResource, m_context);
         VulkanBufferObjectResource::BufferInfo info{};
@@ -180,7 +180,7 @@ namespace Bolt {
         //TODO:
         if(m_initiallyMapped)
         {
-
+            
         }
 
         return proxy;
@@ -216,11 +216,23 @@ namespace Bolt {
 
         RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
 
+        VkCullModeFlags flags = VK_CULL_MODE_NONE;
+        if(m_cullBack)
+        {
+            flags |= VK_CULL_MODE_BACK_BIT;
+        }
+        if(m_cullFront)
+        {
+            flags |= VK_CULL_MODE_FRONT_BIT;
+        }
+
+
         VulkanGraphicsPipelineBuilder builder(m_context);
         builder.setupShaders(m_pipeline->getShaderDefinition())
+        .setBlendEnabled(m_enableBlend)
         .setupRenderStageInfo(scene, m_pipeline->getStageIdx(), true)
         .setupPrimitiveTopology(false, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        .setupRasterizationInfo(VK_POLYGON_MODE_FILL, flags, VK_FRONT_FACE_COUNTER_CLOCKWISE);
         auto& features = m_pipeline->getDynamicStages();
         for(auto& feature : features)
         {

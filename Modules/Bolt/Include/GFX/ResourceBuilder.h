@@ -116,11 +116,17 @@ namespace Bolt
         {}
 
         PipelineResourceBuilder& setPipelineRef(Pipeline* pipeline);
+        PipelineResourceBuilder& setCullBack() { m_cullBack = true; return *this; }
+        PipelineResourceBuilder& setCullFront() { m_cullFront = true; return *this; }
+        PipelineResourceBuilder& enableBlend() { m_enableBlend = true; return *this; }
         TPipelineImplPtr build();
 
     private:
         TPipelineImplPtr      m_ptr;
         Pipeline*                       m_pipeline = nullptr;
+        bool m_cullBack = false;
+        bool m_cullFront = false;
+        bool m_enableBlend = false;
     };
 
 //====================================================================================

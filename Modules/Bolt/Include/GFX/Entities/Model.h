@@ -54,7 +54,6 @@ namespace Bolt
         Quaint::IMemoryContext* m_context = nullptr;
         Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
         Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
-        Quaint::QMat4x4 m_transform;
         GeometryRenderInfo  m_RenderInfo;
     };
     using MeshRef = Quaint::QUniquePtr<Mesh, Deleter<Mesh>>;
@@ -78,8 +77,10 @@ namespace Bolt
         //TODO: Hoe to link this to Vulkan API?
 
         Mesh* getMesh(){ return m_mesh.get(); }
+        const Quaint::QMat4x4& getTransform() const { return m_transform; } 
     private:
         MeshRef m_mesh; //TODO: Extend to support multiple meshes
+        Quaint::QMat4x4 m_transform;
         Quaint::QArray<MeshRef> m_meshes;
         TModelImplPtr m_modelImpl;
     };

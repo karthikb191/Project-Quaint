@@ -112,9 +112,12 @@ namespace Bolt
 
         uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
         float x = 5 * (float)std::sin(timeNow * 0.00000005);
+
+        float xyz[3] = {0, 400.0f, -1200.0f};
+        ImGui::SliderFloat3("Camera XYZ", xyz, -1000, 1000);
         
         m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
-        Quaint::QVec4(x, 1.0f, 2.0f, 1.0f),
+        Quaint::QVec4(xyz[0], xyz[1], xyz[2], 1.0f),
         Quaint::QVec3(0.0f, 1.0f, 0.0f));
         m_ubo.view = m_camera.getViewMatrix();
         m_ubo.proj = m_camera.getProjectionMatrix();

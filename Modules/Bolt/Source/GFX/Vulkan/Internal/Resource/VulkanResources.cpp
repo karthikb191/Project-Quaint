@@ -64,6 +64,11 @@ namespace Bolt { namespace vulkan{
         
         if(m_gpuMemoryHandle != VK_NULL_HANDLE)
         {
+            if(isMapped())
+            {
+                unmap();
+            }
+
             vkFreeMemory(device, m_gpuMemoryHandle, callbacks);
         }
         if(m_buffer != VK_NULL_HANDLE)
@@ -72,6 +77,35 @@ namespace Bolt { namespace vulkan{
         }
         m_gpuMemoryHandle = VK_NULL_HANDLE;
         m_buffer = VK_NULL_HANDLE;
+    }
+
+    void VulkanBufferObjectResource::map()
+    {
+        if(!isUniformBuffer() || isMapped())
+        {
+            //TODO: Add a log
+            return;
+        }
+        
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        VkResult res = vkMapMemory(device, m_gpuMemoryHandle, 0, m_info.size, 0, &m_mapRegion);
+        ASSERT_SUCCESS(res, "could not map memory");
+    }
+
+    void VulkanBufferObjectResource::unmap()
+    {
+        if(!isUniformBuffer() || !isMapped())
+        {
+            //add a log
+            return;
+        }
+        
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        vkUnmapMemory(device, m_gpuMemoryHandle);
     }
 
     //void VulkanShaderGroupResource::wrap(const Quaint::QArray<ShaderAttachmentInfo>& attachments, VulkanShaderGroup&& shaderGroup)
