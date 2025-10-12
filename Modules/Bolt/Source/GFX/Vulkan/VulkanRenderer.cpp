@@ -683,6 +683,16 @@ namespace Bolt
 
     void VulkanRenderer::render()
     {
+        for(auto& scene : m_renderScenes)
+        {
+            if(!scene->isValid())
+            {
+                continue;
+            }
+            
+            scene->update();
+        }
+
         drawFrame();
     }
     
@@ -2505,6 +2515,10 @@ namespace Bolt
                 //TODO: selectively fetch painters compatible with scene and stage
                 for(auto& painter : painters)
                 {
+                    if(!painter->isCompatibleWithScene(scene->getName()))
+                    {
+                        continue;
+                    }
                     painter->preRender(scene.get(), stage.index);
                 }
             }
@@ -2519,6 +2533,11 @@ namespace Bolt
                 //TODO: selectively fetch painters compatible with scene and stage
                 for(auto& painter : painters)
                 {
+                    if(!painter->isCompatibleWithScene(scene->getName()))
+                    {
+                        continue;
+                    }
+
                     const Quaint::QName& nextPipeline = painter->getPipelineName();
                     if(boundPipeline != nextPipeline)
                     {

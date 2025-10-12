@@ -21,6 +21,7 @@
 #include <EASTL/vector.h>
 #include <imgui.h>
 #include <ImguiHandler.h>
+#include <GFX/Data/LightData.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tinyobj/tiny_obj_loader.h>
@@ -123,6 +124,15 @@ int main()
 
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
+    //This is fine for now, but the structure of this should probably change
+    Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
+    Bolt::GlobalLight globalLight("Simple Global");
+    globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
+    globalLight.setDirection({0.5f, -0.5f, 0.0f});
+
+    scene->addGlobalLight(globalLight);
+
+    
     def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
     def.storePrevious = false;
     //info.extents = Quaint::QVec2(~0, ~0);
@@ -149,6 +159,9 @@ int main()
 
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
     //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    
+    shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
+    
     
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
 
@@ -203,6 +216,7 @@ int main()
 
     //Creating a painter for a specific pipeline and adding model to it
     Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
+    geoPainter->setupLightsData();
 
 
     //TODO: Create IMGUI handler

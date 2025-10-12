@@ -18,20 +18,22 @@ namespace Bolt
     class Painter 
     {
     public:
-        Painter::Painter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
-        : m_context(context)
-        , m_pipeline(pipeline)
-        {}
+        Painter::Painter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        //TODO: There should be a destroy function
+
 
         virtual void preRender(RenderScene* scene, uint32_t stage) = 0;
         virtual void postRender() = 0;
         virtual void render(RenderScene* scene) = 0;
 
-        const Quaint::QName& getPipelineName() const { return m_pipeline; }
+        const Quaint::QName& getPipelineName() const { return m_pipelineName; }
+        Pipeline* getPipeline() { return m_pipeline; }
+        bool isCompatibleWithScene(const Quaint::QName& sceneName);
 
     protected:
         Quaint::IMemoryContext* m_context = nullptr;
-        Quaint::QName m_pipeline = "";
+        Quaint::QName m_pipelineName = "";
+        Pipeline*   m_pipeline = nullptr;
     };
 
     /* Geometry pipeline doesn't own models. Calling code should ensure the model is not destroyed as it's being used by the pipeline*/
@@ -51,11 +53,12 @@ namespace Bolt
         virtual void postRender() override;
 
         void AddModel(Model* model);
+        void setupLightsData();
 
     private:
-        Pipeline*   m_pipeline = nullptr;
         //Quaint::QArray<Model*> m_models = nullptr;
         Quaint::QArray<GeometryShaderInfo> m_geoInfo;
+        TBufferImplPtr m_lightsbuffer;
     };
 
     class ImguiPainter : public Painter
@@ -83,8 +86,6 @@ namespace Bolt
         void ProcessTexture(RenderScene* scene, ImDrawData* data, ImTextureData* textureData);
         void setupRenderState(RenderScene* scene, ImDrawData* data, VkCommandBuffer cmdBuffer);
 
-
-        Pipeline*   m_pipeline = nullptr;
         Quaint::QArray<ImguiDescriptorSet> m_descriptorInfo;
         VkCommandBuffer m_oneTimeCommandBuffer;
         VkSampler m_sampler;

@@ -91,6 +91,7 @@ namespace Bolt { namespace vulkan{
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
 
         VkResult res = vkMapMemory(device, m_gpuMemoryHandle, 0, m_info.size, 0, &m_mapRegion);
+        m_isMapped = res == VK_SUCCESS;
         ASSERT_SUCCESS(res, "could not map memory");
     }
 

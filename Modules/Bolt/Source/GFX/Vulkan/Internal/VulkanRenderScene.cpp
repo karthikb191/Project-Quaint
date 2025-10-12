@@ -74,6 +74,15 @@ namespace Bolt {
         }
         m_stages.pushBack(pStage);
     }
+
+    void RenderScene::addGlobalLight(const GlobalLight& light)
+    {
+        m_globalLight = light;
+    }
+    void RenderScene::addPointLight(const PointLight& light)
+    {
+        m_pointLights.pushBack(light);
+    }
     
     namespace vulkan{
 

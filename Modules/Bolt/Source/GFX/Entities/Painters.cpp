@@ -16,11 +16,59 @@
 
 namespace Bolt
 {
+    Painter::Painter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
+    : m_context(context)
+    , m_pipelineName(pipeline)
+    {
+        m_pipeline = VulkanRenderer::get()->getPipeline(pipeline);
+    }
+    
+    bool Painter::isCompatibleWithScene(const Quaint::QName& sceneName)
+    {
+        if(m_pipeline == nullptr)
+        {
+            return false;
+        }
+
+        if(m_pipeline->getSceneName() == sceneName)
+        {
+            return true;
+        }
+        return false;
+    }
+
     GeometryPainter::GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
     : Painter(context, pipeline)
     , m_geoInfo(context)
+    , m_lightsbuffer(nullptr, Deleter<IBufferImpl>(context))
     {
-        m_pipeline = VulkanRenderer::get()->getPipeline(pipeline);
+    }
+    
+    void GeometryPainter::setupLightsData()
+    {
+        uint32_t size = 0;
+        
+        //TODO: This might not be the best way to do it. Maybe it's better to let <something else> update the data?
+        size += sizeof(Bolt::GlobalLightData);
+
+        //Plus whatever point light sources we may have
+        RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
+        auto& pointLights = scene->getPointLights();
+        for(int i = 0; pointLights.getSize(); ++i)
+        {
+            size += sizeof(Bolt::PointLightData);
+        }
+
+        assert(size != 0 && "Invalid lights buffer size");
+
+        BufferResourceBuilder builder(m_context);
+        m_lightsbuffer = std::move(builder.setBufferType(EBufferType::UNIFORM)
+        .setDataSize(size)
+        .setDataOffset(0)
+        .build());
+
+        VulkanBufferObjectResource* resource = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
+        resource->map();
     }
 
     void GeometryPainter::preRender(RenderScene* scene, uint32_t stage)
@@ -29,6 +77,27 @@ namespace Bolt
         //TODO: Get the binding information from a shader link
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+
+        //Updates lights buffer data
+        VulkanBufferObjectResource* lightsBuffer = (VulkanBufferObjectResource*)m_lightsbuffer.get();
+        assert(lightsBuffer->isMapped() && "Lights buffer is not mapped. Cannot update the data");
+        
+        if(lightsBuffer->isMapped())
+        {
+            uint32_t offset = 0;
+            void** region = lightsBuffer->getMappedRegion();
+            const void* globalData = scene->getGlobalLight().getData();
+            memcpy(*region, scene->getGlobalLight().getData(), scene->getGlobalLight().getDataSize());
+            offset += scene->getGlobalLight().getDataSize();
+
+            auto& pointLights = scene->getPointLights();
+            for(size_t i = 0; i < pointLights.getSize(); ++i)
+            {
+                void* target = ((char*)(*region) + offset);
+                memcpy(target, pointLights[i].getData(), pointLights[i].getDataSize());
+                offset += pointLights[i].getDataSize();
+            }
+        }
         
         const Camera& camera = RenderModule::get().getBoltRenderer()->getCamera();
         Quaint::UniformBufferObject mvp{};
@@ -65,12 +134,17 @@ namespace Bolt
         VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
         
         VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+
+
+        //TODO: Update lights descriptor here
+
         
         for(auto& info : m_geoInfo)
         {
 	        // Maybe it's better if this is moved to object that's rendering
             vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS
                 , pipeline->getPipelineLayout(), 0, 1, &info.set, 0, nullptr);
+
             info.model->draw(scene);
             //TODO:
         }
@@ -118,15 +192,31 @@ namespace Bolt
         bufferInfo.buffer = resource->getBufferhandle();
         bufferInfo.offset = 0;
         bufferInfo.range = resource->getBufferInfo().size;
-        VkWriteDescriptorSet write{};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.descriptorCount = 1;
-        write.dstSet = set;
-        write.dstBinding = 0;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        write.pBufferInfo = &bufferInfo;    
-        
-        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+        VkWriteDescriptorSet mvpWrite{};
+        mvpWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        mvpWrite.descriptorCount = 1;
+        mvpWrite.dstSet = set;
+        mvpWrite.dstBinding = 0;
+        mvpWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        mvpWrite.pBufferInfo = &bufferInfo;    
+
+        //Map the common lights info to binding:1
+        VulkanBufferObjectResource* lightsBuffer = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
+        VkDescriptorBufferInfo lightsBufferInfo{};
+        lightsBufferInfo.buffer = lightsBuffer->getBufferhandle();
+        lightsBufferInfo.offset = 0;
+        lightsBufferInfo.range = lightsBuffer->getBufferInfo().size;
+        VkWriteDescriptorSet lightsWrite{};
+        lightsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        lightsWrite.descriptorCount = 1;
+        lightsWrite.dstSet = set;
+        lightsWrite.dstBinding = 1;
+        lightsWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        lightsWrite.pBufferInfo = &lightsBufferInfo;
+
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite};
+
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
     }
 
 
@@ -138,7 +228,6 @@ namespace Bolt
     : Painter(context, pipeline)
     , m_descriptorInfo(context)
     {
-        m_pipeline = VulkanRenderer::get()->getPipeline(pipeline);
         m_oneTimeCommandBuffer = VulkanRenderer::get()->getGraphicsCommandBuffers(1)[0];
 
         VkDevice device = VulkanRenderer::get()->getDevice();

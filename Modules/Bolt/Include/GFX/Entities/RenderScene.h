@@ -4,6 +4,7 @@
 #include <Types/QArray.h>
 #include <Types/QStaticString.h>
 #include <Types/QUniquePtr.h>
+#include <GFX/Entities/Light.h>
 #include "../Data/RenderInfo.h"
 #include "../Helpers.h"
 
@@ -38,8 +39,14 @@ namespace Bolt
         RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo);
         virtual ~RenderScene();
         void addRenderStage(const RenderStage& stage);
+        void addGlobalLight(const GlobalLight& light);
+        void addPointLight(const PointLight& light);
+
+        const GlobalLight& getGlobalLight() { return m_globalLight; }
+        const Quaint::QArray<PointLight>& getPointLights() { return m_pointLights; } 
         
         /* Constructs all the GPU dependencies */
+        virtual void update();
         virtual bool construct();
         virtual void destroy();
         virtual bool begin();
@@ -62,6 +69,10 @@ namespace Bolt
         SceneDependency                         m_dependency = {};
         Quaint::QArray<RenderStage>             m_stages;
         TRenderScenImplPtr                      m_impl;
+
+        GlobalLight                             m_globalLight;
+        Quaint::QArray<PointLight>              m_pointLights;
+
         bool                                    m_isValid = false;
     };
 }
