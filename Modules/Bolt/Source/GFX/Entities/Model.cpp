@@ -12,15 +12,21 @@ namespace Bolt
     , m_indices(context)
     {}
     
-    Mesh::Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts, int* indices, uint32_t numIndices, float* uvs, uint32_t numUVs)
+    Mesh::Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts
+        , float* normals, uint32_t numNormals
+        , int* indices, uint32_t numIndices
+        , float* uvs, uint32_t numUVs
+        , float scale)
     : Mesh(context)
     {
+        assert(numNormals == numVerts && "Unsupported! Currently expects one normal per verted");
+
         for(size_t i = 0; i < numVerts/3; ++i)
         {
             Quaint::QVertex vertex;
-            vertex.position.x = vertices[3 * i + 0];
-            vertex.position.y = vertices[3 * i + 1];
-            vertex.position.z = vertices[3 * i + 2];
+            vertex.position.x = vertices[3 * i + 0] * scale;
+            vertex.position.y = vertices[3 * i + 1] * scale;
+            vertex.position.z = vertices[3 * i + 2] * scale;
 
             uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
             srand(static_cast<unsigned int>(timeNow));
@@ -28,6 +34,11 @@ namespace Bolt
             vertex.color.y = rand() / (float)RAND_MAX;
             vertex.color.z = rand() / (float)RAND_MAX;
             vertex.color.w = 1;
+
+            vertex.normal.x = normals[3 * i + 0];
+            vertex.normal.y = normals[3 * i + 1];
+            vertex.normal.z = normals[3 * i + 2];
+            vertex.normal.w = 1;
 
             m_vertices.pushBack(vertex);
         }
@@ -47,7 +58,7 @@ namespace Bolt
         //{
         //    std::cout << indices[i] << "\n";
         //}
-        for(int i = 0; i < m_indices.getSize(); ++i)
+        for(size_t i = 0; i < m_indices.getSize(); ++i)
         {
             std::cout << m_indices[i] << "\n";
         }
@@ -99,10 +110,10 @@ namespace Bolt
 
         m_vertices.insertRangeAt(0,
         {
-            { {-p0 + rXPos, -p1 + rYPos, 0.f, 1.f}, {rCol0, rCol2, rCol3, 1.f}, {0.f, 0.f} },
-            { {-p2 + rXPos, p3 + rYPos, 0.f, 1.f}, {rCol0, rCol1, rCol2, 1.f}, {0.f, 1.0f} },
-            { {p4 + rXPos, -p5 + rYPos, 0.f, 1.f}, {rCol1, rCol0, rCol3, 1.f}, {1.f, 0.f} },
-            { {p6 + rXPos, p7 + rYPos, 0.f, 1.f}, {rCol3, rCol2, rCol0, 1.f}, {1.f, 1.f} }
+            { {-p0 + rXPos, -p1 + rYPos, 0.f, 1.f}, {rCol0, rCol2, rCol3, 1.f}, {0.f, 0.f, 0.f, 0.f} },
+            { {-p2 + rXPos, p3 + rYPos, 0.f, 1.f}, {rCol0, rCol1, rCol2, 1.f}, {0.f, 1.0f, 0.f, 0.f} },
+            { {p4 + rXPos, -p5 + rYPos, 0.f, 1.f}, {rCol1, rCol0, rCol3, 1.f}, {1.f, 0.f, 0.f, 0.f} },
+            { {p6 + rXPos, p7 + rYPos, 0.f, 1.f}, {rCol3, rCol2, rCol0, 1.f}, {1.f, 1.f, 0.f, 0.f} }
         }
         );
 
@@ -125,7 +136,7 @@ namespace Bolt
         m_indices.insertRangeAt(0, 
         {0, 1, 2, 2, 1, 3});
 
-        Quaint::QVertex vertex = { {-.5f, .5f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {0.f, 0.f} };
+        Quaint::QVertex vertex = { {-.5f, .5f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 0.f} };
         constexpr int posOffset = vertex.getPositionOffset();
         constexpr int colorOffset = vertex.getColorOffset();
         constexpr int texOffset = vertex.getTexCoordOffset();

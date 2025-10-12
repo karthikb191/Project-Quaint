@@ -166,19 +166,17 @@ int main()
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
 
     attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
-    attributes.pushBack({"color", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
     attributes.pushBack({"texcoord", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
-
+    attributes.pushBack({"color", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
 
     shaderDef.attributeSets.pushBack(attributes);
-
 
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
     pipeline->cullBack();
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
-
 
     // IMGUI SETUP. TODO: Should be moved to a different file
     shaderDef = Bolt::ShaderDefinition();
@@ -250,8 +248,10 @@ int main()
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
-    std::string error; 
-    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
+    std::string error;
+
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
+    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
 
     bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
     if(!result)
@@ -259,12 +259,12 @@ int main()
         std::cout << "Failed to load mesh\n";
     }
 
-    //for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
-    //    printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
-    //        static_cast<const double>(attrib.vertices[3 * v + 0]),
-    //        static_cast<const double>(attrib.vertices[3 * v + 1]),
-    //        static_cast<const double>(attrib.vertices[3 * v + 2]));
-    //}
+    for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
+        printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
+            static_cast<const double>(attrib.vertices[3 * v + 0]),
+            static_cast<const double>(attrib.vertices[3 * v + 1]),
+            static_cast<const double>(attrib.vertices[3 * v + 2]));
+    }
 
 
     for(size_t i = 0; i < shapes.size(); ++i)
@@ -273,16 +273,43 @@ int main()
         //std::cout << "mesh:" << shapes[i].name << "\n";
 
         std::vector<int> indices;
+        std::vector<Quaint::QVec3> normals;
+        std::vector<float> fNormals;
+
+        normals.resize(attrib.vertices.size() / 3, Quaint::QVec3(0, 0, 0));
         for(size_t j = 0; j < loadedMesh.indices.size(); ++j)
         {
             //std::cout << loadedMesh.indices[j].vertex_index << "\n";
             indices.push_back(loadedMesh.indices[j].vertex_index);
+
+            int normalIdx = loadedMesh.indices[j].normal_index;
+            
+            if(normalIdx != -1)
+            {
+                normals[loadedMesh.indices[j].vertex_index].x += attrib.normals[normalIdx];
+                normals[loadedMesh.indices[j].vertex_index].y += attrib.normals[normalIdx + 1];
+                normals[loadedMesh.indices[j].vertex_index].z += attrib.normals[normalIdx + 2];
+            }
         }
 
+        for(size_t j = 0; j < normals.size(); ++j)
+        {
+            if(normals[j].sqrMagnitude() > 0)
+            {
+                normals[j].normalize();
+            }
+            fNormals.push_back(normals[j].x);
+            fNormals.push_back(normals[j].y);
+            fNormals.push_back(normals[j].z);
+        }
+
+        //TODO: vertices wont change across meshes for a model. Handle this
         Bolt::Mesh* mesh = QUAINT_NEW(context, Bolt::Mesh, context
             , attrib.vertices.data(), attrib.vertices.size()
+            , fNormals.data(), fNormals.size()
             , indices.data(), indices.size()
-            , attrib.texcoords.data(), attrib.texcoords.size());
+            , attrib.texcoords.data(), attrib.texcoords.size()
+            , 400.f);
             
         Bolt::MeshRef meshRef(mesh, Bolt::Deleter<Bolt::Mesh>(context));
         Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
@@ -294,6 +321,11 @@ int main()
     }
 
 
+    attrib.vertices.clear();
+    attrib.normals.clear();
+    attrib.texcoords.clear();
+    shapes.clear();
+    materials.clear();
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);

@@ -47,7 +47,10 @@ namespace Quaint
     /*Dot Product*/
     float dot_vf(const QVec3& a, const QVec3& b)
     {
-        __m128 tmp = _mm_mul_ps(a.pack, b.pack); //(x1*x2, y1*y2, z1*z2, ?*?)
+        __m128 apack = a.pack;
+        __m128 bpack = b.pack;
+
+        __m128 tmp = _mm_mul_ps(apack, bpack); //(x1*x2, y1*y2, z1*z2, ?*?)
         __m128 shuff = _mm_shuffle_ps(tmp, tmp, _MM_SHUFFLE(0, 2, 0, 1)); //(y1*y2, x1*x2, z1*z2, ?*?)
 
         tmp = _mm_add_ps(tmp, shuff); //(x1*x2 + y1*y2, x1*x2+x1*x2, z1*z2+z1*z2, ?);

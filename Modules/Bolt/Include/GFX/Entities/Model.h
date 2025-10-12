@@ -10,12 +10,15 @@ namespace Quaint
     struct QVertex
     {
         Quaint::QVec4    position;
+        Quaint::QVec4    normal;
+        Quaint::QVec4    texCoord;
         Quaint::QVec4    color;
-        Quaint::QVec2    texCoord;
+
 
         constexpr static uint32_t getPositionOffset() { return offsetof(QVertex, position); }
-        constexpr static uint32_t getColorOffset() { return offsetof(QVertex, color); }
+        constexpr static uint32_t getNormalOffset() { return offsetof(QVertex, normal); }
         constexpr static uint32_t getTexCoordOffset() { return offsetof(QVertex, texCoord); }
+        constexpr static uint32_t getColorOffset() { return offsetof(QVertex, color); }
     };
 }
 
@@ -35,7 +38,11 @@ namespace Bolt
     {
         public:
         Mesh(Quaint::IMemoryContext* context);
-        Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts, int* indices, uint32_t numIndices, float* uvs, uint32_t numUVs);
+        Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts
+            , float* normals, uint32_t numNormals
+            , int* indices, uint32_t numIndices
+            , float* uvs, uint32_t numUVs
+            , float scale = 1.0f);
 
         //virtual void loadFromFile() override {}
         //virtual void destroy() {} //TODO:
