@@ -84,6 +84,7 @@ namespace Bolt
         //TODO: Hoe to link this to Vulkan API?
 
         Mesh* getMesh(){ return m_mesh.get(); }
+        void setTranslation(const Quaint::QVec4& translation);
         const Quaint::QMat4x4& getTransform() const { return m_transform; } 
     private:
         MeshRef m_mesh; //TODO: Extend to support multiple meshes

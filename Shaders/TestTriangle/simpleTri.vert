@@ -30,7 +30,8 @@ void main()
     fragWorldPos = ubo.model * vec4(in_position.xyz, 1.0);
     fragColor = in_color.xyz;
     fragTexCoord = in_texcoord;
-    outNormal = in_normal;
+    outNormal.xyz = mat3(ubo.model) * in_normal.xyz;
+    outNormal = vec4(normalize(outNormal.xyz), 1.0f);
 
     //gl_Position = ubo.proj * ubo.view * fragWorldPos;
 }

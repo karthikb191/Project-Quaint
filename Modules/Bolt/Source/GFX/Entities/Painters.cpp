@@ -109,7 +109,8 @@ namespace Bolt
             VulkanBufferObjectResource* uniformBuffer = (VulkanBufferObjectResource*)m_geoInfo[i].uniformBuffer.get();
             
             void** region = uniformBuffer->getMappedRegion();
-            mvp.model = Quaint::QMat4x4::Identity();
+            
+            mvp.model = m_geoInfo[i].model->getTransform();
             memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
             
             bufferInfo.buffer = uniformBuffer->getBufferhandle();

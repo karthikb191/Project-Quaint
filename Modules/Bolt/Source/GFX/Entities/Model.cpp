@@ -62,7 +62,6 @@ namespace Bolt
         {
             std::cout << m_indices[i] << "\n";
         }
-        
     }
 
     QuadMesh::QuadMesh(Quaint::IMemoryContext* context)
@@ -153,9 +152,16 @@ namespace Bolt
     : IGFXEntity(context)
     , m_mesh(std::move(mesh))
     , m_meshes(context)
+    , m_transform(Quaint::QMat4x4::Identity())
     , m_modelImpl(nullptr, Deleter<IModelImpl>(context))
     {
 
+    }
+
+    void Model::setTranslation(const Quaint::QVec4& translation)
+    {
+        //TODO: Should handle scale and rotation later
+        m_transform.col3 = translation;
     }
 
     void Model::construct()
