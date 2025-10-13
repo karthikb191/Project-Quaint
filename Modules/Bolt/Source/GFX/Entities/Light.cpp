@@ -39,7 +39,7 @@ namespace Bolt
     {
         ImGui::Text("Name: %s", m_name.getBuffer());
         ImGui::SliderFloat4("Color: ", m_data.color, 0.0f, 1.0f, "%.5f");
-        ImGui::SliderFloat3("Direction", m_data.direction, 0.0f, 1.0f);
+        ImGui::SliderFloat3("Direction", m_data.direction, -1.0f, 1.0f);
     }
 
     void PointLight::writeImgui()

@@ -251,7 +251,7 @@ int main()
     std::string error;
 
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
-    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
+    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
 
     bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
     if(!result)
@@ -277,18 +277,33 @@ int main()
         std::vector<float> fNormals;
 
         normals.resize(attrib.vertices.size() / 3, Quaint::QVec3(0, 0, 0));
+        
+
+        //TODO: Get a new model with decent normals :(
+        std::map<int, std::vector<int>> normalMap;
         for(size_t j = 0; j < loadedMesh.indices.size(); ++j)
         {
             //std::cout << loadedMesh.indices[j].vertex_index << "\n";
             indices.push_back(loadedMesh.indices[j].vertex_index);
 
             int normalIdx = loadedMesh.indices[j].normal_index;
-            
+
             if(normalIdx != -1)
             {
-                normals[loadedMesh.indices[j].vertex_index].x += attrib.normals[normalIdx];
-                normals[loadedMesh.indices[j].vertex_index].y += attrib.normals[normalIdx + 1];
-                normals[loadedMesh.indices[j].vertex_index].z += attrib.normals[normalIdx + 2];
+                int vertexIdx = loadedMesh.indices[j].vertex_index;
+                if(normalMap.count(normalIdx) == 0)
+                {
+                    normalMap.insert({vertexIdx, {normalIdx}});
+                }
+                
+                normalIdx *= 3;
+                if(std::find(normalMap[vertexIdx].begin(), normalMap[vertexIdx].end(), normalIdx) == normalMap[vertexIdx].end())
+                {
+                    normalMap[vertexIdx].push_back(normalIdx);
+                    normals[vertexIdx].x += attrib.normals[normalIdx];
+                    normals[vertexIdx].y += attrib.normals[normalIdx + 1];
+                    normals[vertexIdx].z += attrib.normals[normalIdx + 2];
+                }
             }
         }
 
@@ -309,7 +324,7 @@ int main()
             , fNormals.data(), fNormals.size()
             , indices.data(), indices.size()
             , attrib.texcoords.data(), attrib.texcoords.size()
-            , 400.f);
+            , 300.f);
             
         Bolt::MeshRef meshRef(mesh, Bolt::Deleter<Bolt::Mesh>(context));
         Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));

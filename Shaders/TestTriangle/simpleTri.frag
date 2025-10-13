@@ -32,13 +32,18 @@ layout(binding = 1) uniform Lights
 void main()
 {
     vec3 inColor = fragColor;
-    vec4 finalColor = vec4(inColor.xyz, 1.0f);
 
     GlobalLight gLight = lights.globalLight;
 
-    finalColor *= gLight.color;
+    float ambientStrength = 0.1;
+    vec3 ambient = gLight.color.xyz * ambientStrength;
+
+    float diff = max(dot(inNormal.xyz, normalize(-gLight.direction)), 0.0);
+    vec3 diffuse = diff * gLight.color.xyz;
+
+    vec4 finalColor = vec4((ambient + diffuse), 1.0f);
     outColor = finalColor;
 
-    //outColor = vec4(fragTexCoord, 0.0f, 1.0f);
+    //outColor = vec4(inNormal.xyz, 1.0f);
     //outColor = texture(texSampler, fragTexCoord);
 }
