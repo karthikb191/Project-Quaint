@@ -7,7 +7,7 @@ namespace Bolt
     Image2dRef Image2d::LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name)
     {
         Image2d* image = QUAINT_NEW(context, Image2d, context, name);
-        Image2dRef imageRef(nullptr, Deleter<Image2d>(context));
+        Image2dRef imageRef(nullptr, Quaint::Deleter<Image2d>(context));
         imageRef.reset(image);
         imageRef->loadFromPath(filePath);
         return std::move(imageRef);
@@ -15,7 +15,7 @@ namespace Bolt
 
     Image2d::Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name)
     : IGFXEntity(context)
-    , m_imageImpl(nullptr, Deleter<IImageImpl>(context))
+    , m_imageImpl(nullptr, Quaint::Deleter<IImageImpl>(context))
     {
     }
 

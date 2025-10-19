@@ -2,14 +2,13 @@
 #define _H_BOLT_IMAGE
 
 #include "./Resources.h"
-#include "../Helpers.h"
 #include <Types/QUniquePtr.h>
 
 namespace Bolt
 {
     //Forward Declares
     class Image2d;
-    using Image2dRef = Quaint::QUniquePtr<Image2d, Deleter<Image2d>>;
+    using Image2dRef = Quaint::QUniquePtr<Image2d, Quaint::Deleter<Image2d>>;
 
     class Image2d : public IGFXEntity
     {

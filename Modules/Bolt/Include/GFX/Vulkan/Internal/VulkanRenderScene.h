@@ -8,7 +8,6 @@
 #include "VulkanFrameBuffer.h"
 #include "Entities/VulkanTexture.h"
 #include "../../../GFX/Data/RenderInfo.h"
-#include "GFX/Helpers.h"
 
 namespace Bolt { 
     class RenderScene;
@@ -89,8 +88,8 @@ namespace Bolt {
     class VulkanRenderScene : public Bolt::RenderSceneImpl
     {
     public:
-        typedef Quaint::QUniquePtr<FrameBuffer, Bolt::Deleter<FrameBuffer>> TFramebufferPtr;
-        typedef Quaint::QUniquePtr<Attachment, Bolt::Deleter<Attachment>> TAttachmentPtr;
+        typedef Quaint::QUniquePtr<FrameBuffer, Quaint::Deleter<FrameBuffer>> TFramebufferPtr;
+        typedef Quaint::QUniquePtr<Attachment, Quaint::Deleter<Attachment>> TAttachmentPtr;
         typedef Quaint::QArray<TAttachmentPtr> TAttachmentArray ;
 
         struct SceneParams

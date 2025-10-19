@@ -3,7 +3,6 @@
 #include "../Interface/IRenderer.h"
 #include "../Data/ResourceInfo.h"
 #include "../Data/ShaderInfo.h"
-#include "../Helpers.h"
 #include <Types/QUniquePtr.h>
 #include <GFX/Interface/IEntityInterfaces.h>
 
@@ -137,7 +136,7 @@ namespace Bolt
         BufferResourceBase(Quaint::IMemoryContext* context, const EBufferType type)
         : IGFXEntity(context)
         , m_type(type)
-        , m_impl(nullptr, Deleter<IBufferImpl>(context))
+        , m_impl(nullptr, Quaint::Deleter<IBufferImpl>(context))
         {}
 
         //TODO: Move the buffer stuff to a different file. Currently these are not being used

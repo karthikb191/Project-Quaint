@@ -8,8 +8,8 @@ namespace Bolt { namespace vulkan
     VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context)
     : Bolt::ResourceGPUProxy(context)
     , m_context(context)
-    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
-    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    , m_vertShader(nullptr, Quaint::Deleter<VulkanVertexShader>(context))
+    , m_fragShader(nullptr, Quaint::Deleter<VulkanFragmentShader>(context))
     , m_VIBs(context)
     , m_VIAs(context)
     {
@@ -18,8 +18,8 @@ namespace Bolt { namespace vulkan
     VulkanShaderGroup::VulkanShaderGroup(Quaint::IMemoryContext* context, const Quaint::QPath& vertSprvPath, const Quaint::QPath& fragSpirvPath)
     : Bolt::ResourceGPUProxy(context)
     , m_context(context)
-    , m_vertShader(nullptr, Deleter<VulkanVertexShader>(context))
-    , m_fragShader(nullptr, Deleter<VulkanFragmentShader>(context))
+    , m_vertShader(nullptr, Quaint::Deleter<VulkanVertexShader>(context))
+    , m_fragShader(nullptr, Quaint::Deleter<VulkanFragmentShader>(context))
     , m_VIBs(context)
     , m_VIAs(context)
     {

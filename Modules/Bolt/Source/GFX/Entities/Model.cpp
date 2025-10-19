@@ -153,7 +153,7 @@ namespace Bolt
     , m_mesh(std::move(mesh))
     , m_meshes(context)
     , m_transform(Quaint::QMat4x4::Identity())
-    , m_modelImpl(nullptr, Deleter<IModelImpl>(context))
+    , m_modelImpl(nullptr, Quaint::Deleter<IModelImpl>(context))
     {
 
     }

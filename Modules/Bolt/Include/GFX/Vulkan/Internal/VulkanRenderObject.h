@@ -4,7 +4,6 @@
 #include <GFX/Interface/IRenderer.h>
 #include <GFX/Vulkan/Internal/VulkanShaderGroup.h>
 #include <memory>
-#include <GFX/Helpers.h>
 #include <GFX/Interface/IEntityInterfaces.h>
 #include <GFX/Vulkan/Internal/Entities/UniformBuffer.h>
 #include <GFX/Vulkan/Internal/Entities/Descriptor.h>
@@ -20,10 +19,10 @@ namespace Bolt{
     //TODO: This currently represents a mesh. Maybe it's better to rename this?
     class VulkanRenderObject : public IModelImpl
     {
-    typedef std::unique_ptr<VulkanShaderGroup, Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
+    typedef std::unique_ptr<VulkanShaderGroup, Quaint::Deleter<VulkanShaderGroup>> VulkanShaderGroupRef;
     //typedef Quaint::QUniquePtr<VulkanBufferObjectResource, Deleter<VulkanBufferObjectResource>> BufferResourceRef;
     
-    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
+    typedef Quaint::QUniquePtr<ResourceGPUProxy, Quaint::Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
 
     public:
         VulkanRenderObject(Quaint::IMemoryContext* context);

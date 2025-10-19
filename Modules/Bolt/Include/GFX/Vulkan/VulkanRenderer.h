@@ -194,10 +194,10 @@ namespace Bolt
         };
 
     public:
-        typedef Quaint::QUniquePtr<RenderScene, Deleter<RenderScene>> TRenderScenePtr;
+        typedef Quaint::QUniquePtr<RenderScene, Quaint::Deleter<RenderScene>> TRenderScenePtr;
         typedef Quaint::QArray<TRenderScenePtr> TRenderSceneArray;
 
-        typedef Quaint::QUniquePtr<Bolt::Pipeline, Deleter<Bolt::Pipeline>> PipelineRef;
+        typedef Quaint::QUniquePtr<Bolt::Pipeline, Quaint::Deleter<Bolt::Pipeline>> PipelineRef;
         typedef Quaint::QArray<PipelineRef> PipelineRefArray;
 
         void init() override;

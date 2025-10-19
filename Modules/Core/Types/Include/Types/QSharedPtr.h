@@ -7,9 +7,10 @@
 #endif
 #if !USE_CUSTOM_MEMORY_PTRS
     #include <memory>
+    #include "Deleter.h"
 #endif
 
-namespace Bolt
+namespace Quaint
 {
 #if USE_CUSTOM_MEMORY_PTRS
     class QSharedPtr
@@ -17,7 +18,23 @@ namespace Bolt
 
     };
 #else
-    typedef std::shared_ptr QUniquePtr;
+    template<class _T> 
+    using QSharedPtr = std::shared_ptr<_T>;
+
+    template<typename _T>
+    QSharedPtr<_T> makeShared(_T* t, Deleter<_T> deleter)
+    {
+        std::shared_ptr<_T> sharedPtr = std::shared_ptr<_T>(t, deleter)
+        return ptr;
+    }
+    
+    template<typename _T, typename _DELETER>
+    QSharedPtr<_T> makeShared(Quaint::IMemoryContext* context)
+    {
+        std::shared_ptr<_T> sharedPtr = std::shared_ptr<_T>(nullptr, Deleter<_T>(context));
+        return ptr;
+    }
+
 #endif
 }
 

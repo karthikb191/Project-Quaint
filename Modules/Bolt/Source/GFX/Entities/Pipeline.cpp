@@ -10,7 +10,7 @@ namespace Bolt
     , m_stageIdx(stageIdx)
     , m_shaderDefinition(shaderDef)
     , m_dyanmicStages(context)
-    , m_pipelineImpl(nullptr, Deleter<IPipelineImpl>(context))
+    , m_pipelineImpl(nullptr, Quaint::Deleter<IPipelineImpl>(context))
     {
         
     }

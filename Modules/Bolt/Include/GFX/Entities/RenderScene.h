@@ -6,7 +6,6 @@
 #include <Types/QUniquePtr.h>
 #include <GFX/Entities/Light.h>
 #include "../Data/RenderInfo.h"
-#include "../Helpers.h"
 
 namespace Bolt
 {

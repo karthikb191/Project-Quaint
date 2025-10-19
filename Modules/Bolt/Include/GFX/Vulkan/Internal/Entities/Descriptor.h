@@ -3,12 +3,11 @@
 
 #include<Types/QUniquePtr.h>
 #include "../ShaderInterface.h"
-#include <GFX/Helpers.h>
 
 namespace Bolt{ namespace vulkan {
 
     class UniformBuffer;
-    typedef Quaint::QUniquePtr<UniformBuffer, Deleter<UniformBuffer>> UniformBufferRef;
+    typedef Quaint::QUniquePtr<UniformBuffer, Quaint::Deleter<UniformBuffer>> UniformBufferRef;
     class Descriptor
     {
     public:

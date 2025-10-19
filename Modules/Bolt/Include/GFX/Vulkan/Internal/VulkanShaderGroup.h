@@ -4,7 +4,6 @@
 #include <memory>
 #include <GFX/Entities/Resources.h>
 #include <Types/QArray.h>
-#include <GFX/Helpers.h>
 #include "VulkanShader.h"
 #include <GFX/Entities/ShaderGroup.h>
 
@@ -55,8 +54,8 @@ namespace Bolt { namespace vulkan{
         Quaint::IMemoryContext* m_context = nullptr;
         //TODO: Expand to incorporate shaders dynamically
         //TODO: Use custom unique/shared ptrs
-        std::unique_ptr<VulkanVertexShader, Deleter<VulkanVertexShader>>            m_vertShader;
-        std::unique_ptr<VulkanFragmentShader, Deleter<VulkanFragmentShader>>        m_fragShader;
+        std::unique_ptr<VulkanVertexShader, Quaint::Deleter<VulkanVertexShader>>            m_vertShader;
+        std::unique_ptr<VulkanFragmentShader, Quaint::Deleter<VulkanFragmentShader>>        m_fragShader;
         
         Quaint::QArray<VkVertexInputBindingDescription> m_VIBs = Quaint::QArray<VkVertexInputBindingDescription>::GetInvalidPlaceholder();
         Quaint::QArray<VkVertexInputAttributeDescription> m_VIAs = Quaint::QArray<VkVertexInputAttributeDescription>::GetInvalidPlaceholder();

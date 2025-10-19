@@ -7,6 +7,7 @@
 
 #if !USE_CUSTOM_MEMORY_PTRS
     #include <memory>
+    #include "Deleter.h"
 #endif
 
 namespace Quaint

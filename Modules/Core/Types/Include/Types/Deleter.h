@@ -9,7 +9,7 @@ namespace Quaint
     class IMemoryContext;
 }
 
-namespace Bolt
+namespace Quaint
 {
     template<typename T>
     struct Deleter

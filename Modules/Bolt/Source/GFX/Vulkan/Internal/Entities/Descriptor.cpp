@@ -22,7 +22,7 @@ namespace Bolt{ namespace vulkan {
 
     UniformDescriptor::UniformDescriptor(Quaint::IMemoryContext* context)
     : Descriptor(context)
-    , m_uniformBuffer(nullptr, Deleter<UniformBuffer>(context))
+    , m_uniformBuffer(nullptr, Quaint::Deleter<UniformBuffer>(context))
     {
     }
 

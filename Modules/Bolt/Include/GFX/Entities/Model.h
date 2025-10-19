@@ -63,7 +63,7 @@ namespace Bolt
         Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
         GeometryRenderInfo  m_RenderInfo;
     };
-    using MeshRef = Quaint::QUniquePtr<Mesh, Deleter<Mesh>>;
+    using MeshRef = Quaint::QUniquePtr<Mesh, Quaint::Deleter<Mesh>>;
 
     class QuadMesh : public Mesh
     {
@@ -92,7 +92,7 @@ namespace Bolt
         Quaint::QArray<MeshRef> m_meshes;
         TModelImplPtr m_modelImpl;
     };
-    using ModelRef = Quaint::QUniquePtr<Model, Deleter<Model>>;
+    using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
 
 }
 

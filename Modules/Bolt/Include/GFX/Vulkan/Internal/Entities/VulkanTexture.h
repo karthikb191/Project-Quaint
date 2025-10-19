@@ -5,7 +5,6 @@
 #include <Vulkan/vulkan.h>
 #include <GFX/Texture/BoltTexture.h>
 #include <GFX/Vulkan/Internal/DeviceManager.h>
-#include <GFX/Helpers.h>
 #include <GFX/Interface/IRenderer.h>
 #include <Types/QUniquePtr.h>
 
@@ -80,7 +79,7 @@ namespace Bolt {
         VkImageLayout               m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         bool                        m_isSwapchainImage =  false;
     };
-    using VulkanTextureRef = Quaint::QUniquePtr<VulkanTexture, Deleter<VulkanTexture>>;
+    using VulkanTextureRef = Quaint::QUniquePtr<VulkanTexture, Quaint::Deleter<VulkanTexture>>;
     
     class VulkanTextureBuilder
     {

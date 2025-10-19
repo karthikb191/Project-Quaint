@@ -3,14 +3,13 @@
 #include <GFX/Interface/IEntityInterfaces.h>
 #include "Entities/Resources.h"
 #include "Entities/ShaderGroup.h"
-#include "./Helpers.h"
 #include <Types/QUniquePtr.h>
 
 //TODO: Update the rest to use GPU specific objects
 
 namespace Bolt
 {
-    typedef Quaint::QUniquePtr<ResourceGPUProxy, Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
+    typedef Quaint::QUniquePtr<ResourceGPUProxy, Quaint::Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
     class ResourceBuilderFactory
     {
     public:
@@ -112,7 +111,7 @@ namespace Bolt
     public:
         PipelineResourceBuilder(Quaint::IMemoryContext* context)
         : GraphicsResourceBuilderBase(context)
-        , m_ptr(nullptr, Deleter<IPipelineImpl>(context))
+        , m_ptr(nullptr, Quaint::Deleter<IPipelineImpl>(context))
         {}
 
         PipelineResourceBuilder& setPipelineRef(Pipeline* pipeline);

@@ -45,11 +45,11 @@ namespace Bolt {
         VulkanTexture* texture = QUAINT_NEW(m_context, VulkanTexture, m_context);
         //TODO: Hardcoding flag for now. Create a comming enum for that later
         VulkanRenderer::get()->createTextureFromFile(path, *texture, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-        VulkanTextureRef textureRef(texture, Deleter<VulkanTexture>(m_context));
+        VulkanTextureRef textureRef(texture, Quaint::Deleter<VulkanTexture>(m_context));
 
         VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(textureRef));
         
-        return TImageSamplerImplPtr(combinedImageSampler, Deleter<VulkanCombinedImageSamplerResource>(m_context));
+        return TImageSamplerImplPtr(combinedImageSampler, Quaint::Deleter<VulkanCombinedImageSamplerResource>(m_context));
     }
     TImageSamplerImplPtr CombinedImageSamplerTextureBuilder::buildFromPixels(unsigned char* pixels, int width, int height)
     {
@@ -84,10 +84,10 @@ namespace Bolt {
         VulkanTexture* texPtr = QUAINT_NEW(m_context, VulkanTexture, m_context);
         VulkanRenderer::get()->createShaderTextureFromPixels(*texPtr, pixels, width, height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-        VulkanTextureRef texRef(texPtr, Deleter<VulkanTexture>(m_context));
+        VulkanTextureRef texRef(texPtr, Quaint::Deleter<VulkanTexture>(m_context));
 
         VulkanCombinedImageSamplerResource* combinedImageSampler = QUAINT_NEW(m_context, VulkanCombinedImageSamplerResource, m_context, sampler, std::move(texRef));
-        return TImageSamplerImplPtr(combinedImageSampler, Deleter<VulkanCombinedImageSamplerResource>(m_context));
+        return TImageSamplerImplPtr(combinedImageSampler, Quaint::Deleter<VulkanCombinedImageSamplerResource>(m_context));
     }
 
     //UB resource builder
@@ -99,7 +99,7 @@ namespace Bolt {
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         EBufferType resourcetype = EBufferType::INVALID;
 
-        TBufferImplPtr bufferImplPtr(nullptr, Deleter<IBufferImpl>(m_context));
+        TBufferImplPtr bufferImplPtr(nullptr, Quaint::Deleter<IBufferImpl>(m_context));
         IBufferImpl* impl = nullptr;
         switch(m_bufferType)
         {
@@ -250,7 +250,7 @@ namespace Bolt {
 
     TModelImplPtr RenderObjectBuilder::buildFromModel(Model* model)
     {
-        TModelImplPtr impl(nullptr, Deleter<IModelImpl>(m_context));
+        TModelImplPtr impl(nullptr, Quaint::Deleter<IModelImpl>(m_context));
         VulkanRenderObject* proxy = QUAINT_NEW(m_context, VulkanRenderObject, m_context);
         
         // Building Vertex and Index buffers
