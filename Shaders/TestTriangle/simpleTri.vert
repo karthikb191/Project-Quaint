@@ -13,25 +13,31 @@ layout(location = 0) out vec4 fragWorldPos;
 layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragColor;
+layout(location = 4) out vec4 outViewPosWs;
 
 layout(binding = 0) uniform UniformBufferObject
 {
     mat4 model;
     mat4 view;
     mat4 proj;
-} ubo;
+} mvp;
 
 void main()
 {
     //gl_Position = vec4(in_position.xy, 0.0, 1.0);
     
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(in_position.xyz, 1.0);
+    gl_Position = mvp.proj * mvp.view * mvp.model * vec4(in_position.xyz, 1.0);
 
-    fragWorldPos = ubo.model * vec4(in_position.xyz, 1.0);
+    fragWorldPos = mvp.model * vec4(in_position.xyz, 1.0);
     fragColor = in_color.xyz;
     fragTexCoord = in_texcoord;
-    outNormal.xyz = mat3(ubo.model) * in_normal.xyz;
+    outNormal.xyz = mat3(mvp.model) * in_normal.xyz;
     outNormal = vec4(normalize(outNormal.xyz), 1.0f);
 
-    //gl_Position = ubo.proj * ubo.view * fragWorldPos;
+    outViewPosWs.x = -dot(mvp.view[0], mvp.view[3]);
+    outViewPosWs.y = -dot(mvp.view[1], mvp.view[3]);
+    outViewPosWs.z = -dot(mvp.view[2], mvp.view[3]);
+    outViewPosWs.w = 1;
+
+    //gl_Position = mvp.proj * mvp.view * fragWorldPos;
 }

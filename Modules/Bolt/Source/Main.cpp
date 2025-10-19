@@ -253,7 +253,7 @@ int main()
     Bolt::AttachmentDefinition def;
     def.binding = 0;
     def.name = "swapchain";
-    def.clearColor = Quaint::QVec4(0.0f, 0.01f, 0.15f, 1.0f);
+    def.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
     def.clearImage = true;
     def.type = Bolt::AttachmentDefinition::Type::Swapchain;
     def.format = Bolt::EFormat::R8G8B8A8_SRGB;
@@ -282,7 +282,7 @@ int main()
     Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
     globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
-    globalLight.setDirection({0.5f, -0.5f, 0.0f});
+    globalLight.setDirection({0.f, 0.f, -1.0f});
 
     scene->addGlobalLight(globalLight);
 
@@ -404,8 +404,9 @@ int main()
     std::vector<tinyobj::material_t> materials;
     std::string error;
 
-    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
     std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\human.obj", ios_base::in | ios_base::binary);
 
     bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
     if(!result)
@@ -413,18 +414,18 @@ int main()
         std::cout << "Failed to load mesh\n";
     }
 
-    for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
-        printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
-            static_cast<const double>(attrib.vertices[3 * v + 0]),
-            static_cast<const double>(attrib.vertices[3 * v + 1]),
-            static_cast<const double>(attrib.vertices[3 * v + 2]));
-    }
+    //for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
+    //    printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
+    //        static_cast<const double>(attrib.vertices[3 * v + 0]),
+    //        static_cast<const double>(attrib.vertices[3 * v + 1]),
+    //        static_cast<const double>(attrib.vertices[3 * v + 2]));
+    //}
 
     LoadModelWithSmoothNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(-500, 0, 0, 1), 250);
+        , Quaint::QVec4(-200, 0, 0, 1), 150);
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(500, 0, 0, 1), 250);
+        , Quaint::QVec4(200, 0, 0, 1), 150);
 
 
     attrib.vertices.clear();
@@ -456,11 +457,11 @@ int main()
         Bolt::ImguiHandler::Get()->StartFrame();
 
         //ImGui::ShowDemoWindow();
-        ImGui::LabelText("TESTSTEST", "It Works!!!");
-        ImGui::LabelText("TESTSTEST", "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-        ImGui::LabelText("TESTSTEST", "abcdefghijklmnopqrstuvwxyz 123456789");
-        ImGui::ShowDemoWindow();
 
+        ImGui::Text("DEBUG OPTIONS: 1234567890");
+        ImGui::ShowDemoWindow();
+        ImGui::Text("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqustuvwxyz: 1234567890");
+        
         Bolt::RenderModule::get().getBoltRenderer()->update();
         Bolt::ImguiHandler::Get()->EndFrame();
     }

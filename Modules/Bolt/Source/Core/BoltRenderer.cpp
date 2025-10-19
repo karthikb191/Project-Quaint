@@ -64,8 +64,8 @@ namespace Bolt
         params.className = "Main Render Class";
         params.windowname = "Main Render Window";
         params.callback = &msgHandleLoop;
-        params.width = 700;
-        params.height = 700;
+        params.width = 1280;
+        params.height = 720;
         m_window = Bolt::Window::createWindow(params);
         m_window.showWindow();
         
@@ -101,6 +101,7 @@ namespace Bolt
         m_renderer_impl->render();
     }
 
+    float xyz[3] = {0, 400.0f, 1000.0f};
     void BoltRenderer::updateUniformBufferProxy()
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -113,8 +114,7 @@ namespace Bolt
         uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
         float x = 5 * (float)std::sin(timeNow * 0.00000005);
 
-        float xyz[3] = {0, 400.0f, 1000.0f};
-        ImGui::SliderFloat3("Camera XYZ", xyz, -1000, 1000);
+        ImGui::SliderFloat3("LookAt XYZ", xyz, -1500, 1500);
         
         m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
         Quaint::QVec4(xyz[0], xyz[1], xyz[2], 1.0f),

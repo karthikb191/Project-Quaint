@@ -53,15 +53,15 @@ namespace Bolt
         m_indices.resize(numIndices);
         memcpy(m_indices.getBuffer_NonConst(), indices, numIndices * 4);
 
-        std::cout << "Stored indices: \n";
+        //std::cout << "Stored indices: \n";
         //for(int i = 0; i < numIndices; ++i)
         //{
         //    std::cout << indices[i] << "\n";
         //}
-        for(size_t i = 0; i < m_indices.getSize(); ++i)
-        {
-            std::cout << m_indices[i] << "\n";
-        }
+        //for(size_t i = 0; i < m_indices.getSize(); ++i)
+        //{
+        //    std::cout << m_indices[i] << "\n";
+        //}
     }
 
     QuadMesh::QuadMesh(Quaint::IMemoryContext* context)
