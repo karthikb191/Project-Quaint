@@ -25,14 +25,14 @@ namespace Quaint
     QSharedPtr<_T> makeShared(_T* t, Deleter<_T> deleter)
     {
         std::shared_ptr<_T> sharedPtr = std::shared_ptr<_T>(t, deleter)
-        return ptr;
+        return sharedPtr;
     }
     
-    template<typename _T, typename _DELETER>
+    template<typename _T>
     QSharedPtr<_T> makeShared(Quaint::IMemoryContext* context)
     {
         std::shared_ptr<_T> sharedPtr = std::shared_ptr<_T>(nullptr, Deleter<_T>(context));
-        return ptr;
+        return sharedPtr;
     }
 
 #endif

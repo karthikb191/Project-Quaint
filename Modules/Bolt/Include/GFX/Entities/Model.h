@@ -75,7 +75,7 @@ namespace Bolt
     class Model : public IGFXEntity
     {
     public:
-        Model(Quaint::IMemoryContext* context);
+        Model(Quaint::IMemoryContext* context, Quaint::QName name = "");
         Model(Quaint::IMemoryContext* context, MeshRef& mesh);
 
         void draw(RenderScene* scene);
@@ -106,11 +106,17 @@ namespace Bolt
         //Mesh* getMesh(){ return m_mesh.get(); }
 
         Quaint::QArray<MeshRef>& getMeshes() { return m_meshes; }
+        Quaint::QArray<MaterialRef>& getMaterials() { return m_materials; }
+
+        const Quaint::QName& getName() const { return m_name; }
 
         void setTranslation(const Quaint::QVec4& translation);
         const Quaint::QMat4x4& getTransform() const { return m_transform; } 
+
+        void writeImgui();
         
     private:
+        Quaint::QName m_name;
         Quaint::QMat4x4 m_transform;
         Quaint::QArray<MeshRef> m_meshes;
         Quaint::QArray<MaterialRef> m_materials;

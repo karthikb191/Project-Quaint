@@ -22,6 +22,7 @@
 #include <imgui.h>
 #include <ImguiHandler.h>
 #include <GFX/Data/LightData.h>
+#include <GFX/Materials/SimpleMaterial.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tinyobj/tiny_obj_loader.h>
@@ -131,6 +132,9 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
     Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context);
     Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
 
+    Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::SimpleMaterial>(context);
+    simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
+
     size_t totalIndexOffset = 0;
     for(size_t i = 0; i < shapes.size(); ++i)
     {
@@ -204,7 +208,8 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
             , fNormals.data(), fNormals.size()
             , indices.data(), indices.size()
             , attrib.texcoords.data(), attrib.texcoords.size()
-            , scale);
+            , scale
+            , simpleMaterial);
     }
 
     model->setTranslation(translation);
@@ -332,7 +337,7 @@ int main()
     //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
-    
+    shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     
     Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
 
@@ -420,14 +425,16 @@ int main()
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string error;
+    
 
-    ::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
-    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
+    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\human.obj", ios_base::in | ios_base::binary);
 
     bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
     if(!result)
+
     {
         std::cout << "Failed to load mesh\n";
     }
@@ -443,7 +450,7 @@ int main()
     //    , Quaint::QVec4(-200, 0, 0, 1), 1);
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(200, 0, 0, 1), 1);
+        , Quaint::QVec4(200, 0, 0, 1), 200);
 
 
     attrib.vertices.clear();

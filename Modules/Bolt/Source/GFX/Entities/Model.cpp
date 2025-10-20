@@ -4,6 +4,7 @@
 #include <random>
 #include <iostream>
 #include <MemCore/GlobalMemoryOverrides.h>
+#include <imgui.h>
 
 namespace Bolt
 {
@@ -104,7 +105,7 @@ namespace Bolt
 
 
     
-    Model::Model(Quaint::IMemoryContext* context)
+    Model::Model(Quaint::IMemoryContext* context, Quaint::QName name)
     : IGFXEntity(context)
     , m_transform(Quaint::QMat4x4::Identity())
     , m_meshes(context)
@@ -192,6 +193,12 @@ namespace Bolt
             ,  numVerts, vertDataOffset, numIndices, indexDataOffset);
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
+
+        auto it = std::find(m_materials.begin(), m_materials.end(), material);
+        if(it == m_materials.end())
+        {
+            m_materials.pushBack(material);
+        }
     }
 
     void PreDraw()
@@ -218,6 +225,23 @@ namespace Bolt
         if(m_modelImpl.get())
         {
             m_modelImpl->draw(scene);
+        }
+    }
+    
+    void Model::writeImgui()
+    {
+        char name[1024] = {'\0'};
+        sprintf_s(name, "Model: %s", m_name.getBuffer());
+        if (ImGui::CollapsingHeader(name))
+        {
+            for(int i = 0; i < m_materials.getSize(); ++i)
+            {
+                if(ImGui::TreeNode("Material: ", "%d", i))
+                {
+                    m_materials[i]->writeImgui();
+                    ImGui::TreePop();
+                }
+            }
         }
     }
 }

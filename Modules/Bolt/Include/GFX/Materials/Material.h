@@ -8,12 +8,16 @@
 
 namespace Bolt
 {
+    //TODO: Experiment with a material property block after getting shadows in
+    // Main concern is the way to store/retrieve image samplers
+
     class Material : public IGFXEntity
     {
     public:
         Material(Quaint::IMemoryContext* context);
         virtual void construct() = 0;
         virtual void destroy() = 0;
+        virtual void writeImgui() = 0;
         
         //TODO: Implement later once there's a system to push data dynamically to descriptors
         //template<typename T>

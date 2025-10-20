@@ -6,6 +6,8 @@
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/Entities/Pipeline.h>
 #include <GFX/ResourceBuilder.h>
+#include <GFX/Materials/SimpleMaterial.h>
+#include <GFX/Data/MaterialData.h>
 
 //TODO: Remove this from here
 #include <GFX/Vulkan/VulkanRenderer.h>
@@ -67,12 +69,17 @@ namespace Bolt
         .setDataOffset(0)
         .build());
 
-        VulkanBufferObjectResource* resource = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
-        resource->map();
+        VulkanBufferObjectResource* lightBufferResource = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
+        lightBufferResource->map();
     }
 
     void GeometryPainter::preRender(RenderScene* scene, uint32_t stage)
     {
+        for(auto& info : m_geoInfo)
+        {
+            info.model->writeImgui();
+        }
+
         // Update descriptors here
         //TODO: Get the binding information from a shader link
         VkDevice device = VulkanRenderer::get()->getDevice();
@@ -81,7 +88,9 @@ namespace Bolt
         //Updates lights buffer data
         VulkanBufferObjectResource* lightsBuffer = (VulkanBufferObjectResource*)m_lightsbuffer.get();
         assert(lightsBuffer->isMapped() && "Lights buffer is not mapped. Cannot update the data");
-        
+
+
+        //TODO: Only update if data changes
         if(lightsBuffer->isMapped())
         {
             uint32_t offset = 0;
@@ -112,6 +121,17 @@ namespace Bolt
             
             mvp.model = m_geoInfo[i].model->getTransform();
             memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
+
+            //TODO: Add support for multiple materials
+            if(m_geoInfo[i].model->getMaterials().getSize() > 0)
+            {
+                Bolt::MaterialRef material = m_geoInfo[i].model->getMaterials()[0];
+                SimpleMaterial* simpleMaterial = static_cast<SimpleMaterial*>(material.get());
+
+                VulkanBufferObjectResource* materialBuffer = (VulkanBufferObjectResource*)m_geoInfo[i].materialBuffer.get();
+                region = materialBuffer->getMappedRegion();
+                memcpy(*region, &simpleMaterial->getData(), simpleMaterial->getDataSize());
+            }
             
             bufferInfo.buffer = uniformBuffer->getBufferhandle();
             bufferInfo.offset = 0;
@@ -142,12 +162,14 @@ namespace Bolt
         
         for(auto& info : m_geoInfo)
         {
+            //TODO: Should probably bind descriptor sets for each mesh in the model
+
 	        // Maybe it's better if this is moved to object that's rendering
             vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS
                 , pipeline->getPipelineLayout(), 0, 1, &info.set, 0, nullptr);
 
+            //TODO: Should probably draw commands for individual meshes as they could have different materials
             info.model->draw(scene);
-            //TODO:
         }
     }
     void GeometryPainter::postRender()
@@ -171,8 +193,19 @@ namespace Bolt
         .setDataOffset(0)
         .build());
 
-        VulkanBufferObjectResource* resource = static_cast<VulkanBufferObjectResource*>(bufferPtr.get());
-        resource->map();
+        VulkanBufferObjectResource* mvpResource = static_cast<VulkanBufferObjectResource*>(bufferPtr.get());
+        mvpResource->map();
+
+        //TODO: This might need to be setup per-material. For now, this should work
+        const uint32_t materialDataSize = sizeof(Bolt::SimpleMaterialData);
+        TBufferImplPtr materialPtr = std::move(
+            builder.setBufferType(EBufferType::UNIFORM)
+            .setDataSize(materialDataSize)
+            .setDataOffset(0)
+            .build()
+        );
+        VulkanBufferObjectResource* materialResource = static_cast<VulkanBufferObjectResource*>(materialPtr.get());
+        materialResource->map();
 
         // Creates descriptor set
 
@@ -186,13 +219,13 @@ namespace Bolt
         VkDescriptorSet set = VK_NULL_HANDLE;
         VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &set);
         ASSERT_SUCCESS(res, "Failed to allocate desctiptor sets");
-        m_geoInfo.pushBack({model, set, std::move(bufferPtr)});
+        m_geoInfo.pushBack({model, set, std::move(bufferPtr), std::move(materialPtr)});
 
 
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = resource->getBufferhandle();
+        bufferInfo.buffer = mvpResource->getBufferhandle();
         bufferInfo.offset = 0;
-        bufferInfo.range = resource->getBufferInfo().size;
+        bufferInfo.range = mvpResource->getBufferInfo().size;
         VkWriteDescriptorSet mvpWrite{};
         mvpWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         mvpWrite.descriptorCount = 1;
@@ -215,9 +248,24 @@ namespace Bolt
         lightsWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         lightsWrite.pBufferInfo = &lightsBufferInfo;
 
-        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite};
+        // Material goes into binding:2
+        VkDescriptorBufferInfo materialBufferInfo{};
+        materialBufferInfo.buffer = materialResource->getBufferhandle();
+        materialBufferInfo.offset = 0;
+        materialBufferInfo.range = materialResource->getBufferInfo().size;
 
-        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+        VkWriteDescriptorSet materialWrite{};
+        materialWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        materialWrite.descriptorCount = 1;
+        materialWrite.dstSet = set;
+        materialWrite.dstBinding = 2;
+        materialWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        materialWrite.pBufferInfo = &materialBufferInfo;
+
+
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite, materialWrite};
+        const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
+        vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
     }
 
 

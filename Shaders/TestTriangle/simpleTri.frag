@@ -23,10 +23,23 @@ struct PointLight
     float radius;
 };
 
+struct Material
+{
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+    float shininess;
+};
+
 layout(binding = 1) uniform Lights
 {
     GlobalLight globalLight;
 }lights;
+
+layout(binding = 2) uniform MaterialUniform
+{
+    Material data;
+}material;
 
 //layout(binding = 1) uniform sampler2D texSampler;
 
@@ -48,7 +61,7 @@ void main()
     //Specular calculation. This is view-dependent
     vec3 viewDir = normalize(viewPosWS - fragWorldPos).xyz;
     vec3 reflectDir = reflect(normalize(gLight.direction), inNormal.xyz);
-    float specPower = pow(max(dot(viewDir, reflectDir), 0), 64);
+    float specPower = pow(max(dot(viewDir, reflectDir), 0), material.data.shininess);
     vec3 specular = specularStrength * specPower * gLight.color.xyz;  
 
 
