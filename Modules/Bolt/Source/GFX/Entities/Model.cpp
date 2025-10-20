@@ -3,65 +3,21 @@
 #include <chrono>
 #include <random>
 #include <iostream>
+#include <MemCore/GlobalMemoryOverrides.h>
 
 namespace Bolt
 {
     Mesh::Mesh(Quaint::IMemoryContext* context)
     : m_context(context)
-    , m_vertices(context)
-    , m_indices(context)
     {}
     
-    Mesh::Mesh(Quaint::IMemoryContext* context, float* vertices, uint32_t numVerts
-        , float* normals, uint32_t numNormals
-        , int* indices, uint32_t numIndices
-        , float* uvs, uint32_t numUVs
-        , float scale)
+    Mesh::Mesh(Quaint::IMemoryContext* context, uint32_t vertSize, uint32_t vertOffset, uint32_t idxSize, uint32_t idxOffset)
     : Mesh(context)
     {
-        assert(numNormals == numVerts && "Unsupported! Currently expects one normal per verted");
-
-        for(size_t i = 0; i < numVerts/3; ++i)
-        {
-            Quaint::QVertex vertex;
-            vertex.position.x = vertices[3 * i + 0] * scale;
-            vertex.position.y = vertices[3 * i + 1] * scale;
-            vertex.position.z = vertices[3 * i + 2] * scale;
-
-            uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
-            srand(static_cast<unsigned int>(timeNow));
-            vertex.color.x = rand() / (float)RAND_MAX;
-            vertex.color.y = rand() / (float)RAND_MAX;
-            vertex.color.z = rand() / (float)RAND_MAX;
-            vertex.color.w = 1;
-
-            vertex.normal.x = normals[3 * i + 0];
-            vertex.normal.y = normals[3 * i + 1];
-            vertex.normal.z = normals[3 * i + 2];
-            vertex.normal.w = 1;
-
-            m_vertices.pushBack(vertex);
-        }
-
-        //for(int i = 0; i < numIndices; ++i)
-        //{
-        //    m_indices.pushBack(indices[i]);
-        //}
-
-        //TODO: There's something very wrong here. Check
-        m_indices.clear();
-        m_indices.resize(numIndices);
-        memcpy(m_indices.getBuffer_NonConst(), indices, numIndices * 4);
-
-        //std::cout << "Stored indices: \n";
-        //for(int i = 0; i < numIndices; ++i)
-        //{
-        //    std::cout << indices[i] << "\n";
-        //}
-        //for(size_t i = 0; i < m_indices.getSize(); ++i)
-        //{
-        //    std::cout << m_indices[i] << "\n";
-        //}
+        m_vertexCount = vertSize;
+        m_vertexOffset = vertOffset;
+        m_indexCount = idxSize;
+        m_indexOffset = idxOffset;
     }
 
     QuadMesh::QuadMesh(Quaint::IMemoryContext* context)
@@ -107,14 +63,14 @@ namespace Bolt
         float rCol2 = (float)(dist(mt)) * 0.5f;
         float rCol3 = (float)(dist(mt)) * 0.5f;
 
-        m_vertices.insertRangeAt(0,
-        {
-            { {-p0 + rXPos, -p1 + rYPos, 0.f, 1.f}, {rCol0, rCol2, rCol3, 1.f}, {0.f, 0.f, 0.f, 0.f} },
-            { {-p2 + rXPos, p3 + rYPos, 0.f, 1.f}, {rCol0, rCol1, rCol2, 1.f}, {0.f, 1.0f, 0.f, 0.f} },
-            { {p4 + rXPos, -p5 + rYPos, 0.f, 1.f}, {rCol1, rCol0, rCol3, 1.f}, {1.f, 0.f, 0.f, 0.f} },
-            { {p6 + rXPos, p7 + rYPos, 0.f, 1.f}, {rCol3, rCol2, rCol0, 1.f}, {1.f, 1.f, 0.f, 0.f} }
-        }
-        );
+        // m_vertices.insertRangeAt(0,
+        // {
+        //     { {-p0 + rXPos, -p1 + rYPos, 0.f, 1.f}, {rCol0, rCol2, rCol3, 1.f}, {0.f, 0.f, 0.f, 0.f} },
+        //     { {-p2 + rXPos, p3 + rYPos, 0.f, 1.f}, {rCol0, rCol1, rCol2, 1.f}, {0.f, 1.0f, 0.f, 0.f} },
+        //     { {p4 + rXPos, -p5 + rYPos, 0.f, 1.f}, {rCol1, rCol0, rCol3, 1.f}, {1.f, 0.f, 0.f, 0.f} },
+        //     { {p6 + rXPos, p7 + rYPos, 0.f, 1.f}, {rCol3, rCol2, rCol0, 1.f}, {1.f, 1.f, 0.f, 0.f} }
+        // }
+        // );
 
         //m_vertices.insertRangeAt(0,
         //{
@@ -132,8 +88,8 @@ namespace Bolt
         //    std::cout << vertex.color.x << ", " << vertex.color.y << ", " << vertex.color.z << ", " << vertex.color.w << "\n";
         //    std::cout << vertex.texCoord.x << ", " << vertex.texCoord.y << "\n";
         //}
-        m_indices.insertRangeAt(0, 
-        {0, 1, 2, 2, 1, 3});
+        // m_indices.insertRangeAt(0, 
+        // {0, 1, 2, 2, 1, 3});
 
         Quaint::QVertex vertex = { {-.5f, .5f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 0.f} };
         constexpr int posOffset = vertex.getPositionOffset();
@@ -141,21 +97,28 @@ namespace Bolt
         constexpr int texOffset = vertex.getTexCoordOffset();
     }
 
-    //TODO:
-    void Mesh::transform(const Quaint::QVec3& position, const Quaint::QVec3& rotation, Quaint::QVec3& scale)
+    void Mesh::setMaterial(const MaterialRef material)
     {
-
+        m_material = material;
     }
 
 
-    Model::Model(Quaint::IMemoryContext* context, MeshRef& mesh)
+    
+    Model::Model(Quaint::IMemoryContext* context)
     : IGFXEntity(context)
-    , m_mesh(std::move(mesh))
-    , m_meshes(context)
     , m_transform(Quaint::QMat4x4::Identity())
+    , m_meshes(context)
+    , m_materials(context)
+    , m_vertices(context)
+    , m_indices(context)
     , m_modelImpl(nullptr, Quaint::Deleter<IModelImpl>(context))
     {
+    }
 
+    Model::Model(Quaint::IMemoryContext* context, MeshRef& mesh)
+    : Model(context)
+    {
+        m_meshes.pushBack(std::move(mesh));
     }
 
     void Model::setTranslation(const Quaint::QVec4& translation)
@@ -175,6 +138,60 @@ namespace Bolt
         {
             m_modelImpl->destroy();
         }
+    }
+
+    void Model::addMesh(float* vertices, uint32_t numVerts
+            , float* normals, uint32_t numNormals
+            , int* indices, uint32_t numIndices
+            , float* uvs, uint32_t numUVs
+            , float scale, MaterialRef material)
+    {
+        assert(numNormals == numVerts && "Unsupported! Currently expects one normal per verted");
+
+        uint32_t vertDataOffset = m_vertices.getSize();
+        uint32_t vertSize = numVerts/3;
+        for(size_t i = 0; i < numVerts/3; ++i)
+        {
+            Quaint::QVertex vertex;
+            vertex.position.x = vertices[3 * i + 0] * scale;
+            vertex.position.y = vertices[3 * i + 1] * scale;
+            vertex.position.z = vertices[3 * i + 2] * scale;
+
+            uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
+            srand(static_cast<unsigned int>(timeNow));
+            vertex.color.x = rand() / (float)RAND_MAX;
+            vertex.color.y = rand() / (float)RAND_MAX;
+            vertex.color.z = rand() / (float)RAND_MAX;
+            vertex.color.w = 1;
+
+            vertex.normal.x = normals[3 * i + 0];
+            vertex.normal.y = normals[3 * i + 1];
+            vertex.normal.z = normals[3 * i + 2];
+            vertex.normal.w = 1;
+
+            m_vertices.pushBack(vertex);
+        }
+
+        //for(int i = 0; i < numIndices; ++i)
+        //{
+        //    m_indices.pushBack(indices[i]);
+        //}
+
+        uint32_t requiredSize = m_indices.getSize() + numIndices;
+        uint32_t indexDataOffset = m_indices.getSize();
+        
+        for(size_t i = 0; i < numIndices; ++i)
+        {
+            m_indices.pushBack(indices[i] + vertDataOffset);
+        }
+        
+        //m_indices.resize(requiredSize);
+        //memcpy(m_indices.getBuffer_NonConst() + indexDataOffset, indices, numIndices * 4);
+        
+        Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
+            ,  numVerts, vertDataOffset, numIndices, indexDataOffset);
+        Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
+        m_meshes.pushBack(std::move(meshRef));
     }
 
     void PreDraw()

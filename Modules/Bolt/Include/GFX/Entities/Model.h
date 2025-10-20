@@ -3,6 +3,7 @@
 
 #include <Types/QUniquePtr.h>
 #include <GFX/Interface/IEntityInterfaces.h>
+#include <GFX/Materials/Material.h>
 #include "Resources.h"
 
 namespace Quaint
@@ -24,16 +25,8 @@ namespace Quaint
 
 namespace Bolt
 {
-    class UniformStorage
-    {
-    public:
-        
 
-    private:
-        
-    };
-
-    /*Mesh contains vertex information and other sort*/
+    /*Mesh just references the data that should be owned by another container*/
     class Mesh
     {
         public:
@@ -44,24 +37,31 @@ namespace Bolt
             , float* uvs, uint32_t numUVs
             , float scale = 1.0f);
 
+        //TODO:
+        Mesh(Quaint::IMemoryContext* context, uint32_t vertSize, uint32_t vertOffset, uint32_t idxSize, uint32_t idxOffset);
+
         //virtual void loadFromFile() override {}
         //virtual void destroy() {} //TODO:
-        virtual uint32_t getVertexCount() const { return (uint32_t)m_vertices.getSize(); }
-        uint32_t getVertexBufferSize() const { return m_vertices.getSize() * sizeof(Quaint::QVertex); }
-        virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
+        uint32_t getVertexCount() const { return m_vertexCount; }
+        uint32_t getVertexDataOffset() const { return m_vertexOffset; }
+        uint32_t getIndexCount() const { return m_indexCount; }
+        uint32_t getIndexDatOffset() const { return m_indexOffset; }
 
-        virtual uint32_t getIndexCount() const { return (uint32_t)m_indices.getSize(); }
-        virtual const uint32_t* getIndexBuffer() const { return m_indices.getBuffer(); }
-        uint32_t getIndexBufferSize() const { return m_indices.getSize() * sizeof(decltype(m_indices)::value_type); }
-        uint8_t getIndexBufferElementSize() const { return sizeof(decltype(m_indices)::value_type); }
-
-        void transform(const Quaint::QVec3& position, const Quaint::QVec3& rotation, Quaint::QVec3& scale);
+        void setMaterial(const MaterialRef material);
+        MaterialRef getMaterial(){ return m_material; }
 
     protected:
         Quaint::IMemoryContext* m_context = nullptr;
-        Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
-        Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
+        
+        //TODO: Use these instead of arrays above.
+        // Doesn't own these parameters. Owner is responsible of cleaning these up
+        uint32_t m_vertexCount = 0;
+        uint32_t m_vertexOffset = 0;
+        uint32_t m_indexCount = 0;
+        uint32_t m_indexOffset = 0;
+
         GeometryRenderInfo  m_RenderInfo;
+        MaterialRef m_material;
     };
     using MeshRef = Quaint::QUniquePtr<Mesh, Quaint::Deleter<Mesh>>;
 
@@ -75,21 +75,47 @@ namespace Bolt
     class Model : public IGFXEntity
     {
     public:
+        Model(Quaint::IMemoryContext* context);
         Model(Quaint::IMemoryContext* context, MeshRef& mesh);
 
         void draw(RenderScene* scene);
         virtual void construct() override;
         virtual void destroy() override;
+
         //TODO:  This should later have material information
         //TODO: Hoe to link this to Vulkan API?
+        
+        void addMesh(float* vertices, uint32_t numVerts
+            , float* normals, uint32_t numNormals
+            , int* indices, uint32_t numIndices
+            , float* uvs, uint32_t numUVs
+            , float scale = 1.0f, MaterialRef material = nullptr);
 
-        Mesh* getMesh(){ return m_mesh.get(); }
+            
+        virtual uint32_t getVertexCount() const { return (uint32_t)m_vertices.getSize(); }
+        uint32_t getVertexBufferSize() const { return m_vertices.getSize() * sizeof(Quaint::QVertex); }
+        virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
+
+        virtual uint32_t getIndexCount() const { return (uint32_t)m_indices.getSize(); }
+        virtual const uint32_t* getIndexBuffer() const { return m_indices.getBuffer(); }
+        uint32_t getIndexBufferSize() const { return m_indices.getSize() * sizeof(decltype(m_indices)::value_type); }
+        uint8_t getIndexBufferElementSize() const { return sizeof(decltype(m_indices)::value_type); }
+        
+        
+            //void removeMesh(MeshRef& mesh); TODO:
+        //Mesh* getMesh(){ return m_mesh.get(); }
+
+        Quaint::QArray<MeshRef>& getMeshes() { return m_meshes; }
+
         void setTranslation(const Quaint::QVec4& translation);
         const Quaint::QMat4x4& getTransform() const { return m_transform; } 
+        
     private:
-        MeshRef m_mesh; //TODO: Extend to support multiple meshes
         Quaint::QMat4x4 m_transform;
         Quaint::QArray<MeshRef> m_meshes;
+        Quaint::QArray<MaterialRef> m_materials;
+        Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
+        Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
         TModelImplPtr m_modelImpl;
     };
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;

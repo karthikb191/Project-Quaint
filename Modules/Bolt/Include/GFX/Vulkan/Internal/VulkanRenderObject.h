@@ -23,6 +23,12 @@ namespace Bolt{
     //typedef Quaint::QUniquePtr<VulkanBufferObjectResource, Deleter<VulkanBufferObjectResource>> BufferResourceRef;
     
     typedef Quaint::QUniquePtr<ResourceGPUProxy, Quaint::Deleter<ResourceGPUProxy>> ResourceGPUProxyPtr;
+        
+        struct IndexDrawData
+        {
+            uint32_t indexOffset = 0;
+            uint32_t indexCount = 0;
+        };
 
     public:
         VulkanRenderObject(Quaint::IMemoryContext* context);
@@ -50,6 +56,7 @@ namespace Bolt{
         TBufferImplPtr                          m_indexBuffer;
 
         GeometryRenderInfo                      m_renderInfo;
+        Quaint::QArray<IndexDrawData>           m_subMeshIndexOffsets;
         Quaint::QArray<VkDescriptorSetLayout>   m_setLayouts; //Represents layout for the respective set
         Quaint::QArray<VkDescriptorSet>         m_sets;
         VkPipelineLayout                        m_pipelineLayout = VK_NULL_HANDLE;

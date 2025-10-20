@@ -40,6 +40,7 @@ namespace Bolt { namespace vulkan {
     , m_sets(context)
     , m_vertexBuffer(nullptr, Deleter<IBufferImpl>(context))
     , m_indexBuffer(nullptr, Deleter<IBufferImpl>(context))
+    , m_subMeshIndexOffsets(context)
     {
     }
 
@@ -69,6 +70,17 @@ namespace Bolt { namespace vulkan {
         if(m_model != nullptr)
         {
             createBuffersFromModel(m_model);
+
+            m_subMeshIndexOffsets.clear();
+
+            auto& meshes = m_model->getMeshes();
+            for(size_t i = 0; i < meshes.getSize(); ++i)
+            {
+                IndexDrawData data {};
+                data.indexCount = meshes[i]->getIndexCount();
+                data.indexOffset = meshes[i]->getIndexDatOffset();
+                m_subMeshIndexOffsets.pushBack(data);
+            }
 
             //Create descriptor sets here?
         }
@@ -118,25 +130,25 @@ namespace Bolt { namespace vulkan {
     void VulkanRenderObject::createBuffersFromModel(Model* model)
     {
         BufferResourceBuilder builder(m_context);
-        builder.setBuffer((void*)model->getMesh()->getVertexBuffer())
-        .setDataSize(model->getMesh()->getVertexBufferSize())
+        builder.setBuffer((void*)model->getVertexBuffer())
+        .setDataSize(model->getVertexBufferSize())
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::VERTEX)
         .setDataOffset(0)
         .setInitiallymapped(false);
         m_vertexBuffer.swap(builder.build());
 
-        m_indexBufferType = model->getMesh()->getIndexBufferElementSize() == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+        m_indexBufferType = model->getIndexBufferElementSize() == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
 
-        builder.setBuffer((void*)model->getMesh()->getIndexBuffer())
-        .setDataSize(model->getMesh()->getIndexBufferSize())
+        builder.setBuffer((void*)model->getIndexBuffer())
+        .setDataSize(model->getIndexBufferSize())
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::INDEX)
         .setDataOffset(0)
         .setInitiallymapped(false);
         m_indexBuffer = std::move(builder.build());
 
-        m_indexSize = model->getMesh()->getIndexCount();
+        m_indexSize = model->getIndexCount();
     }
 
     void VulkanRenderObject::createDescriptorLayoutInformation(const ShaderInfo& shaderinfo)
@@ -522,7 +534,11 @@ namespace Bolt { namespace vulkan {
             vkCmdBindIndexBuffer(vulkanScene->getSceneParams().commandBuffer, indexResource->getBufferhandle(), 0, m_indexBufferType);
         }
 
-        vkCmdDrawIndexed(vulkanScene->getSceneParams().commandBuffer, m_indexSize, 1, 0, 0, 0);
+        for(int i = 0; i < m_subMeshIndexOffsets.getSize(); ++i)
+        {
+            vkCmdDrawIndexed(vulkanScene->getSceneParams().commandBuffer, m_subMeshIndexOffsets[i].indexCount, 1
+                            , m_subMeshIndexOffsets[i].indexOffset, 0, 0);
+        }
 
         // RenderFrameScene* scene = VulkanRenderer::get()->getRenderFrameScene();
         // VkDeviceSize offsets[] = {0};

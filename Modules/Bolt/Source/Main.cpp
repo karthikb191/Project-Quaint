@@ -52,6 +52,9 @@ void LoadModelWithSmoothNormals(Quaint::IMemoryContext* context, tinyobj::attrib
     , const Quaint::QVec4& translation
     , const float scale)
 {
+    Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context);
+    Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
+
     for(size_t i = 0; i < shapes.size(); ++i)
     {
         tinyobj::mesh_t loadedMesh = shapes[i].mesh;
@@ -104,21 +107,17 @@ void LoadModelWithSmoothNormals(Quaint::IMemoryContext* context, tinyobj::attrib
         }
 
         //TODO: vertices wont change across meshes for a model. Handle this
-        Bolt::Mesh* mesh = QUAINT_NEW(context, Bolt::Mesh, context
-            , attrib.vertices.data(), attrib.vertices.size()
+        model->addMesh(attrib.vertices.data(), attrib.vertices.size()
             , fNormals.data(), fNormals.size()
             , indices.data(), indices.size()
             , attrib.texcoords.data(), attrib.texcoords.size()
             , scale);
-            
-        Bolt::MeshRef meshRef(mesh, Bolt::Deleter<Bolt::Mesh>(context));
-        Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
-        Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
-        model->setTranslation(translation);
-        model->construct();
-        geoPainter->AddModel(model.get());
-        modelHolder.pushBack(std::move(model));
     }
+
+    model->setTranslation(translation);
+    model->construct();
+    geoPainter->AddModel(model.get());
+    modelHolder.pushBack(std::move(model));
 }
 
 void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attrib_t& attrib
@@ -129,6 +128,10 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
     , const Quaint::QVec4& translation
     , const float scale)
 {
+    Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context);
+    Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
+
+    size_t totalIndexOffset = 0;
     for(size_t i = 0; i < shapes.size(); ++i)
     {
         tinyobj::mesh_t loadedMesh = shapes[i].mesh;
@@ -140,18 +143,24 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
         std::vector<float> vertices;
 
         size_t index_offset = 0;
-        for (size_t f = 0; f < shapes[i].mesh.num_face_vertices.size(); f++) {
-            size_t fnum = shapes[i].mesh.num_face_vertices[f];
+        for (size_t f = 0; f < loadedMesh.num_face_vertices.size(); f++) {
+            size_t fnum = loadedMesh.num_face_vertices[f];
 
+            bool needNormalCalculation = false;
+            Quaint::QVec3 verts[3];
             for(size_t v = 0; v < fnum; v++)
             {
-                tinyobj::index_t idx = shapes[i].mesh.indices[index_offset + v];
+                tinyobj::index_t idx = loadedMesh.indices[index_offset + v];
                 
                 //Get the actual vertex from this
                 uint32_t vertexIdx = idx.vertex_index * 3;
                 vertices.push_back(attrib.vertices[vertexIdx]);
                 vertices.push_back(attrib.vertices[vertexIdx + 1]);
                 vertices.push_back(attrib.vertices[vertexIdx + 2]);
+
+                verts[v].x = attrib.vertices[vertexIdx];
+                verts[v].y = attrib.vertices[vertexIdx + 1];
+                verts[v].z = attrib.vertices[vertexIdx + 2];
 
                 if(idx.normal_index != -1)
                 {
@@ -162,9 +171,22 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
                 }
                 else
                 {
-                    fNormals.push_back(0);
-                    fNormals.push_back(0);
-                    fNormals.push_back(0);
+                    needNormalCalculation =  true;
+                }
+            }
+
+            if(needNormalCalculation)
+            {
+                Quaint::QVec3 edge1 = verts[1] - verts[0];
+                Quaint::QVec3 edge2 = verts[2] - verts[1];
+
+                Quaint::QVec3 normal = Quaint::cross_vf(edge1, edge2);
+
+                for(size_t v = 0; v < fnum; v++)
+                {
+                    fNormals.push_back(normal.x);
+                    fNormals.push_back(normal.y);
+                    fNormals.push_back(normal.z);
                 }
             }
             
@@ -174,27 +196,22 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
 
             index_offset += fnum;
 
+            //totalIndexOffset += fnum;
             //fNormals.push_back()
         }
 
-        // This makes sure normals are calculated per-primitive. But is more memory intensive. 
-        // TODO: Remove this once there are proper memory maps
-        Bolt::Mesh* mesh = QUAINT_NEW(context, Bolt::Mesh, context
-            , vertices.data(), vertices.size()
+        model->addMesh(vertices.data(), vertices.size()
             , fNormals.data(), fNormals.size()
             , indices.data(), indices.size()
             , attrib.texcoords.data(), attrib.texcoords.size()
             , scale);
-            
-        Bolt::MeshRef meshRef(mesh, Bolt::Deleter<Bolt::Mesh>(context));
-        Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
-        Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
-        model->setTranslation(translation);
-
-        model->construct();
-        geoPainter->AddModel(model.get());
-        modelHolder.pushBack(std::move(model));
     }
+
+    model->setTranslation(translation);
+
+    model->construct();
+    geoPainter->AddModel(model.get());
+    modelHolder.pushBack(std::move(model));
 }
 
 int main()
@@ -404,7 +421,8 @@ int main()
     std::vector<tinyobj::material_t> materials;
     std::string error;
 
-    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
+    ::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\human.obj", ios_base::in | ios_base::binary);
 
@@ -421,11 +439,11 @@ int main()
     //        static_cast<const double>(attrib.vertices[3 * v + 2]));
     //}
 
-    LoadModelWithSmoothNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(-200, 0, 0, 1), 150);
+    //LoadModelWithSmoothNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    //    , Quaint::QVec4(-200, 0, 0, 1), 1);
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(200, 0, 0, 1), 150);
+        , Quaint::QVec4(200, 0, 0, 1), 1);
 
 
     attrib.vertices.clear();
@@ -467,7 +485,7 @@ int main()
     }
 
     //Clear all models
-    for(int i = 0; i < modelHolder.getSize(); ++i)
+    for(size_t i = 0; i < modelHolder.getSize(); ++i)
     {
         modelHolder[i]->destroy();
         modelHolder[i].release();
