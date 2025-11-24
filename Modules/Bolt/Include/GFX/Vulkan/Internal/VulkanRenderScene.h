@@ -61,12 +61,15 @@ namespace Bolt {
     };
     struct DepthAttachment : public Attachment
     {
-        DepthAttachment(const Bolt::AttachmentDefinition& info)
+        DepthAttachment(const Bolt::AttachmentDefinition& info, VulkanTexture tex)
         : Attachment(info)
+        , texture(tex)
         {}
-        virtual void buildAttachmentReference() override {}
-        virtual void buildAttachmentDescription() override {}
-        //TODO:
+
+        virtual void buildAttachmentReference() override;
+        virtual void buildAttachmentDescription() override;
+
+        VulkanTexture texture;
     };
     struct SwapchainAttachment : public Attachment
     {
@@ -81,8 +84,9 @@ namespace Bolt {
 
     struct SubpassDescription
     {
-        Quaint::QArray<VkAttachmentReference> references;
-        VkSubpassDescription description;
+        Quaint::QArray<VkAttachmentReference> colorAttachReferences;
+        bool hasDepthAttachment = false;
+        VkAttachmentReference depthAttachment;
     };
 
     class VulkanRenderScene : public Bolt::RenderSceneImpl
@@ -114,6 +118,7 @@ namespace Bolt {
 
         AttachmentInfo&     beginAttachmentSetup();
         Attachment* getAttachment(const Quaint::QName& name);
+        const Attachment* const getAttachment(const Quaint::QName& name) const;
         const TAttachmentArray& getAttachments() const { return m_attachments; }
         
         const SceneParams& getSceneParams() const { return m_sceneParams; }
@@ -122,9 +127,13 @@ namespace Bolt {
     protected:
         void constructAttachments(const Bolt::RenderInfo& info);
         VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);
+        VulkanTexture constructDepthTexture(const Bolt::AttachmentDefinition def);
 
         void constructSubpasses(const Bolt::RenderScene* scene);
         void constructFrameBuffer();
+
+        
+        Attachment* getAttachment_internal(const Quaint::QName& name) const;
 
         Quaint::IMemoryContext*                                     m_context = nullptr;
         GraphicsContext                                             m_graphicsContext;
@@ -137,6 +146,7 @@ namespace Bolt {
         SceneParams                                                 m_sceneParams = {};
         VkExtent2D                                                  m_renderExtent = {512, 512};
         VkOffset2D                                                  m_renderOffset = {0, 0};
+        bool                                                        m_hasDepth = false;
     };
 
     struct MVP

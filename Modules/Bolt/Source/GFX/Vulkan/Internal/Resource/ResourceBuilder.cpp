@@ -238,6 +238,11 @@ namespace Bolt {
         {
             builder.addDynamicFeature(feature);
         }
+
+        if(m_enableDepth)
+        {
+            builder.enableDepth();
+        }
     
         VulkanGraphicsPipeline* pipeline =  builder.build();
 

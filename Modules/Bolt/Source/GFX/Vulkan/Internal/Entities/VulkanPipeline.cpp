@@ -68,6 +68,11 @@ namespace Bolt
         }
         return *this;
     }
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::enableDepth()
+    {
+        m_pipeline->enableDepth();        
+        return *this;
+    }
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
     {
         m_pipeline->construct();
@@ -163,6 +168,12 @@ namespace Bolt
             auto& attachmentRefs = stage.attachmentRefs;
             for(size_t i = 0; i < attachmentRefs.getSize(); ++i)
             {
+                const Attachment* const attachment = vulkanScene->getAttachment(attachmentRefs[i].attachmentName);
+                if(attachment == nullptr || attachment->getInfo().type == AttachmentDefinition::Type::Depth)
+                {
+                    continue;
+                }
+
                 VkPipelineColorBlendAttachmentState state {};
                 state.blendEnable = m_blendEnabled ? VK_TRUE : VK_FALSE;
                 //TODO: Make it generic
@@ -336,6 +347,10 @@ namespace Bolt
         {
             m_blendEnabled = true;
         }
+        void VulkanGraphicsPipeline::enableDepth()
+        {
+            m_depthEnabled = true;
+        }
 
         void VulkanGraphicsPipeline::construct()
         {
@@ -416,8 +431,27 @@ namespace Bolt
 
             
             // No Depth setup for now
-            info.pDepthStencilState = nullptr;
+            VkPipelineDepthStencilStateCreateInfo depthStencil{};
+            if(m_depthEnabled)
+            {
+                //TODO: Add support for only read op.
+                depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                depthStencil.depthTestEnable = VK_TRUE;
+                depthStencil.depthWriteEnable = VK_TRUE;
+                depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+                depthStencil.depthBoundsTestEnable = VK_FALSE;
+                depthStencil.minDepthBounds = -1.0f; // Optional
+                depthStencil.maxDepthBounds = 1.0f; // Optional
+                depthStencil.stencilTestEnable = VK_FALSE;
+                depthStencil.front = {}; // Optional
+                depthStencil.back = {}; // Optional
 
+                info.pDepthStencilState = &depthStencil;
+            }
+            else
+            {
+                info.pDepthStencilState = nullptr;
+            }
 
             // Blend
             VkPipelineColorBlendStateCreateInfo blendInfo{};

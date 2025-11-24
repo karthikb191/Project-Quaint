@@ -105,6 +105,8 @@ namespace Bolt
     // };
 //====================================================================================
 //====================================================================================
+
+    //TODO: This is messed up and too many in-between classes. FIX!!!!
     class Pipeline;
     class PipelineResourceBuilder : public GraphicsResourceBuilderBase
     {
@@ -118,6 +120,7 @@ namespace Bolt
         PipelineResourceBuilder& setCullBack() { m_cullBack = true; return *this; }
         PipelineResourceBuilder& setCullFront() { m_cullFront = true; return *this; }
         PipelineResourceBuilder& enableBlend() { m_enableBlend = true; return *this; }
+        PipelineResourceBuilder& enableDepth() { m_enableDepth = true; return *this; }
         TPipelineImplPtr build();
 
     private:
@@ -126,6 +129,7 @@ namespace Bolt
         bool m_cullBack = false;
         bool m_cullFront = false;
         bool m_enableBlend = false;
+        bool m_enableDepth = false;
     };
 
 //====================================================================================

@@ -272,16 +272,28 @@ int main()
     info.extents = Quaint::QVec2(~0, ~0);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
-    Bolt::AttachmentDefinition def;
-    def.binding = 0;
-    def.name = "swapchain";
-    def.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
-    def.clearImage = true;
-    def.type = Bolt::AttachmentDefinition::Type::Swapchain;
-    def.format = Bolt::EFormat::R8G8B8A8_SRGB;
-    def.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
-    info.attachments.pushBack(def);
-    def.storePrevious = false;
+    Bolt::AttachmentDefinition swapchainDef;
+    swapchainDef.binding = 0;
+    swapchainDef.name = "swapchain";
+    swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
+    swapchainDef.clearImage = true;
+    swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
+    swapchainDef.format = Bolt::EFormat::R8G8B8A8_SRGB;
+    swapchainDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(swapchainDef);
+
+    Bolt::AttachmentDefinition depthDef;
+    depthDef.binding = 1;
+    depthDef.name = "depthBuffer";
+    depthDef.clearColor = Quaint::QVec4(0, 0, 0, 1);
+    depthDef.clearImage = true;
+    depthDef.type = Bolt::AttachmentDefinition::Type::Depth;
+    depthDef.format = Bolt::EFormat::D32_SFLOAT;
+    depthDef.usage = Bolt::EImageUsage::DEPTH_ATTACHMENT;
+    depthDef.extents = info.extents;
+    info.attachments.pushBack(depthDef);
+
+    depthDef.storePrevious = false;
 
     Quaint::QArray<Bolt::RenderStage> stages(context);
     Bolt::RenderStage stage;
@@ -289,17 +301,31 @@ int main()
     stage.index = 0;
 
     /* Attachment references in each sub-pass */
-    Bolt::RenderStage::AttachmentRef ref{};
-    ref.binding = 0;
-    ref.attachmentName = "swapchain";
-    stage.attachmentRefs.pushBack(ref);
+    Bolt::RenderStage::AttachmentRef swapchainRef{};
+    swapchainRef.binding = 0;
+    swapchainRef.attachmentName = "swapchain";
+    stage.attachmentRefs.pushBack(swapchainRef);
+    
+    Bolt::RenderStage::AttachmentRef depthRef{};
+    depthRef.binding = 1;
+    depthRef.attachmentName = "depthBuffer";
+    stage.attachmentRefs.pushBack(depthRef);
+
     stage.dependentStage = ~0;
     stages.pushBack(stage);
 
-    //TODO: Maybe move construction to a separate function
+    //new stage for IMGUI that doesn't need depth buffer
+    Bolt::RenderStage imguiStage;
+    imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    imguiStage.index = 1;
+    imguiStage.dependentStage = 0;
+    imguiStage.attachmentRefs.pushBack(swapchainRef);
+    stages.pushBack(imguiStage);
 
+    //TODO: Maybe move construction to a separate function
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
     
+
     //This is fine for now, but the structure of this should probably change
     Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
@@ -309,14 +335,14 @@ int main()
     scene->addGlobalLight(globalLight);
 
     
-    def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
-    def.storePrevious = false;
-    //info.extents = Quaint::QVec2(~0, ~0);
-    //info.offset = Quaint::QVec2({0, 0});
-    info.extents = Quaint::QVec2(256, 560);
-    info.offset = {40, 0};
-    info.attachments.clear();
-    info.attachments.pushBack(def);
+    //def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    //def.storePrevious = false;
+    ////info.extents = Quaint::QVec2(~0, ~0);
+    ////info.offset = Quaint::QVec2({0, 0});
+    //info.extents = Quaint::QVec2(256, 560);
+    //info.offset = {40, 0};
+    //info.attachments.clear();
+    //info.attachments.pushBack(def);
     //Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("TESTTEST", info, stages.getSize(), stages.getBuffer());
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
@@ -351,6 +377,7 @@ int main()
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
     pipeline->cullBack();
+    pipeline->enableDepth();
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
@@ -380,7 +407,9 @@ int main()
     
 
     //IMGUI pipeline uses the same stage and subpass
-    Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    //TODO: Probably best to use a new renderpass with no depth support for IMGUI
+    uint32_t imguiStageIdx = 1;
+    Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), imguiStageIdx, shaderDef);
     imguiPipleline->enableBlend();
     imguiPipleline->addDynamicStage("viewport");
     imguiPipleline->addDynamicStage("scissor");
@@ -428,8 +457,8 @@ int main()
     
 
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cornell_box.obj", ios_base::in | ios_base::binary);
-    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
-    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
+    //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\cube.obj", ios_base::in | ios_base::binary);
+    std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\box.obj", ios_base::in | ios_base::binary);
     //std::fstream stream("C:\\Works\\Project-Quaint\\Data\\Models\\human.obj", ios_base::in | ios_base::binary);
 
     bool result = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, &stream);
@@ -448,9 +477,22 @@ int main()
 
     //LoadModelWithSmoothNormals(context, attrib, shapes, materials, geoPainter, modelHolder
     //    , Quaint::QVec4(-200, 0, 0, 1), 1);
+        
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
         , Quaint::QVec4(200, 0, 0, 1), 200);
+
+    LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    , Quaint::QVec4(-200, 0, 0, 1), 200);
+
+    LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    , Quaint::QVec4(-200, 0, 0, 1), 200);
+    LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    , Quaint::QVec4(-200, 100, -100, 1), 200);
+    LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    , Quaint::QVec4(-200, 100, 100, 1), 200);
+    LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
+    , Quaint::QVec4(-200, 50, -200, 1), 200);
 
 
     attrib.vertices.clear();

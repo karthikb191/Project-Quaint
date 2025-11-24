@@ -85,7 +85,7 @@ namespace Bolt
         info.translation = Quaint::QVec4(0, 0, 3, 1);
         info.rotation = Quaint::QVec3(0, 0, 0);
         info.fov = 90.0f;
-        info.nearClipDist = 0.1f;
+        info.nearClipDist = 1.0f;
         info.farClipDist = 10000.0f;
         m_camera.init(info);
     }
@@ -121,6 +121,12 @@ namespace Bolt
         Quaint::QVec3(0.0f, 1.0f, 0.0f));
         m_ubo.view = m_camera.getViewMatrix();
         m_ubo.proj = m_camera.getProjectionMatrix();
+
+        Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -10.0f, 1);
+        //res = m_ubo.view * Quaint::QVec4(0, 0, 0, 1);
+        
+        int iiii = 100;
+        iiii -= 10;
     }
 
     void BoltRenderer::shutdown()

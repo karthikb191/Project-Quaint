@@ -56,6 +56,12 @@ namespace Bolt{ namespace vulkan{
                 case Bolt::AttachmentDefinition::Type::Swapchain:
                     views.pushBack(swapchain->getSwapchainImageView(i));
                     break;
+                case Bolt::AttachmentDefinition::Type::Depth:
+                {
+                    VkImageView view = attachment->As<ImageAttachment>()->texture.getImageView();
+                    views.pushBack(view);
+                    break;
+                }
                 default:
                     break;
                 }

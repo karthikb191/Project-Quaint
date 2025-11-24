@@ -29,6 +29,7 @@ namespace Bolt{
         VulkanGraphicsPipelineBuilder& setupRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace);
         VulkanGraphicsPipelineBuilder& addDynamicFeature(Quaint::QName feature);
         VulkanGraphicsPipelineBuilder& setBlendEnabled(bool enabled);
+        VulkanGraphicsPipelineBuilder& enableDepth();
         
         //TODO: Add dynamic state support
         VulkanGraphicsPipeline* build();
@@ -64,6 +65,7 @@ namespace Bolt{
         void setRasterizationInfo(VkPolygonMode polyMode, VkCullModeFlags cullMode, VkFrontFace frontFace);
         void addDynamicFeature(Quaint::QName feature);
         void setBlendEnabled();
+        void enableDepth();
 
         VkPipeline  m_pipeline = VK_NULL_HANDLE;
 
@@ -98,6 +100,7 @@ namespace Bolt{
         
         ShaderInterface m_totalShaderInterface;
         ShaderInterface::Interface m_shaderInterface;
+        bool m_depthEnabled = false;
         // Does it need shader handle?
         // Need uniform and attribute info here for future validation
     };

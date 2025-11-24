@@ -384,7 +384,7 @@ namespace Bolt
 
             ImguiDescriptorSet setInfo {texture, set};
             m_descriptorInfo.pushBack(setInfo);
-            textureData->SetTexID(*texture.getImageRef());
+            textureData->SetTexID((ImTextureID)(*texture.getImageRef()));
         }
 
         if(status == ImTextureStatus::ImTextureStatus_WantCreate || status == ImTextureStatus::ImTextureStatus_WantDestroy)
@@ -444,7 +444,7 @@ namespace Bolt
             
             VkImageMemoryBarrier iBar{};
             iBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            iBar.image = textureData->GetTexID();
+            iBar.image = (VkImage)textureData->GetTexID();
             iBar.oldLayout = (textureData->Status == ImTextureStatus_WantCreate) ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             iBar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             iBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -469,10 +469,10 @@ namespace Bolt
             cpy.imageSubresource.layerCount = 1;
             cpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdCopyBufferToImage(m_oneTimeCommandBuffer, stagingBuffer, textureData->GetTexID(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cpy);
+            vkCmdCopyBufferToImage(m_oneTimeCommandBuffer, stagingBuffer, (VkImage)textureData->GetTexID(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cpy);
             
             iBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            iBar.image = textureData->GetTexID();
+            iBar.image = (VkImage)textureData->GetTexID();
             iBar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             iBar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             iBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -513,7 +513,7 @@ namespace Bolt
             for(size_t i = 0; i < m_descriptorInfo.getSize(); ++i)
             {
                 ImguiDescriptorSet& info = m_descriptorInfo[i];
-                if(info.texture.getHandle() == textureData->GetTexID())
+                if(info.texture.getHandle() == (VkImage)textureData->GetTexID())
                 {
                     VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
                     info.texture.destroy();
@@ -693,7 +693,7 @@ namespace Bolt
                     //TODO: Get rid of the loop
                     for(size_t i = 0; i < m_descriptorInfo.getSize(); ++i)
                     {
-                        if(m_descriptorInfo[i].texture.getHandle() == pcmd->GetTexID())
+                        if(m_descriptorInfo[i].texture.getHandle() == (VkImage)pcmd->GetTexID())
                         {
                             desc_set = m_descriptorInfo[i].set;
                         }

@@ -116,6 +116,7 @@ namespace Bolt {
     void ImageAttachment::buildAttachmentReference()
     {
         attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        attachmentReference.attachment = info.binding;
     }
     VulkanSwapchain* SwapchainAttachment::getSwapchain()
     {
@@ -161,6 +162,24 @@ namespace Bolt {
     {
         attachmentReference.attachment = info.binding;
         attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+
+    void DepthAttachment::buildAttachmentDescription()
+    {
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        attachmentDescription.format = VK_FORMAT_D32_SFLOAT;
+        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // We want to clear the depth buffer when loading
+        // We dont really want to store anything as it will not be used after drawing is finished. Revisit if this information should persist across passes
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+    }
+    void DepthAttachment::buildAttachmentReference()
+    {
+        attachmentReference.attachment = info.binding;
+        attachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
     VulkanRenderScene::VulkanRenderScene(Quaint::IMemoryContext* context)
@@ -211,10 +230,30 @@ namespace Bolt {
         constructSubpasses(scene);
 
         Quaint::QArray<VkSubpassDescription> subpassDescs(m_context);
-        for(auto& desc : m_subpassDesc)
+        Quaint::QArray<Quaint::QArray<VkAttachmentReference>> attachRefs(m_context);
+        for(auto& subpassDesc : m_subpassDesc)
         {
-            subpassDescs.pushBack(desc.description);
+            VkSubpassDescription desc{};
+
+            desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            desc.colorAttachmentCount = subpassDesc.colorAttachReferences.getSize();
+            desc.pColorAttachments = subpassDesc.colorAttachReferences.getBuffer();
+
+            desc.pDepthStencilAttachment = nullptr;
+            if(subpassDesc.hasDepthAttachment)
+            {
+                desc.pDepthStencilAttachment = &subpassDesc.depthAttachment;
+            }
+            //TODO: No other attachment types are supported for now
+            desc.inputAttachmentCount = 0;
+            desc.pInputAttachments = nullptr;
+            desc.preserveAttachmentCount = 0;
+            desc.pPreserveAttachments = nullptr;
+            desc.pResolveAttachments = nullptr;
+                
+            subpassDescs.pushBack(desc);
         }
+
 
         Quaint::QArray<VkAttachmentDescription> attachDescs(m_context);
         for(auto& attachment : m_attachments)
@@ -300,6 +339,13 @@ namespace Bolt {
             }
             break;
             case AttachmentDefinition::Type::Depth:
+            {
+                VulkanTexture texture = constructDepthTexture(def);
+                m_attachments.emplace(QUAINT_NEW(m_context, DepthAttachment, def, texture), Bolt::Deleter<Attachment>(m_context));
+                
+                VulkanRenderer::get()->transitionDepthImageLayout(*texture.getImageRef()); 
+            }
+            break;
             default:
                 assert(false && "Not yet supported");
             break;
@@ -336,6 +382,58 @@ namespace Bolt {
         return tex;
     }
 
+    VulkanTexture VulkanRenderScene::constructDepthTexture(const Bolt::AttachmentDefinition def)
+    {
+        //TODO: Have a flexible depth format
+        VkImageViewCreateInfo imageViewInfo{};
+        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewInfo.image = VK_NULL_HANDLE;
+        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewInfo.format = VK_FORMAT_D32_SFLOAT;
+        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
+        imageViewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        //subresource range selects mipmap levels and array layers to be accessible to the view
+        imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        imageViewInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewInfo.subresourceRange.layerCount = 1;
+        imageViewInfo.subresourceRange.baseMipLevel = 0;
+        imageViewInfo.subresourceRange.levelCount = 1;
+
+
+        uint32_t width = def.extents.x;
+        uint32_t height = def.extents.y;
+        if(def.extents.x == -1 || def.extents.y == -1)
+        {
+            VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+            VkExtent2D extent = swapchain->getSwapchainExtent();
+            width = extent.width;
+            height = extent.height;
+        }
+        else
+        {
+            width = (uint32_t)def.extents.x;
+            height = (uint32_t)def.extents.y;
+        }
+        
+        VulkanTextureBuilder builder(m_context);
+        VulkanTexture texture = builder.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        .setFormat(VK_FORMAT_D32_SFLOAT)
+        .setWidth(width)
+        .setHeight(height)
+        .setImageViewInfo(imageViewInfo)
+        .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setTiling(VK_IMAGE_TILING_OPTIMAL)
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
+        return texture;
+    }
+
     void VulkanRenderScene::constructSubpasses(const Bolt::RenderScene* scene)
     {
         const Quaint::QArray<Bolt::RenderStage>& stages = scene->getRenderStages();
@@ -351,11 +449,10 @@ namespace Bolt {
         for(size_t i = 0; i < stages.getSize(); ++i)
         {
             SubpassDescription desc{};
-            desc.references = Quaint::QArray<VkAttachmentReference>(m_context);
-            desc.description = {};
+            desc.colorAttachReferences = Quaint::QArray<VkAttachmentReference>(m_context);
             const Bolt::RenderStage& stage = stages[i];
-            desc.description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
+            bool hasDepthAttachment = false;
             for(size_t i = 0; i < stage.attachmentRefs.getSize(); ++i)
             {
                 Attachment* targetAttachment = nullptr;
@@ -367,26 +464,27 @@ namespace Bolt {
                 }
                 VkAttachmentReference ref{};
                 ref.attachment = sceneAttachRef->getInfo().binding;
+                ref = sceneAttachRef->getAttachmentReference();
                 if(sceneAttachRef->getInfo().type == AttachmentDefinition::Type::Depth)
                 {
-                    ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                    desc.hasDepthAttachment = true;
+                    desc.depthAttachment = ref;
+                    hasDepthAttachment = true;
+                    m_hasDepth |= hasDepthAttachment;
                 }
                 else
                 {
-                    ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    desc.colorAttachReferences.pushBack(ref);
                 }
-                desc.references.pushBack(ref);
+                // if(sceneAttachRef->getInfo().type == AttachmentDefinition::Type::Depth)
+                // {
+                //     ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                // }
+                // else
+                // {
+                //     ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                // }
             }
-            desc.description.colorAttachmentCount = desc.references.getSize();
-            desc.description.pColorAttachments = desc.references.getBuffer();
-
-            //TODO: No other attachment types are supported for now
-            desc.description.inputAttachmentCount = 0;
-            desc.description.pInputAttachments = nullptr;
-            desc.description.pDepthStencilAttachment = nullptr;
-            desc.description.preserveAttachmentCount = 0;
-            desc.description.pPreserveAttachments = nullptr;
-            desc.description.pResolveAttachments = nullptr;
             m_subpassDesc.pushBack(std::move(desc));
             
             VkSubpassDependency dep{};
@@ -397,6 +495,7 @@ namespace Bolt {
             dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             dep.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
             dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
             // Result of previous stage is visible to the next stage
             
             if(stage.index == stages.getSize() - 1)
@@ -425,10 +524,31 @@ namespace Bolt {
                 dep.dstSubpass = stage.index + 1; // Dependency with the next subpass
                 //Dst will have shader read access
             }
+            if(hasDepthAttachment)
+            {
+                //Make load operation available to perform any additional writes in VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                dep.srcStageMask |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                dep.srcAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+                //Make writes visible in VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                dep.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+                dep.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            }
+
             m_subpassDependencies.pushBack(dep);
         }
     }
+    
     Attachment* VulkanRenderScene::getAttachment(const Quaint::QName& name)
+    {
+        return getAttachment_internal(name);
+    }
+    const Attachment* const VulkanRenderScene::getAttachment(const Quaint::QName& name) const
+    {
+        return getAttachment_internal(name);
+    }
+
+    Attachment* VulkanRenderScene::getAttachment_internal(const Quaint::QName& name) const
     {
         for(auto& attachment : m_attachments)
         {
@@ -477,7 +597,8 @@ namespace Bolt {
         {
             if(attachment->getInfo().clearImage)
             {
-                if(attachment->getInfo().type == AttachmentDefinition::Type::Swapchain || attachment->getInfo().type == AttachmentDefinition::Type::Image)
+                if(attachment->getInfo().type == AttachmentDefinition::Type::Swapchain 
+                || attachment->getInfo().type == AttachmentDefinition::Type::Image)
                 {
                     VkClearValue val{};
                     val.color = {{attachment->getInfo().clearColor.x, 
@@ -486,7 +607,13 @@ namespace Bolt {
                                 attachment->getInfo().clearColor.w}};
                     clearValues.pushBack(val);
                 }
-                else
+                else if(attachment->getInfo().type == AttachmentDefinition::Type::Depth)
+                {
+                    VkClearValue val{};
+                    val.depthStencil = {1.0f, 0};
+                    clearValues.pushBack(val);
+                }
+                else 
                 {
                     clearValues.pushBack({});
                 }

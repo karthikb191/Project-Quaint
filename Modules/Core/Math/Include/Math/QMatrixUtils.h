@@ -22,13 +22,17 @@ namespace Quaint
         float negDepth = (nearClip - farClip);
 
         res.col0.x = (2 * nearClip) / width; 
-        res.col2.x = (r + l) / width;
+        res.col2.x = (r + l) / width;   // 0 if canvas is centered. Right now, it should always be 0
 
         res.col1.y = (2 * nearClip) / height;
-        res.col2.y = (t + b) / height;
+        res.col2.y = (t + b) / height; // 0 if canvas is centered. Right now it should always be 0
 
-        res.col2.z = (nearClip + farClip) / (negDepth);
-        res.col3.z = 2 * (nearClip * farClip) / (negDepth);
+        //WARNING: THis is mapping Z in range [-1 1]. This would probably mess with depth mapping
+        res.col2.z = (farClip) / (negDepth);
+        //res.col2.z = (nearClip + farClip) / (negDepth);
+        res.col3.z = (nearClip * farClip) / (negDepth);
+        //res.col3.z = 2 * (nearClip * farClip) / (negDepth);
+        //res.col3.z = res.col3.z + 1 * 0.5f;
 
         res.col2.w = -1;
         res.col3.w = 0;

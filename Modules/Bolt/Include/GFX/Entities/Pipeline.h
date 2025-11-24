@@ -51,6 +51,7 @@ namespace Bolt
         void cullBack() { m_cullBack = true; }
         void cullFront() { m_cullFront = true; }
         void enableBlend() { m_blendEnabled = true; }
+        void enableDepth() { m_depthEnabled = true; }
         
         template<typename T>
         T* GetPipelineImplAs(){ return static_cast<T*>(m_pipelineImpl.get()); }
@@ -76,6 +77,7 @@ namespace Bolt
         bool                m_cullBack = false;
         bool                m_cullFront = false;
         bool                m_blendEnabled = false;
+        bool                m_depthEnabled = false;
 
         //GPUDataDispatcher   m_dataDispatcher;
     };

@@ -1771,6 +1771,47 @@ namespace Bolt
         endOneTimeCommands(device, cpyCmd, pool, queue);
     }
 
+    void VulkanRenderer::transitionDepthImageLayout(VkImage image)
+    {
+        VkCommandBuffer transitionBuffer = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        // srcStage specifies the operations in pipeline stage that should happen before the barrier.
+        // dstStage specifies the operations in pipeline stage that should wait on the barrier.
+        // Pipeline stages that you are allowed to specify before and after the barrier depends on barrier's AccessMasks
+        VkPipelineStageFlags srcStage;
+        VkPipelineStageFlags dstStage;
+
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;;
+        
+        srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+        vkCmdPipelineBarrier(
+        transitionBuffer,
+        srcStage, dstStage,     // src and dst pipeline stage masks
+        0,                      // Dependency flags
+        0, nullptr,             // Memory Barriers
+        0, nullptr,             // Buffer Barriers
+        1, &barrier             // Image Barriers
+        );   
+
+        endOneTimeCommands(m_device, transitionBuffer, m_graphicsCommandPool, m_graphicsQueue);
+    }
+
     void transitionImageLayout(const VkDevice device, const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
     const VkCommandPool cmdPool, const VkQueue queue)
     {

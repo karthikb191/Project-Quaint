@@ -31,6 +31,10 @@ namespace Bolt
         {
             builder.enableBlend();
         }
+        if(m_depthEnabled)
+        {
+            builder.enableDepth();
+        }
 
         m_pipelineImpl = std::move(builder.build());
     }
