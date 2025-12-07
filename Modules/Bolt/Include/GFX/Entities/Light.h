@@ -42,8 +42,8 @@ namespace Bolt
         
         virtual const void* getData() const { return (const void*)(&m_data);};
         virtual uint16_t getDataSize() const { return sizeof(GlobalLightData); };
-        const float* getColor() const { return m_data.color; }
-        const float* getDirection() const { return m_data.direction; }
+        const Quaint::QVec4 getColor() const { return Quaint::QVec4(m_data.color[0], m_data.color[1], m_data.color[2], m_data.color[3]); }
+        const Quaint::QVec3 getDirection() const { return Quaint::QVec3(m_data.direction[0], m_data.direction[1], m_data.direction[2]); }
         
         virtual void writeImgui();
 

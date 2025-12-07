@@ -2551,6 +2551,23 @@ namespace Bolt
             VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
             auto& stages = scene->getRenderStages();
 
+            //TODO: selectively fetch painters compatible with scene and stage
+            for(auto& painter : painters)
+            {
+                if(!painter->isCompatibleWithScene(scene->getName()))
+                {
+                    continue;
+                }
+                painter->preRender(scene.get());
+            }            
+
+            if(!vulkanScene->begin())
+            {
+                return;
+            }
+            Quaint::QName boundPipeline = "";
+
+            int currentStage = 0;
             for(auto& stage : stages)
             {
                 //TODO: selectively fetch painters compatible with scene and stage
@@ -2560,21 +2577,9 @@ namespace Bolt
                     {
                         continue;
                     }
-                    painter->preRender(scene.get(), stage.index);
-                }
-            }
-
-            if(!vulkanScene->begin())
-            {
-                return;
-            }
-            Quaint::QName boundPipeline = "";
-            for(auto& stage : stages)
-            {
-                //TODO: selectively fetch painters compatible with scene and stage
-                for(auto& painter : painters)
-                {
-                    if(!painter->isCompatibleWithScene(scene->getName()))
+                    // This painter should not be run at this stage.
+                    uint32_t compatibleStage = painter->getPipeline()->getStageIdx(); 
+                    if(compatibleStage != stage.index)
                     {
                         continue;
                     }
@@ -2595,6 +2600,7 @@ namespace Bolt
                     painter->render(scene.get());
                     painter->postRender(); //TODO: Move this out
                 }
+                vulkanScene->finishSubpass();
             }
 
             vulkanScene->end(m_graphicsQueue);

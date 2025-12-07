@@ -39,6 +39,133 @@ namespace Bolt
         return false;
     }
 
+    ShadowPainter::ShadowPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
+    : Painter(context, pipeline)
+    , m_geoInfo(context)
+    {
+        m_lightProjection = Quaint::buildProjectionMatrix(0.1f, 100, 90, 1);
+    }
+
+    void ShadowPainter::preRender(RenderScene* scene)
+    {
+        //TODO: Everything is hardcoded here for now. Populate thes from light structure
+        
+        const GlobalLight& light = scene->getGlobalLight();
+        Quaint::QVec3 direction = light.getDirection();
+        Quaint::QVec4 location = direction * -20.f;
+        QMat3x3 modelMatrix = Quaint::lookAt(Quaint::QVec4(0, 0, 0, 1), location, Quaint::QVec3(0, 1, 0));
+        
+        Quaint::UniformBufferObject mvp{};
+
+        //VIEW MATRIX
+        //Negate translation and tranpose rotation matrix
+        Quaint::QMat3x3 invRotation = Quaint::transpose_mf(modelMatrix);
+        //Quaint::QVec4 invTranslation = m_transform.col3 * -1.0f;
+        Quaint::QVec4 invTranslation;
+        invTranslation.x = -Quaint::dot_vf(modelMatrix.col0, location);
+        invTranslation.y = -Quaint::dot_vf(modelMatrix.col1, location);
+        invTranslation.z = -Quaint::dot_vf(modelMatrix.col2, location);
+        invTranslation.w = 1.0f;
+
+        mvp.view = Quaint::makeTransform(invTranslation, invRotation);
+
+        //PROJECTION MATRIX
+        mvp.proj = m_lightProjection;
+        for(size_t i = 0; i < m_geoInfo.getSize(); ++i)
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            VulkanBufferObjectResource* uniformBuffer = (VulkanBufferObjectResource*)m_geoInfo[i].uniformBuffer.get();
+            
+            void** region = uniformBuffer->getMappedRegion();
+            
+            mvp.model = m_geoInfo[i].model->getTransform();
+            memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
+        }
+    }
+    void ShadowPainter::render(RenderScene* scene)
+    {
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        for(auto& info : m_geoInfo)
+        {
+            //TODO: Should probably bind descriptor sets for each mesh in the model
+
+	        // Maybe it's better if this is moved to object that's rendering
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS
+                , pipeline->getPipelineLayout(), 0, 1, &info.set, 0, nullptr);
+
+            //TODO: Should probably draw commands for individual meshes as they could have different materials
+            info.model->draw(scene);
+        }
+    }
+
+    void ShadowPainter::postRender()
+    {
+
+    }
+    void ShadowPainter::AddModel(Model* model)
+    {
+        //TODO: It's best if model's update function updates the actual buffer data before rendering starts
+
+        //m_models.pushBack(model);
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        // Create a buffer and map it
+        const uint32_t size = sizeof(Bolt::UniformBufferObject);
+        BufferResourceBuilder builder(m_context);
+        TBufferImplPtr bufferPtr = std::move(builder.setBufferType(EBufferType::UNIFORM)
+        .setDataSize(size)
+        .setDataOffset(0)
+        .build());
+
+        VulkanBufferObjectResource* mvpResource = static_cast<VulkanBufferObjectResource*>(bufferPtr.get());
+        mvpResource->map();
+
+        //TODO: This might need to be setup per-material. For now, this should work
+        const uint32_t materialDataSize = sizeof(Bolt::SimpleMaterialData);
+        TBufferImplPtr materialPtr = std::move(
+            builder.setBufferType(EBufferType::UNIFORM)
+            .setDataSize(materialDataSize)
+            .setDataOffset(0)
+            .build()
+        );
+        VulkanBufferObjectResource* materialResource = static_cast<VulkanBufferObjectResource*>(materialPtr.get());
+        materialResource->map();
+
+        // Creates descriptor set
+        VkDescriptorSetLayout layouts[] = {pipeline->getDescriptorSetLayout()};
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = pipeline->getDescriptorPool();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = layouts;
+        
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &set);
+        ASSERT_SUCCESS(res, "Failed to allocate desctiptor sets");
+        m_geoInfo.pushBack({model, set, std::move(bufferPtr)});
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = mvpResource->getBufferhandle();
+        bufferInfo.offset = 0;
+        bufferInfo.range = mvpResource->getBufferInfo().size;
+        VkWriteDescriptorSet mvpWrite{};
+        mvpWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        mvpWrite.descriptorCount = 1;
+        mvpWrite.dstSet = set;
+        mvpWrite.dstBinding = 0;
+        mvpWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        mvpWrite.pBufferInfo = &bufferInfo;
+
+        VkWriteDescriptorSet writes[] = {mvpWrite};
+        const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
+        vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
+    }
+
+
     GeometryPainter::GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
     : Painter(context, pipeline)
     , m_geoInfo(context)
@@ -71,9 +198,26 @@ namespace Bolt
 
         VulkanBufferObjectResource* lightBufferResource = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
         lightBufferResource->map();
+
+
+        //ShadowMap ref binding
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VkSamplerCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        info.magFilter = VK_FILTER_LINEAR;
+        info.minFilter = VK_FILTER_LINEAR;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.minLod = -1000;
+        info.maxLod = 1000;
+        info.maxAnisotropy = 1.0f;
+        VkResult res = vkCreateSampler(device, &info, VulkanRenderer::get()->getAllocationCallbacks(), &m_sampler);
+        ASSERT_SUCCESS(res, "[IMGUI]: Failed to create sampler");
     }
 
-    void GeometryPainter::preRender(RenderScene* scene, uint32_t stage)
+    void GeometryPainter::preRender(RenderScene* scene)
     {
         for(auto& info : m_geoInfo)
         {
@@ -156,6 +300,27 @@ namespace Bolt
         
         VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
+        //TODO: Transition depth texture to SHADE_READ_ONLY_OPTIMAL
+        VkImageMemoryBarrier barr{};
+        barr.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barr.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        barr.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkImageSubresourceRange range{};
+        range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        range.layerCount = 1;
+        range.baseArrayLayer = 0;
+        range.levelCount = 1;
+        range.baseMipLevel = 0;
+        barr.subresourceRange = range;
+        barr.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        barr.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        barr.image = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getHandle();
+
+        vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            , 0
+            , 0, nullptr
+            , 0, nullptr
+            , 1, &barr);
 
         //TODO: Update lights descriptor here
 
@@ -262,8 +427,22 @@ namespace Bolt
         materialWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         materialWrite.pBufferInfo = &materialBufferInfo;
 
+        //Shadow map attachment
+        RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkDescriptorImageInfo desc_image[1] = {};
+        desc_image[0].sampler = m_sampler;
+        desc_image[0].imageView = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getImageView();
+        desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet shadowMapWrite = {};
+        shadowMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        shadowMapWrite.dstSet = set;
+        shadowMapWrite.descriptorCount = 1;
+        shadowMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        shadowMapWrite.pImageInfo = desc_image;
+        shadowMapWrite.dstBinding = 3;
 
-        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite, materialWrite};
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite, materialWrite, shadowMapWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
     }
@@ -722,7 +901,7 @@ namespace Bolt
         vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
     }
     
-    void ImguiPainter::preRender(RenderScene* scene, uint32_t stage)
+    void ImguiPainter::preRender(RenderScene* scene)
     {
 
     }

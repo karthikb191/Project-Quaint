@@ -41,6 +41,8 @@ layout(binding = 2) uniform MaterialUniform
     Material data;
 }material;
 
+layout(binding = 3) uniform sampler2D shadowMap;
+
 //layout(binding = 1) uniform sampler2D texSampler;
 
 void main()
@@ -68,6 +70,8 @@ void main()
     vec4 finalColor = vec4((ambient + specular + diffuse), 1.0f);
     outColor = finalColor;
     
+    //float depth = texture(shadowMap, fragTexCoord.xy).r;
+    //outColor = vec4(depth, depth, depth, 1);
 
     //float dot = dot(reflectDir, inNormal.xyz);
     //outColor = vec4(dot, dot, dot, 1.0f);

@@ -22,7 +22,7 @@ namespace Bolt
         //TODO: There should be a destroy function
 
 
-        virtual void preRender(RenderScene* scene, uint32_t stage) = 0;
+        virtual void preRender(RenderScene* scene) = 0;
         virtual void postRender() = 0;
         virtual void render(RenderScene* scene) = 0;
 
@@ -34,6 +34,30 @@ namespace Bolt
         Quaint::IMemoryContext* m_context = nullptr;
         Quaint::QName m_pipelineName = "";
         Pipeline*   m_pipeline = nullptr;
+    };
+
+    // Lot of similarities with Geometry painter. Combine these somehow
+    class ShadowPainter : public Painter
+    {
+    public:
+        struct GeometryShaderInfo
+        {
+            Model* model;
+            VkDescriptorSet set;
+            TBufferImplPtr uniformBuffer;
+        };
+
+        ShadowPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual void render(RenderScene* scene) override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void postRender() override;
+
+        void AddModel(Model* model);
+        
+    private:
+        //TODO: have reference to lights here
+        Quaint::QArray<GeometryShaderInfo> m_geoInfo;
+        Quaint::QMat4x4 m_lightProjection;
     };
 
     /* Geometry pipeline doesn't own models. Calling code should ensure the model is not destroyed as it's being used by the pipeline*/
@@ -50,7 +74,7 @@ namespace Bolt
 
         GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
-        virtual void preRender(RenderScene* scene, uint32_t stage) override;
+        virtual void preRender(RenderScene* scene) override;
         virtual void postRender() override;
 
         void AddModel(Model* model);
@@ -60,6 +84,7 @@ namespace Bolt
         //Quaint::QArray<Model*> m_models = nullptr;
         Quaint::QArray<GeometryShaderInfo> m_geoInfo;
         TBufferImplPtr m_lightsbuffer;
+        VkSampler m_sampler;
     };
 
     class ImguiPainter : public Painter
@@ -80,7 +105,7 @@ namespace Bolt
     public:
         ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
-        virtual void preRender(RenderScene* scene, uint32_t stage) override;
+        virtual void preRender(RenderScene* scene) override;
         virtual void postRender() override;
 
     private:

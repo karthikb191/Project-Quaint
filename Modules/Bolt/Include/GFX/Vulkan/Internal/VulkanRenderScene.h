@@ -109,6 +109,7 @@ namespace Bolt {
         virtual void destroy();
     
         virtual bool begin();
+        virtual void finishSubpass();
         virtual SceneParams end(VkQueue queue);
         virtual void submit(VkQueue queue);
 
@@ -147,6 +148,7 @@ namespace Bolt {
         VkExtent2D                                                  m_renderExtent = {512, 512};
         VkOffset2D                                                  m_renderOffset = {0, 0};
         bool                                                        m_hasDepth = false;
+        uint32_t                                                    m_currentSubpass = 0;
     };
 
     struct MVP

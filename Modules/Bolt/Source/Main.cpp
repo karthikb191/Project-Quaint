@@ -127,10 +127,12 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
     , Bolt::GeometryPainter* geoPainter
     , Quaint::QArray<Bolt::ModelRef>& modelHolder
     , const Quaint::QVec4& translation
-    , const float scale)
+    , const float scale
+    , const Quaint::QName& name = "")
 {
     Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context);
     Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
+    model->setName(name);
 
     Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::SimpleMaterial>(context);
     simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
@@ -295,30 +297,40 @@ int main()
 
     depthDef.storePrevious = false;
 
-    Quaint::QArray<Bolt::RenderStage> stages(context);
-    Bolt::RenderStage stage;
-    stage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    stage.index = 0;
-
     /* Attachment references in each sub-pass */
     Bolt::RenderStage::AttachmentRef swapchainRef{};
     swapchainRef.binding = 0;
     swapchainRef.attachmentName = "swapchain";
-    stage.attachmentRefs.pushBack(swapchainRef);
-    
+
     Bolt::RenderStage::AttachmentRef depthRef{};
     depthRef.binding = 1;
     depthRef.attachmentName = "depthBuffer";
-    stage.attachmentRefs.pushBack(depthRef);
 
-    stage.dependentStage = ~0;
-    stages.pushBack(stage);
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::RenderStage shadowStage;
+    shadowStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    shadowStage.index = 0;
+    shadowStage.dependentStage = ~0;
+    // TODO: This currently uses a global depth buffer to store shadow from a single light. Modify this to use proper shadow maps coming from lights
+    //shadowStage.attachmentRefs.pushBack(swapchainRef);
+    shadowStage.attachmentRefs.pushBack(depthRef);
+    stages.pushBack(shadowStage);
+
+    Bolt::RenderStage geoStage;
+    geoStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    geoStage.index = 1;
+
+    geoStage.attachmentRefs.pushBack(swapchainRef);
+    //geoStage.attachmentRefs.pushBack(depthRef);
+
+    geoStage.dependentStage = 0;
+    stages.pushBack(geoStage);
 
     //new stage for IMGUI that doesn't need depth buffer
     Bolt::RenderStage imguiStage;
     imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    imguiStage.index = 1;
-    imguiStage.dependentStage = 0;
+    imguiStage.index = 2;
+    imguiStage.dependentStage = 1;
     imguiStage.attachmentRefs.pushBack(swapchainRef);
     stages.pushBack(imguiStage);
 
@@ -347,12 +359,44 @@ int main()
 
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 
+    uint8_t shadowStadeIdx = 0;
+    uint32_t geoStageIdx = 1;
+    uint8_t imguiStageIdx = 2;
+
+    //Create a pipeline for capturing depth texture for lights
+
     // Pipeline creation
     Bolt::ShaderDefinition shaderDef{};
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
     shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
     shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+    // Shadow casting pipeline
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes);
+    
+    shaderDef.shaders.pushBack({"shadwoCast.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\shadowCast.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"shadwoCast.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\shadowCast.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    
+    Bolt::Pipeline* shadowPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("ShadowPipeline"), Quaint::QName("graphics"), shadowStadeIdx, shaderDef);
+    shadowPipeline->cullBack();
+    shadowPipeline->enableDepth();
+    shadowPipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(shadowPipeline);
+
+
+    // Graphics pipeline
+    shaderDef.shaders.clear();
+    shaderDef.uniforms.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.attributeSets.clear();
 
     shaderDef.shaders.pushBack({"simpleTri.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
         , "main", Bolt::EShaderStage::VERTEX});
@@ -364,8 +408,9 @@ int main()
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
-    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+    attributes.clear();
 
     attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
     attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
@@ -375,9 +420,9 @@ int main()
     shaderDef.attributeSets.pushBack(attributes);
 
     /*Creates pipeline and generate a graphic API specific object*/
-    Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), 0, shaderDef);
+    Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), geoStageIdx, shaderDef);
     pipeline->cullBack();
-    pipeline->enableDepth();
+    //pipeline->enableDepth();
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
@@ -408,7 +453,6 @@ int main()
 
     //IMGUI pipeline uses the same stage and subpass
     //TODO: Probably best to use a new renderpass with no depth support for IMGUI
-    uint32_t imguiStageIdx = 1;
     Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), imguiStageIdx, shaderDef);
     imguiPipleline->enableBlend();
     imguiPipleline->addDynamicStage("viewport");
@@ -416,6 +460,8 @@ int main()
     imguiPipleline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(imguiPipleline);
 
+    //Shadow painter for capturing shadow maps
+    Bolt::ShadowPainter* shadowPainter = QUAINT_NEW(context, Bolt::ShadowPainter, context, Quaint::QName("ShadowPipeline"));
 
     //Creating a painter for a specific pipeline and adding model to it
     Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
@@ -440,6 +486,7 @@ int main()
         Bolt::Model* modelPtr = QUAINT_NEW(context, Bolt::Model, context, std::move(meshRef));
         Bolt::ModelRef model(modelPtr, Bolt::Deleter<Bolt::Model>(context));
         model->construct();
+        
         geoPainter->AddModel(model.get());
         modelHolder.pushBack(std::move(model));
     };
@@ -480,19 +527,24 @@ int main()
         
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-        , Quaint::QVec4(200, 0, 0, 1), 200);
+        , Quaint::QVec4(2, 0, 0, 1), 1, "cube1");
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-    , Quaint::QVec4(-200, 0, 0, 1), 200);
+    , Quaint::QVec4(-2, 0, 0, 1), 1, "cube2");
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-    , Quaint::QVec4(-200, 0, 0, 1), 200);
+    , Quaint::QVec4(-2, 0, 0, 1), 1, "cube3");
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-    , Quaint::QVec4(-200, 100, -100, 1), 200);
+    , Quaint::QVec4(-2, -3, -3, 1), 1, "cube4");
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-    , Quaint::QVec4(-200, 100, 100, 1), 200);
+    , Quaint::QVec4(-2, 3, 3, 1), 1, "cube5");
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
-    , Quaint::QVec4(-200, 50, -200, 1), 200);
+    , Quaint::QVec4(-2, 5, -5, 1), 1, "cube6");
+
+    for(auto& model : modelHolder)
+    {
+        shadowPainter->AddModel(model.get());
+    }
 
 
     attrib.vertices.clear();
@@ -501,8 +553,11 @@ int main()
     shapes.clear();
     materials.clear();
 
+
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(shadowPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);
+
 
     //TODO: Loop through application module 
     //TODO: Move this to Application Module

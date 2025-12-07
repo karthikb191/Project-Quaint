@@ -107,7 +107,8 @@ namespace Bolt
 
         Quaint::QArray<MeshRef>& getMeshes() { return m_meshes; }
         Quaint::QArray<MaterialRef>& getMaterials() { return m_materials; }
-
+        
+        void setName(const Quaint::QName& name){ m_name = name; }
         const Quaint::QName& getName() const { return m_name; }
 
         void setTranslation(const Quaint::QVec4& translation);

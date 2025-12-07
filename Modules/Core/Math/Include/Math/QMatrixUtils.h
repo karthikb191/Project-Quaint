@@ -8,6 +8,15 @@
 
 namespace Quaint
 {
+    inline QMat4x4 buildOrthographicProjectionMatrix(float nearClip, float farClip, float size)
+    {
+        QMat4x4 res = QMat4x4::Identity();
+
+        //TODO: 
+
+        return res;
+    }
+
     inline QMat4x4 buildProjectionMatrix(float nearClip, float farClip, float fov, float aspectRatio)
     {
         //Vulkan's positive Y is downwards
@@ -28,10 +37,10 @@ namespace Quaint
         res.col2.y = (t + b) / height; // 0 if canvas is centered. Right now it should always be 0
 
         //WARNING: THis is mapping Z in range [-1 1]. This would probably mess with depth mapping
-        res.col2.z = (farClip) / (negDepth);
-        //res.col2.z = (nearClip + farClip) / (negDepth);
-        res.col3.z = (nearClip * farClip) / (negDepth);
-        //res.col3.z = 2 * (nearClip * farClip) / (negDepth);
+        //res.col2.z = (farClip) / (negDepth);
+        res.col2.z = (nearClip + farClip) / (negDepth);
+        //res.col3.z = (nearClip * farClip) / (negDepth);
+        res.col3.z = 2 * (nearClip * farClip) / (negDepth);
         //res.col3.z = res.col3.z + 1 * 0.5f;
 
         res.col2.w = -1;

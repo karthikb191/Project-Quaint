@@ -171,7 +171,8 @@ namespace Bolt {
         attachmentDescription.format = VK_FORMAT_D32_SFLOAT;
         attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // We want to clear the depth buffer when loading
         // We dont really want to store anything as it will not be used after drawing is finished. Revisit if this information should persist across passes
-        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
         attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -211,6 +212,11 @@ namespace Bolt {
                 }
                 break;
                 case AttachmentDefinition::Type::Depth:
+                {
+                    DepthAttachment* atch = attachment->As<DepthAttachment>();
+                    atch->texture.destroy();
+                    attachment.release();
+                }
                 default:
                     //Do nothing for now
                     assert(false && "unsupported attachment");
@@ -419,7 +425,7 @@ namespace Bolt {
         }
         
         VulkanTextureBuilder builder(m_context);
-        VulkanTexture texture = builder.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        VulkanTexture texture = builder.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
         .setFormat(VK_FORMAT_D32_SFLOAT)
         .setWidth(width)
         .setHeight(height)
@@ -491,7 +497,7 @@ namespace Bolt {
 
             //This is the only stage we care about for now
             dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-            dep.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            dep.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             dep.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
             dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -503,7 +509,15 @@ namespace Bolt {
                 //Final subpass
                 // Allow read/write access for any blending operations. After this, we only have read access
                 dep.srcSubpass = stage.index;
-                dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+                if(stage.dependentStage != ~0)
+                {
+                    dep.srcSubpass = stage.dependentStage;
+                    dep.dstSubpass = stage.index;
+                }
+                else
+                {
+                    dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+                }
                 dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                 dep.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
                 dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -511,17 +525,17 @@ namespace Bolt {
             }
             else 
             {
-                assert(stage.dependentStage > stage.index && "Invalid dependency. Later stages can only depend on stages that came before it");
                 if(stage.dependentStage != ~0)
                 {
+                    assert(stage.dependentStage < stage.index && "Invalid dependency. Later stages can only depend on stages that came before it");
                     dep.srcSubpass = stage.dependentStage;
+                    dep.dstSubpass = stage.index;
                 }
                 else
                 {
                     dep.srcSubpass = stage.index;
+                    dep.dstSubpass = stage.index; //Self dependency to be able to set barriers
                 }
-                
-                dep.dstSubpass = stage.index + 1; // Dependency with the next subpass
                 //Dst will have shader read access
             }
             if(hasDepthAttachment)
@@ -629,9 +643,23 @@ namespace Bolt {
         rpInfo.pNext = nullptr;
 
         vkCmdBeginRenderPass(m_sceneParams.commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+        m_currentSubpass = 1;
 
         return true;
     }
+    
+    void VulkanRenderScene::finishSubpass()
+    {
+        if(m_currentSubpass < m_subpassDesc.getSize())
+        {
+            ++m_currentSubpass;
+        
+            //TODO: No secondary command buffers are supported right now
+            vkCmdNextSubpass( m_sceneParams.commandBuffer,
+            VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
+        }
+    }
+
     VulkanRenderScene::SceneParams VulkanRenderScene::end(VkQueue queue)
     {
         vkCmdEndRenderPass(m_sceneParams.commandBuffer);
