@@ -190,7 +190,7 @@ namespace Bolt
         //memcpy(m_indices.getBuffer_NonConst() + indexDataOffset, indices, numIndices * 4);
         
         Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
-            ,  numVerts, vertDataOffset, numIndices, indexDataOffset);
+            ,  m_vertices.getSize(), vertDataOffset, numIndices, indexDataOffset);
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
 
@@ -234,7 +234,7 @@ namespace Bolt
         sprintf_s(name, "Model: %s", m_name.getBuffer());
         if (ImGui::CollapsingHeader(name))
         {
-            for(int i = 0; i < m_materials.getSize(); ++i)
+            for(size_t i = 0; i < m_materials.getSize(); ++i)
             {
                 if(ImGui::TreeNode("Material: ", "%d", i))
                 {
@@ -243,5 +243,49 @@ namespace Bolt
                 }
             }
         }
+    }
+    
+    FloorModel::FloorModel(Quaint::IMemoryContext* context, float scale, const Quaint::QName& name)
+    : Model(context, name)
+    {
+        //Floor is centered at 0;
+        Quaint::QVertex vertex;
+
+        vertex.position = {-0.5, 0.0, 0.5, 1};
+        vertex.position *= scale;
+        vertex.normal = {0, 1, 0, 0};
+        vertex.texCoord = {0, 0, 0, 0};
+        m_vertices.pushBack(vertex);
+
+        vertex.position = {0.5, 0.0, 0.5, 1};
+        vertex.position *= scale;
+        vertex.normal = {0, 1, 0, 0};
+        vertex.texCoord = {0, 0, 0, 0};
+        m_vertices.pushBack(vertex);
+
+        vertex.position = {0.5, 0.0, -0.5, 1};
+        vertex.position *= scale;
+        vertex.normal = {0, 1, 0, 0};
+        vertex.texCoord = {0, 0, 0, 0};
+        m_vertices.pushBack(vertex);
+
+        vertex.position = {-0.5, 0.0, -0.5, 1};
+        vertex.position *= scale;
+        vertex.normal = {0, 1, 0, 0};
+        vertex.texCoord = {0, 0, 0, 0};
+        m_vertices.pushBack(vertex);
+        
+        m_indices.pushBack(0);
+        m_indices.pushBack(1);
+        m_indices.pushBack(2);
+        
+        m_indices.pushBack(0);
+        m_indices.pushBack(2);
+        m_indices.pushBack(3);
+
+        Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
+            ,  4, 0, m_indices.getSize(), 0);
+        Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
+        m_meshes.pushBack(std::move(meshRef));
     }
 }

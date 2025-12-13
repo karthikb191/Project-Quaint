@@ -2598,12 +2598,23 @@ namespace Bolt
                     }
                     
                     painter->render(scene.get());
-                    painter->postRender(); //TODO: Move this out
                 }
                 vulkanScene->finishSubpass();
             }
 
             vulkanScene->end(m_graphicsQueue);
+            
+            for(auto& painter : painters)
+            {
+                if(!painter->isCompatibleWithScene(scene->getName()))
+                {
+                    continue;
+                }
+                painter->postRender(scene.get());
+            }
+
+            vulkanScene->submit(m_graphicsQueue);
+
             auto& params = vulkanScene->getSceneParams();
             semaphoresToWaitOn.pushBack(params.renderFinishedSemaphore);
             m_sceneFences.pushBack(params.renderFence);

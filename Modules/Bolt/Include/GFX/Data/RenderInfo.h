@@ -93,7 +93,7 @@ namespace Bolt
 
     struct AttachmentDefinition
     {
-        enum class Type { Image, Depth, Swapchain };
+        enum class Type { Image, Depth, Swapchain, ShadowMap };
 
         Quaint::QName name = "";
         uint32_t binding = 0;

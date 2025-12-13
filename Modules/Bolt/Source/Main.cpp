@@ -316,12 +316,18 @@ int main()
     shadowStage.attachmentRefs.pushBack(depthRef);
     stages.pushBack(shadowStage);
 
+    
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("scene_lightmap", info, stages.getSize(), stages.getBuffer());
+
+
+    stages.clear();
+
     Bolt::RenderStage geoStage;
     geoStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    geoStage.index = 1;
+    geoStage.index = 0;
 
     geoStage.attachmentRefs.pushBack(swapchainRef);
-    //geoStage.attachmentRefs.pushBack(depthRef);
+    geoStage.attachmentRefs.pushBack(depthRef);
 
     geoStage.dependentStage = 0;
     stages.pushBack(geoStage);
@@ -329,8 +335,9 @@ int main()
     //new stage for IMGUI that doesn't need depth buffer
     Bolt::RenderStage imguiStage;
     imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    imguiStage.index = 2;
-    imguiStage.dependentStage = 1;
+    imguiStage.index = 1;
+    imguiStage.dependentStage = 0;
+
     imguiStage.attachmentRefs.pushBack(swapchainRef);
     stages.pushBack(imguiStage);
 
@@ -360,8 +367,9 @@ int main()
     //TODO: Add render scene to vulkan renderer through bolt renderer and issue construction
 
     uint8_t shadowStadeIdx = 0;
-    uint32_t geoStageIdx = 1;
-    uint8_t imguiStageIdx = 2;
+
+    uint32_t geoStageIdx = 0;
+    uint8_t imguiStageIdx = 1;
 
     //Create a pipeline for capturing depth texture for lights
 
@@ -385,7 +393,7 @@ int main()
 
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
     
-    Bolt::Pipeline* shadowPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("ShadowPipeline"), Quaint::QName("graphics"), shadowStadeIdx, shaderDef);
+    Bolt::Pipeline* shadowPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("ShadowPipeline"), Quaint::QName("scene_lightmap"), shadowStadeIdx, shaderDef);
     shadowPipeline->cullBack();
     shadowPipeline->enableDepth();
     shadowPipeline->construct();
@@ -422,7 +430,7 @@ int main()
     /*Creates pipeline and generate a graphic API specific object*/
     Bolt::Pipeline* pipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPipeline"), Quaint::QName("graphics"), geoStageIdx, shaderDef);
     pipeline->cullBack();
-    //pipeline->enableDepth();
+    pipeline->enableDepth();
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
@@ -541,6 +549,14 @@ int main()
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
     , Quaint::QVec4(-2, 5, -5, 1), 1, "cube6");
 
+    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
+    Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
+    floorModel->setTranslation({0, -1, 0, 1});
+    floorModel->construct();
+
+    shadowPainter->AddModel(floorModel.get());
+    geoPainter->AddModel(floorModel.get());
+
     for(auto& model : modelHolder)
     {
         shadowPainter->AddModel(model.get());
@@ -593,6 +609,12 @@ int main()
     {
         modelHolder[i]->destroy();
         modelHolder[i].release();
+    }
+
+    if(floorModel.get())
+    {
+        floorModel->destroy();
+        floorModel.release();
     }
 
     //TODO: VERY BAD. Convert to RAII

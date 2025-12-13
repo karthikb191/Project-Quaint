@@ -71,6 +71,20 @@ namespace Bolt {
 
         VulkanTexture texture;
     };
+
+    //This holds a reference to the depth map. This is then converted to shader input format
+    struct ShadowMapAttachment : public Attachment
+    {
+        ShadowMapAttachment(const Bolt::AttachmentDefinition& info, VulkanTexture tex)
+        : Attachment(info)
+        , texture(tex)
+        {}
+
+        virtual void buildAttachmentReference() override;
+        virtual void buildAttachmentDescription() override;
+
+        VulkanTexture texture;
+    };
     struct SwapchainAttachment : public Attachment
     {
         SwapchainAttachment(const Bolt::AttachmentDefinition& info)
@@ -85,6 +99,7 @@ namespace Bolt {
     struct SubpassDescription
     {
         Quaint::QArray<VkAttachmentReference> colorAttachReferences;
+        Quaint::QArray<VkAttachmentReference> inputAttachReferences;
         bool hasDepthAttachment = false;
         VkAttachmentReference depthAttachment;
     };

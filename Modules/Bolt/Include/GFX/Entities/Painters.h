@@ -23,8 +23,8 @@ namespace Bolt
 
 
         virtual void preRender(RenderScene* scene) = 0;
-        virtual void postRender() = 0;
         virtual void render(RenderScene* scene) = 0;
+        virtual void postRender(RenderScene* scene) = 0;
 
         const Quaint::QName& getPipelineName() const { return m_pipelineName; }
         Pipeline* getPipeline() { return m_pipeline; }
@@ -50,7 +50,7 @@ namespace Bolt
         ShadowPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
         virtual void preRender(RenderScene* scene) override;
-        virtual void postRender() override;
+        virtual void postRender(RenderScene* scene) override;
 
         void AddModel(Model* model);
         
@@ -75,7 +75,7 @@ namespace Bolt
         GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
         virtual void preRender(RenderScene* scene) override;
-        virtual void postRender() override;
+        virtual void postRender(RenderScene* scene) override;
 
         void AddModel(Model* model);
         void setupLightsData();
@@ -106,7 +106,7 @@ namespace Bolt
         ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void render(RenderScene* scene) override;
         virtual void preRender(RenderScene* scene) override;
-        virtual void postRender() override;
+        virtual void postRender(RenderScene* scene) override;
 
     private:
         void ProcessTexture(RenderScene* scene, ImDrawData* data, ImTextureData* textureData);

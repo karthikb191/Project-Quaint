@@ -42,6 +42,7 @@ layout(binding = 2) uniform MaterialUniform
 }material;
 
 layout(binding = 3) uniform sampler2D shadowMap;
+//layout (input_attachment_index=0, binding=3) uniform subpassInput myInputAttachment;
 
 //layout(binding = 1) uniform sampler2D texSampler;
 

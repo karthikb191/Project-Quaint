@@ -183,6 +183,25 @@ namespace Bolt {
         attachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
+    void ShadowMapAttachment::buildAttachmentDescription()
+    {
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        attachmentDescription.format = VK_FORMAT_D32_SFLOAT;
+        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // We want to clear the depth buffer when loading
+        // We dont really want to store anything as it will not be used after drawing is finished. Revisit if this information should persist across passes
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+    }
+    void ShadowMapAttachment::buildAttachmentReference()
+    {
+        attachmentReference.attachment = info.binding;
+        attachmentReference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
     VulkanRenderScene::VulkanRenderScene(Quaint::IMemoryContext* context)
     : m_context(context)
     , m_graphicsContext(context)
@@ -456,6 +475,7 @@ namespace Bolt {
         {
             SubpassDescription desc{};
             desc.colorAttachReferences = Quaint::QArray<VkAttachmentReference>(m_context);
+            desc.inputAttachReferences = Quaint::QArray<VkAttachmentReference>(m_context);
             const Bolt::RenderStage& stage = stages[i];
 
             bool hasDepthAttachment = false;
@@ -473,6 +493,12 @@ namespace Bolt {
                 ref = sceneAttachRef->getAttachmentReference();
                 if(sceneAttachRef->getInfo().type == AttachmentDefinition::Type::Depth)
                 {
+                    //TODO: Remove this workaround from here
+                    if(stage.index == 1)
+                    {
+                        ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
+
                     desc.hasDepthAttachment = true;
                     desc.depthAttachment = ref;
                     hasDepthAttachment = true;
@@ -527,14 +553,14 @@ namespace Bolt {
             {
                 if(stage.dependentStage != ~0)
                 {
-                    assert(stage.dependentStage < stage.index && "Invalid dependency. Later stages can only depend on stages that came before it");
+                    assert(stage.dependentStage <= stage.index && "Invalid dependency. Later stages can only depend on stages that came before it. If stages are equal, it defines a self dependency");
                     dep.srcSubpass = stage.dependentStage;
                     dep.dstSubpass = stage.index;
                 }
                 else
                 {
                     dep.srcSubpass = stage.index;
-                    dep.dstSubpass = stage.index; //Self dependency to be able to set barriers
+                    dep.dstSubpass = VK_SUBPASS_EXTERNAL; //Self dependency to be able to set barriers
                 }
                 //Dst will have shader read access
             }
@@ -548,7 +574,7 @@ namespace Bolt {
                 dep.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
                 dep.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             }
-
+            
             m_subpassDependencies.pushBack(dep);
         }
     }
@@ -663,12 +689,12 @@ namespace Bolt {
     VulkanRenderScene::SceneParams VulkanRenderScene::end(VkQueue queue)
     {
         vkCmdEndRenderPass(m_sceneParams.commandBuffer);
-        vkEndCommandBuffer(m_sceneParams.commandBuffer);
-        submit(queue);
+        //submit(queue);
         return m_sceneParams;
     }
     void VulkanRenderScene::submit(VkQueue queue)
     {
+        vkEndCommandBuffer(m_sceneParams.commandBuffer);
         VkSubmitInfo info{};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         //TODO: Add this when ready

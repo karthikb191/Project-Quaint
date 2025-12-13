@@ -49,10 +49,11 @@ namespace Bolt
     void ShadowPainter::preRender(RenderScene* scene)
     {
         //TODO: Everything is hardcoded here for now. Populate thes from light structure
-        
-        const GlobalLight& light = scene->getGlobalLight();
+        //TODO: Light should not be accessed through a render scene.... There should be some other abstraction
+        RenderScene* graphicsScene = VulkanRenderer::get()->getRenderScene("graphics");
+        const GlobalLight& light = graphicsScene->getGlobalLight();
         Quaint::QVec3 direction = light.getDirection();
-        Quaint::QVec4 location = direction * -20.f;
+        Quaint::QVec4 location = direction * -10.f;
         QMat3x3 modelMatrix = Quaint::lookAt(Quaint::QVec4(0, 0, 0, 1), location, Quaint::QVec3(0, 1, 0));
         
         Quaint::UniformBufferObject mvp{};
@@ -101,10 +102,37 @@ namespace Bolt
         }
     }
 
-    void ShadowPainter::postRender()
+    void ShadowPainter::postRender(RenderScene* scene)
     {
+        //Once the shadow rendering is done, transition it's layout so that it can be sampled in the fragment shaders
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+        
+        VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        //TODO: Transition depth texture to SHADE_READ_ONLY_OPTIMAL
+        VkImageMemoryBarrier barr{};
+        barr.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barr.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        barr.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkImageSubresourceRange range{};
+        range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        range.layerCount = 1;
+        range.baseArrayLayer = 0;
+        range.levelCount = 1;
+        range.baseMipLevel = 0;
+        barr.subresourceRange = range;
+        barr.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        barr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barr.image = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getHandle();
 
+        vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            , 0
+            , 0, nullptr
+            , 0, nullptr
+            , 1, &barr);
     }
+
     void ShadowPainter::AddModel(Model* model)
     {
         //TODO: It's best if model's update function updates the actual buffer data before rendering starts
@@ -301,26 +329,26 @@ namespace Bolt
         VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         //TODO: Transition depth texture to SHADE_READ_ONLY_OPTIMAL
-        VkImageMemoryBarrier barr{};
-        barr.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barr.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        barr.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkImageSubresourceRange range{};
-        range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        range.layerCount = 1;
-        range.baseArrayLayer = 0;
-        range.levelCount = 1;
-        range.baseMipLevel = 0;
-        barr.subresourceRange = range;
-        barr.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        barr.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        barr.image = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getHandle();
+        // VkImageMemoryBarrier barr{};
+        // barr.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        // barr.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        // barr.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // VkImageSubresourceRange range{};
+        // range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        // range.layerCount = 1;
+        // range.baseArrayLayer = 0;
+        // range.levelCount = 1;
+        // range.baseMipLevel = 0;
+        // barr.subresourceRange = range;
+        // barr.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        // barr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        // barr.image = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getHandle();
 
-        vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-            , 0
-            , 0, nullptr
-            , 0, nullptr
-            , 1, &barr);
+        // vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+        //     , VK_DEPENDENCY_BY_REGION_BIT
+        //     , 0, nullptr
+        //     , 0, nullptr
+        //     , 1, &barr);
 
         //TODO: Update lights descriptor here
 
@@ -337,7 +365,7 @@ namespace Bolt
             info.model->draw(scene);
         }
     }
-    void GeometryPainter::postRender()
+    void GeometryPainter::postRender(RenderScene* scene)
     {
         //TODO:
     }
@@ -428,12 +456,14 @@ namespace Bolt
         materialWrite.pBufferInfo = &materialBufferInfo;
 
         //Shadow map attachment
-        RenderScene* scene = VulkanRenderer::get()->getRenderScene(m_pipeline->getSceneName());
+        //TODO: There should be a better way to fetch the shadow map.....
+        RenderScene* scene = VulkanRenderer::get()->getRenderScene("scene_lightmap");
         VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
         VkDescriptorImageInfo desc_image[1] = {};
         desc_image[0].sampler = m_sampler;
         desc_image[0].imageView = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getImageView();
         desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         VkWriteDescriptorSet shadowMapWrite = {};
         shadowMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         shadowMapWrite.dstSet = set;
@@ -905,7 +935,7 @@ namespace Bolt
     {
 
     }
-    void ImguiPainter::postRender()
+    void ImguiPainter::postRender(RenderScene* scene)
     {
 
     }

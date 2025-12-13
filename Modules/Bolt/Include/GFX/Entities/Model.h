@@ -71,6 +71,12 @@ namespace Bolt
         QuadMesh(Quaint::IMemoryContext* context);
     };
 
+    class FloorMesh : public Mesh
+    {
+    public:
+        FloorMesh(Quaint::IMemoryContext* context);
+    };
+
     /* Model is a collection of meshes, materials, etc */
     class Model : public IGFXEntity
     {
@@ -90,6 +96,7 @@ namespace Bolt
             , int* indices, uint32_t numIndices
             , float* uvs, uint32_t numUVs
             , float scale = 1.0f, MaterialRef material = nullptr);
+        void addMesh(MeshRef mesh);
 
             
         virtual uint32_t getVertexCount() const { return (uint32_t)m_vertices.getSize(); }
@@ -116,7 +123,7 @@ namespace Bolt
 
         void writeImgui();
         
-    private:
+    protected:
         Quaint::QName m_name;
         Quaint::QMat4x4 m_transform;
         Quaint::QArray<MeshRef> m_meshes;
@@ -125,6 +132,13 @@ namespace Bolt
         Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
         TModelImplPtr m_modelImpl;
     };
+
+    class FloorModel : public Model
+    {
+    public:
+        FloorModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+    };
+
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
 
 }
