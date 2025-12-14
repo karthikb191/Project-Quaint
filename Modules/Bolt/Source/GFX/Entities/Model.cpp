@@ -1,5 +1,6 @@
 #include <GFX/Entities/Model.h>
 #include <GFX/ResourceBuilder.h>
+#include <GFX/Materials/SimpleMaterial.h>
 #include <chrono>
 #include <random>
 #include <iostream>
@@ -287,8 +288,13 @@ namespace Bolt
         m_indices.pushBack(2);
         m_indices.pushBack(3);
 
+        Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::SimpleMaterial>(context);
+        simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
+        m_materials.pushBack(simpleMaterial);
         Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
             ,  4, 0, m_indices.getSize(), 0);
+        mesh->setMaterial(simpleMaterial);
+
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
     }

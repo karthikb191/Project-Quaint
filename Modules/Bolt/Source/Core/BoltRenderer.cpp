@@ -101,7 +101,7 @@ namespace Bolt
         m_renderer_impl->render();
     }
 
-    float xyz[3] = {0, 0.0f, 5.0f};
+    float xyz[3] = {0, -0.89f, 5.0f};
     void BoltRenderer::updateUniformBufferProxy()
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -122,7 +122,8 @@ namespace Bolt
         m_ubo.view = m_camera.getViewMatrix();
         m_ubo.proj = m_camera.getProjectionMatrix();
 
-        Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -10.0f, 1);
+        Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -1.5, 1);
+        //Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -10000.0f, 1);
         //res = m_ubo.view * Quaint::QVec4(0, 0, 0, 1);
         
         int iiii = 100;

@@ -88,7 +88,7 @@ void main()
     //Specular calculation. This is view-dependent
     vec3 viewDir = normalize(viewPosWS - fragWorldPos).xyz;
     vec3 reflectDir = reflect(normalize(gLight.direction), inNormal.xyz);
-    float specPower = pow(max(dot(viewDir, reflectDir), 0), 0);
+    float specPower = pow(max(dot(viewDir, reflectDir), 0), material.data.shininess);
     
     vec3 specular = specularStrength * specPower * gLight.color.xyz;  
 
