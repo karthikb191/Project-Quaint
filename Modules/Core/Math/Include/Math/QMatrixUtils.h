@@ -36,11 +36,14 @@ namespace Quaint
         res.col1.y = (2 * nearClip) / height;
         res.col2.y = (t + b) / height; // 0 if canvas is centered. Right now it should always be 0
 
+        //This maps Z in range [0 1]
+        res.col2.z = (farClip) / (negDepth);
+        res.col3.z = (nearClip * farClip) / (negDepth);
+        
         //WARNING: THis is mapping Z in range [-1 1]. This would probably mess with depth mapping
-        //res.col2.z = (farClip) / (negDepth);
-        res.col2.z = (nearClip + farClip) / (negDepth);
-        //res.col3.z = (nearClip * farClip) / (negDepth);
-        res.col3.z = 2 * (nearClip * farClip) / (negDepth);
+        //res.col2.z = (nearClip + farClip) / (negDepth);
+        //res.col3.z = 2 * (nearClip * farClip) / (negDepth);
+        
         //res.col3.z = res.col3.z + 1 * 0.5f;
 
         res.col2.w = -1;
@@ -118,7 +121,7 @@ namespace Quaint
     /*Gives matrix with columns aligned with target looking at*/
     inline QMat3x3 lookAt(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
     {
-        //+Z points away from camera
+        //+Z points away from camera view frustum
         QVec3 forward = (source - target).normalize();
         QVec3 right = cross_vf(normalizedUp, forward).normalize();
         QVec3 up = cross_vf(forward, right).normalize();
