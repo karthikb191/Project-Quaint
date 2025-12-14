@@ -18,6 +18,9 @@
 
 namespace Bolt
 {
+    Quaint::QMat4x4 G_lightView = Quaint::QMat4x4::Identity();
+    Quaint::QMat4x4 G_lightProj = Quaint::QMat4x4::Identity();
+
     Painter::Painter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline)
     : m_context(context)
     , m_pipelineName(pipeline)
@@ -69,9 +72,12 @@ namespace Bolt
         invTranslation.w = 1.0f;
 
         mvp.view = Quaint::makeTransform(invTranslation, invRotation);
+        m_lightView = mvp.view;
+        G_lightView = mvp.view;
 
         //PROJECTION MATRIX
         mvp.proj = m_lightProjection;
+        G_lightProj = m_lightProjection;
         for(size_t i = 0; i < m_geoInfo.getSize(); ++i)
         {
             VkDescriptorBufferInfo bufferInfo{};
@@ -198,6 +204,7 @@ namespace Bolt
     : Painter(context, pipeline)
     , m_geoInfo(context)
     , m_lightsbuffer(nullptr, Deleter<IBufferImpl>(context))
+    , m_lightsMvpBuffer (nullptr, Deleter<IBufferImpl>(context))
     {
     }
     
@@ -226,6 +233,17 @@ namespace Bolt
 
         VulkanBufferObjectResource* lightBufferResource = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
         lightBufferResource->map();
+
+
+        //Lights MVP Buffer
+        const uint32_t mvpBufferSize = sizeof(Bolt::UniformBufferObject);
+        BufferResourceBuilder lightMvpBuilder(m_context);
+        m_lightsMvpBuffer = std::move(lightMvpBuilder.setBufferType(EBufferType::UNIFORM)
+        .setDataSize(mvpBufferSize)
+        .setDataOffset(0)
+        .build());
+        VulkanBufferObjectResource* lightMvpbufferResource = static_cast<VulkanBufferObjectResource*>(m_lightsMvpBuffer.get());
+        lightMvpbufferResource->map();
 
 
         //ShadowMap ref binding
@@ -257,10 +275,26 @@ namespace Bolt
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanGraphicsPipeline* pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
+
+        VulkanBufferObjectResource* lightMvpbufferResource = static_cast<VulkanBufferObjectResource*>(m_lightsMvpBuffer.get());
+        assert(lightMvpbufferResource->isMapped() && "Lights buffer is not mapped. Cannot update the data");
+        if(lightMvpbufferResource->isMapped())
+        {
+            uint32_t offset = 0;
+            void** region = lightMvpbufferResource->getMappedRegion();
+            Quaint::UniformBufferObject lightMvp{};
+            
+            //TODO: Get rid of globals and get this information from the light itself
+            lightMvp.model = Quaint::QMat4x4::Identity();
+            lightMvp.view = G_lightView;
+            lightMvp.proj = G_lightProj;
+
+            memcpy(*region, &lightMvp, lightMvpbufferResource->getBufferInfo().size);
+        }
+
         //Updates lights buffer data
         VulkanBufferObjectResource* lightsBuffer = (VulkanBufferObjectResource*)m_lightsbuffer.get();
         assert(lightsBuffer->isMapped() && "Lights buffer is not mapped. Cannot update the data");
-
 
         //TODO: Only update if data changes
         if(lightsBuffer->isMapped())
@@ -414,7 +448,7 @@ namespace Bolt
         ASSERT_SUCCESS(res, "Failed to allocate desctiptor sets");
         m_geoInfo.pushBack({model, set, std::move(bufferPtr), std::move(materialPtr)});
 
-
+        // MVP in binding: 0
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = mvpResource->getBufferhandle();
         bufferInfo.offset = 0;
@@ -427,7 +461,21 @@ namespace Bolt
         mvpWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         mvpWrite.pBufferInfo = &bufferInfo;    
 
-        //Map the common lights info to binding:1
+        // Light MVP in binding: 1
+        VulkanBufferObjectResource* lightsMvpResource = static_cast<VulkanBufferObjectResource*>(m_lightsMvpBuffer.get());
+        VkDescriptorBufferInfo lightMvpBufferInfo{};
+        lightMvpBufferInfo.buffer = lightsMvpResource->getBufferhandle();
+        lightMvpBufferInfo.offset = 0;
+        lightMvpBufferInfo.range = lightsMvpResource->getBufferInfo().size;
+        VkWriteDescriptorSet lightMvpWrite{};
+        lightMvpWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        lightMvpWrite.descriptorCount = 1;
+        lightMvpWrite.dstSet = set;
+        lightMvpWrite.dstBinding = 1;
+        lightMvpWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        lightMvpWrite.pBufferInfo = &lightMvpBufferInfo; 
+
+        //Map the common lights info to binding:2
         VulkanBufferObjectResource* lightsBuffer = static_cast<VulkanBufferObjectResource*>(m_lightsbuffer.get());
         VkDescriptorBufferInfo lightsBufferInfo{};
         lightsBufferInfo.buffer = lightsBuffer->getBufferhandle();
@@ -437,11 +485,11 @@ namespace Bolt
         lightsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         lightsWrite.descriptorCount = 1;
         lightsWrite.dstSet = set;
-        lightsWrite.dstBinding = 1;
+        lightsWrite.dstBinding = 2;
         lightsWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         lightsWrite.pBufferInfo = &lightsBufferInfo;
 
-        // Material goes into binding:2
+        // Material goes into binding:3
         VkDescriptorBufferInfo materialBufferInfo{};
         materialBufferInfo.buffer = materialResource->getBufferhandle();
         materialBufferInfo.offset = 0;
@@ -451,11 +499,11 @@ namespace Bolt
         materialWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         materialWrite.descriptorCount = 1;
         materialWrite.dstSet = set;
-        materialWrite.dstBinding = 2;
+        materialWrite.dstBinding = 3;
         materialWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         materialWrite.pBufferInfo = &materialBufferInfo;
 
-        //Shadow map attachment
+        //Shadow map attachment binding: 4
         //TODO: There should be a better way to fetch the shadow map.....
         RenderScene* scene = VulkanRenderer::get()->getRenderScene("scene_lightmap");
         VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
@@ -470,9 +518,9 @@ namespace Bolt
         shadowMapWrite.descriptorCount = 1;
         shadowMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowMapWrite.pImageInfo = desc_image;
-        shadowMapWrite.dstBinding = 3;
+        shadowMapWrite.dstBinding = 4;
 
-        VkWriteDescriptorSet writes[] = {mvpWrite, lightsWrite, materialWrite, shadowMapWrite};
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightMvpWrite, lightsWrite, materialWrite, shadowMapWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
     }

@@ -1,7 +1,10 @@
 #version 450
 
+//TODO: Find a way to only pass in position. Nothing else is used here
 layout(location = 0) in vec4 in_position;
 layout(location = 1) in vec4 in_normal;
+layout(location = 2) in vec2 in_texcoord;
+layout(location = 3) in vec4 in_color;
 
 
 // Outputs to Fragment shader don't need to be setup in Vulkan Code.

@@ -147,7 +147,7 @@ namespace Bolt
             , float* uvs, uint32_t numUVs
             , float scale, MaterialRef material)
     {
-        assert(numNormals == numVerts && "Unsupported! Currently expects one normal per verted");
+        assert(numNormals == numVerts && "Unsupported! Currently expects one normal per vertex");
 
         uint32_t vertDataOffset = m_vertices.getSize();
         uint32_t vertSize = numVerts/3;
@@ -253,24 +253,28 @@ namespace Bolt
 
         vertex.position = {-0.5, 0.0, 0.5, 1};
         vertex.position *= scale;
+        vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
         vertex.texCoord = {0, 0, 0, 0};
         m_vertices.pushBack(vertex);
 
         vertex.position = {0.5, 0.0, 0.5, 1};
         vertex.position *= scale;
+        vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
         vertex.texCoord = {0, 0, 0, 0};
         m_vertices.pushBack(vertex);
 
         vertex.position = {0.5, 0.0, -0.5, 1};
         vertex.position *= scale;
+        vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
         vertex.texCoord = {0, 0, 0, 0};
         m_vertices.pushBack(vertex);
 
         vertex.position = {-0.5, 0.0, -0.5, 1};
         vertex.position *= scale;
+        vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
         vertex.texCoord = {0, 0, 0, 0};
         m_vertices.pushBack(vertex);

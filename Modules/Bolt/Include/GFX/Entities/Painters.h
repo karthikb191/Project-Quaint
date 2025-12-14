@@ -53,10 +53,14 @@ namespace Bolt
         virtual void postRender(RenderScene* scene) override;
 
         void AddModel(Model* model);
+
+        Quaint::QMat4x4 getLightView() { return m_lightView; }
+        Quaint::QMat4x4 getLightProj() { return m_lightProjection; }
         
     private:
         //TODO: have reference to lights here
         Quaint::QArray<GeometryShaderInfo> m_geoInfo;
+        Quaint::QMat4x4 m_lightView;
         Quaint::QMat4x4 m_lightProjection;
     };
 
@@ -84,6 +88,7 @@ namespace Bolt
         //Quaint::QArray<Model*> m_models = nullptr;
         Quaint::QArray<GeometryShaderInfo> m_geoInfo;
         TBufferImplPtr m_lightsbuffer;
+        TBufferImplPtr m_lightsMvpBuffer;
         VkSampler m_sampler;
     };
 

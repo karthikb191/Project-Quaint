@@ -14,6 +14,7 @@ layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragColor;
 layout(location = 4) out vec4 outViewPosWs;
+layout(location = 5) out vec4 outLightProjPos;
 
 layout(binding = 0) uniform UniformBufferObject
 {
@@ -21,6 +22,13 @@ layout(binding = 0) uniform UniformBufferObject
     mat4 view;
     mat4 proj;
 } mvp;
+
+layout(binding = 1) uniform LightMVP
+{
+    mat4 model; //TODO: Model isn't needed here
+    mat4 view;
+    mat4 proj;
+} lightMvp;
 
 void main()
 {
@@ -38,6 +46,9 @@ void main()
     outViewPosWs.y = -dot(mvp.view[1], mvp.view[3]);
     outViewPosWs.z = -dot(mvp.view[2], mvp.view[3]);
     outViewPosWs.w = 1;
+
+    //Perspective divide is not performed
+    outLightProjPos = lightMvp.proj * lightMvp.view * fragWorldPos;
 
     //gl_Position = mvp.proj * mvp.view * fragWorldPos;
 }

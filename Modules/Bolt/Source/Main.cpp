@@ -384,6 +384,8 @@ int main()
     // Shadow casting pipeline
     attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
     attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"texcoord", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"color", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
     shaderDef.attributeSets.pushBack(attributes);
     
     shaderDef.shaders.pushBack({"shadwoCast.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\shadowCast.vert.spv"
@@ -412,6 +414,7 @@ int main()
         , "main", Bolt::EShaderStage::FRAGMENT});
 
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"Lights_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
     //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
