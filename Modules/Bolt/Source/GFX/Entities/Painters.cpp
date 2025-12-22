@@ -46,7 +46,8 @@ namespace Bolt
     : Painter(context, pipeline)
     , m_geoInfo(context)
     {
-        m_lightProjection = Quaint::buildProjectionMatrix(0.1f, 100, 90, 1);
+        //m_lightProjection = Quaint::buildPerspectiveProjectionMatrix(0.1f, 100, 90, 1);
+        m_lightProjection = Quaint::buildOrthographicProjectionMatrix(0.1f, 100.0f, 20, 1);
     }
 
     void ShadowPainter::preRender(RenderScene* scene)

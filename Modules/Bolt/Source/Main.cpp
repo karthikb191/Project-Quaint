@@ -349,7 +349,7 @@ int main()
     Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
     globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
-    globalLight.setDirection({0.f, 0.f, -1.0f});
+    globalLight.setDirection({0.f, -1.0f, 0.1f});
 
     scene->addGlobalLight(globalLight);
 

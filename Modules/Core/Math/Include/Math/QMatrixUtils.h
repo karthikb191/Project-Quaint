@@ -8,16 +8,7 @@
 
 namespace Quaint
 {
-    inline QMat4x4 buildOrthographicProjectionMatrix(float nearClip, float farClip, float size)
-    {
-        QMat4x4 res = QMat4x4::Identity();
-
-        //TODO: 
-
-        return res;
-    }
-
-    inline QMat4x4 buildProjectionMatrix(float nearClip, float farClip, float fov, float aspectRatio)
+    inline QMat4x4 buildPerspectiveProjectionMatrix(float nearClip, float farClip, float fov, float aspectRatio)
     {
         //Vulkan's positive Y is downwards
         QMat4x4 res = QMat4x4::Identity();
@@ -48,6 +39,36 @@ namespace Quaint
 
         res.col2.w = -1;
         res.col3.w = 0;
+        return res;
+    }
+
+    inline QMat4x4 buildOrthographicProjectionMatrix(float nearClip, float farClip, float size, float aspectRatio)
+    {
+        QMat4x4 res = QMat4x4::Identity();
+        float r = size/2;
+        float l = -r;
+        float height = size / aspectRatio;
+        float t = height / 2;
+        float b = -t;
+        float f = farClip;
+        float n = nearClip;
+
+        res.col0.x = 2 / (r - l);
+        res.col3.x = (l + r) / (l - r);
+
+        res.col1.y = 2 / (t - b);
+        res.col3.y = (t + b) / (b - t);
+
+        // Z is mapped to range [0 1]
+        res.col2.z = -1 / (f - n);
+        res.col3.z = (n) / (n - f);
+
+        // Z is mapped to range [-1 1]
+        //res.col2.z = 2 / (f - n);
+        //res.col3.z = (n + f) / (n - f);
+
+        res.col3.w = 1;
+
         return res;
     }
 

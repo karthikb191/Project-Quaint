@@ -51,6 +51,6 @@ namespace Bolt
     }
     void Camera::computeProjection()
     {
-        m_projection = Quaint::buildProjectionMatrix(m_params.nearClipDist, m_params.farClipDist, m_params.fov, m_params.aspectRatio);
+        m_projection = Quaint::buildPerspectiveProjectionMatrix(m_params.nearClipDist, m_params.farClipDist, m_params.fov, m_params.aspectRatio);
     }
 }
