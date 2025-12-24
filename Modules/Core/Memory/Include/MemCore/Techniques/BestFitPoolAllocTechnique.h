@@ -9,46 +9,27 @@ namespace Quaint
     namespace RBTree
     {
         struct RBNode;
-        extern RBNode* sentinel;
-        extern RBNode* root;
+        //extern RBNode* sentinel;
+        //extern RBNode* root;
         
         struct RBNode
         {
             RBNode(size_t size) : m_size(size) {}
 
-            // TODO: Bad!! Should probably move this to a RBTree structure
-            // This lefts us bypass global variable initialization across multiple translational units and retrieve sentinel on demand
-            static RBNode* GetSentinel()
-            {
-                static RBNode sentinel = RBNode(0);
-                return &sentinel;
-            }
-
-            RBNode*         m_parent = sentinel;
-            RBNode*         m_left = sentinel;
-            RBNode*         m_right = sentinel;
+            RBNode*         m_parent = nullptr;
+            RBNode*         m_left = nullptr;
+            RBNode*         m_right = nullptr;
             size_t          m_size = 0;
             bool            m_isRed = false;
         };
 
-        void InitTree();
-        void LeftRotate(RBNode* x);
-        void RightRotate(RBNode* x);
-        void RBInsertFixup(RBNode* node);
-        //TODO: Don't use new here. Use the memory pool that's available
-        void insert(RBNode* node);
-        void transplant(RBNode* u, RBNode* v);
-        RBNode* getMinimumInSubTree(RBNode* node);
-        void RBDeleteFixup(RBNode* node);
-        //TODO: Convert this to delete based on Node address
-        void remove(RBNode* node);
-        RBNode* find(size_t n);
-        bool containsNode(RBNode* node);
-#ifdef _DEBUG
-        void printTree(RBNode* node, int tabs);
-        void print();
-#endif
+        struct RBTree
+        {
+            RBNode sentinel = RBNode(0);
+            RBNode* root = &sentinel;
+        };
     }
+
     class BestFitPoolAllocTechnique : public IAllocationTechnique
     {
         struct MemoryChunk
@@ -73,10 +54,12 @@ namespace Quaint
         virtual ~BestFitPoolAllocTechnique() {};
     
     private:
+        void initTree();
         RBTree::RBNode* getBestFit(size_t allocSize);
 
         void*                   m_endAddress;
         MemoryChunk*            m_root = nullptr;
+        RBTree::RBTree          m_freeMemoryTree;
     };
 }
 

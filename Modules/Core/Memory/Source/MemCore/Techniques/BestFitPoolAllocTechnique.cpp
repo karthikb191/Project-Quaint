@@ -12,23 +12,12 @@ std::mutex g_allocMutex;
     namespace RBTree
     {
         //RBTree::RBNode RBNode::sentinel = RBTree::RBNode(0);
-        RBTree::RBNode* sentinel = nullptr;
-        RBTree::RBNode* root = nullptr;
-        void InitTree()
-        {
-            sentinel = RBNode::GetSentinel();
-            sentinel->m_left = sentinel;
-            sentinel->m_right = sentinel;
-            sentinel->m_parent = sentinel;
+        //RBNode* sentinel = nullptr;
+        //RBNode* root = nullptr;
 
-            root = sentinel;
-            root->m_parent = sentinel;
-            root->m_left = sentinel;
-            root->m_right = sentinel;
-        }
-
-        void LeftRotate(RBNode* x)
+        void LeftRotate(RBTree* tree, RBNode* x)
         {
+            RBNode* sentinel = &tree->sentinel;
             // Pre-condition that must be satisfied here is that
             // X already has a valid right child(Y).
             // Y takes X's place
@@ -39,7 +28,7 @@ std::mutex g_allocMutex;
             if(y->m_parent == sentinel)
             {
                 //std::cout <<"New Root\n";
-                root = y;
+                tree->root = y;
             }
             else if(y->m_parent->m_right == x)
             {
@@ -58,8 +47,9 @@ std::mutex g_allocMutex;
             }
             y->m_left = x;
         }
-        void RightRotate(RBNode* x)
+        void RightRotate(RBTree* tree, RBNode* x)
         {
+            RBNode* sentinel = &tree->sentinel;
             // Pre-Condition that must be satisfied here
             // is that X has a vaild left node(Y). 
             // Y takes X's place
@@ -69,7 +59,7 @@ std::mutex g_allocMutex;
             if(y->m_parent == sentinel)
             {
                 //std::cout <<"New Root\n";
-                root = y;
+                tree->root = y;
             }
             else if(y->m_parent->m_right == x)
             {
@@ -88,8 +78,9 @@ std::mutex g_allocMutex;
             y->m_right = x;
         }
 
-        void RBInsertFixup(RBNode* node)
+        void RBInsertFixup(RBTree* tree, RBNode* node)
         {
+            RBNode* sentinel = &tree->sentinel;
             while(node->m_parent != sentinel && node->m_parent->m_isRed)
             {
                 //If Node's parent is red, we have a violation in RB-Tree Property
@@ -117,13 +108,13 @@ std::mutex g_allocMutex;
                             // With this node's parent effectively becomes it's right-child
                             // and Node's parent's parent will become node's parent
                             node = node->m_parent;
-                            RightRotate(node);
+                            RightRotate(tree, node);
                         }
                         // Finally Left Rotate on node's parent.
                         // Newly added node will become the new parent.
                         node->m_parent->m_isRed = false;
                         node->m_parent->m_parent->m_isRed = true;
-                        LeftRotate(node->m_parent->m_parent);
+                        LeftRotate(tree, node->m_parent->m_parent);
                     }
                 }
                 else if(node->m_parent->m_parent->m_left == node->m_parent)
@@ -142,29 +133,30 @@ std::mutex g_allocMutex;
                         if(node == node->m_parent->m_right)
                         {
                             node = node->m_parent;
-                            LeftRotate(node);
+                            LeftRotate(tree, node);
                         }
                         node->m_parent->m_isRed = false;
                         node->m_parent->m_parent->m_isRed = true;
-                        RightRotate(node->m_parent->m_parent);
+                        RightRotate(tree, node->m_parent->m_parent);
                     }
                 }
             }
-            root->m_isRed = false;
+            tree->root->m_isRed = false;
         }
 
         //TODO: Don't use new here. Use the memory pool that's available
-        void insert(RBNode* node)
+        void insert(RBTree* tree, RBNode* node)
         {
-            if(root == sentinel)
+            RBNode* sentinel = &tree->sentinel;
+            if(tree->root == sentinel)
             {
                 //std::cout <<"New Root\n";
-                root = node;
+                tree->root = node;
                 return;
             }
 
-            RBNode* current = root;
-            RBNode* target = root;
+            RBNode* current = tree->root;
+            RBNode* target = tree->root;
             while(current != sentinel)
             {
                 //assert(current != nullptr);
@@ -211,15 +203,16 @@ std::mutex g_allocMutex;
             }
             node->m_parent = target;
             node->m_isRed = true;
-            RBInsertFixup(node);
+            RBInsertFixup(tree, node);
         }
 
-        void transplant(RBNode* u, RBNode* v)
+        void transplant(RBTree* tree, RBNode* u, RBNode* v)
         {
+            RBNode* sentinel = &tree->sentinel;
             if(u->m_parent == sentinel)
             {
                 //std::cout <<"New Root\n";
-                root = v;
+                tree->root = v;
             }
             else if(u->m_parent->m_left == u)
             {
@@ -231,11 +224,11 @@ std::mutex g_allocMutex;
             }
 
             v->m_parent = u->m_parent;
-            
         }
 
-        RBNode* getMinimumInSubTree(RBNode* node)
+        RBNode* getMinimumInSubTree(RBTree* tree, RBNode* node)
         {
+            RBNode* sentinel = &tree->sentinel;
             RBNode* current = node;
             while(current->m_left != sentinel)
             {
@@ -244,9 +237,10 @@ std::mutex g_allocMutex;
             return current;
         }
 
-        void RBDeleteFixup(RBNode* node)
+        void RBDeleteFixup(RBTree* tree, RBNode* node)
         {
-            while(node != root && !node->m_isRed)
+            RBNode* sentinel = &tree->sentinel;
+            while(node != tree->root && !node->m_isRed)
             {
                 if(node->m_parent->m_right == node)
                 {
@@ -256,7 +250,7 @@ std::mutex g_allocMutex;
                     {
                         uncle->m_isRed = false;
                         uncle->m_parent->m_isRed = true;
-                        RightRotate(uncle->m_parent);
+                        RightRotate(tree, uncle->m_parent);
                         uncle = node->m_parent->m_left;
                     }
                     //Case - 2: Uncle is black and Left and right children of uncle are null or red
@@ -274,15 +268,15 @@ std::mutex g_allocMutex;
                         {
                             uncle->m_right->m_isRed = false;
                             uncle->m_isRed = true;
-                            LeftRotate(uncle);
+                            LeftRotate(tree, uncle);
                             uncle = node->m_parent->m_left;
                         }
                         uncle->m_isRed = node->m_parent->m_isRed;
                         node->m_parent->m_isRed = false;
                         uncle->m_left->m_isRed = false;
 
-                        RightRotate(node->m_parent);
-                        node = root;
+                        RightRotate(tree, node->m_parent);
+                        node = tree->root;
                     }
                 }
                 else
@@ -293,7 +287,7 @@ std::mutex g_allocMutex;
                     {
                         uncle->m_isRed = false;
                         uncle->m_parent->m_isRed = true;
-                        LeftRotate(uncle->m_parent);
+                        LeftRotate(tree, uncle->m_parent);
                         uncle = node->m_parent->m_right;
                     }
                     //Case - 2: Uncle is black and Left and right children of uncle are null or red
@@ -311,24 +305,26 @@ std::mutex g_allocMutex;
                         {
                             uncle->m_left->m_isRed = false;
                             uncle->m_isRed = true;
-                            RightRotate(uncle);
+                            RightRotate(tree, uncle);
                             uncle = node->m_parent->m_right;
                         }
                         uncle->m_isRed = node->m_parent->m_isRed;
                         node->m_parent->m_isRed = false;
                         uncle->m_right->m_isRed = false;
                     
-                        LeftRotate(node->m_parent);
-                        node = root;
+                        LeftRotate(tree, node->m_parent);
+                        node = tree->root;
                     }
                 }
             }
+
             node->m_isRed = false;
         }
         
         //TODO: Convert this to delete based on Node address
-        void remove(RBNode* node)
+        void remove(RBTree* tree, RBNode* node)
         {
+            RBNode* sentinel = &tree->sentinel;
             RBNode* y = node;
             bool yOriginalColorIsRed = y->m_isRed;
 
@@ -338,17 +334,17 @@ std::mutex g_allocMutex;
             {
                 x = node->m_right;
 
-                transplant(node, node->m_right);
+                transplant(tree, node, node->m_right);
             }
             else if(node->m_right == sentinel)
             {
                 x = node->m_left;
-                transplant(node, node->m_left);
+                transplant(tree, node, node->m_left);
             }
             else
             {
                 //Node has 2 valid children
-                y = getMinimumInSubTree(node->m_right);
+                y = getMinimumInSubTree(tree, node->m_right);
 
                 yOriginalColorIsRed = y->m_isRed;
                 // we color Y the same color as z.
@@ -363,13 +359,13 @@ std::mutex g_allocMutex;
                 else
                 {
                     //Move X To Y's place
-                    transplant(y, x);
+                    transplant(tree, y, x);
                     y->m_right = node->m_right;
                     y->m_right->m_parent = y;
                     
                 }
                 //Move Y To Z's Place and take it's color
-                transplant(node, y);
+                transplant(tree, node, y);
                 y->m_left = node->m_left;
                 node->m_left->m_parent = y;
                 y->m_isRed = node->m_isRed;
@@ -377,13 +373,14 @@ std::mutex g_allocMutex;
 
             if(!yOriginalColorIsRed)
             {
-                RBDeleteFixup(x);
+                RBDeleteFixup(tree, x);
             }
         }
 
-        RBNode* find(size_t n)
+        RBNode* find(RBTree* tree, size_t n)
         {
-            RBNode* current = root;
+            RBNode* sentinel = &tree->sentinel;
+            RBNode* current = tree->root;
             while(current != sentinel)
             {
                 if(current->m_size == n)
@@ -402,9 +399,10 @@ std::mutex g_allocMutex;
             return nullptr;
         }
 
-        bool containsNode(RBNode* node)
+        bool containsNode(RBTree* tree, RBNode* node)
         {
-            RBNode* current = root;
+            RBNode* sentinel = &tree->sentinel;
+            RBNode* current = tree->root;
             while(current != sentinel)
             {
                 if(current == node)
@@ -435,30 +433,39 @@ std::mutex g_allocMutex;
         }
 
 #ifdef _DEBUG
-        void printTree(RBNode* node, int tabs)
+        void printTree(RBTree* tree, RBNode* node, int tabs)
         {
+            RBNode* sentinel = &tree->sentinel;
             if(node->m_right != sentinel)
-                printTree(node->m_right, tabs + 1);
+                printTree(tree, node->m_right, tabs + 1);
 
             for(int i = 0; i < tabs; i++)
                 std::cout << "\t";
             std::cout << node->m_size << (node->m_isRed ? "r" : "b") << std::endl;
 
             if(node->m_left != sentinel)
-                printTree(node->m_left, tabs + 1);
-
+                printTree(tree, node->m_left, tabs + 1);
         }
         
-        void print()
+        void print(RBTree* tree)
         {
-            printTree(root, 0);
+            printTree(tree, tree->root, 0);
         }
 #endif
     }
 
+    void BestFitPoolAllocTechnique::initTree()
+    {
+        m_freeMemoryTree.sentinel.m_parent = &m_freeMemoryTree.sentinel; 
+        m_freeMemoryTree.sentinel.m_left = &m_freeMemoryTree.sentinel; 
+        m_freeMemoryTree.sentinel.m_right = &m_freeMemoryTree.sentinel; 
+        m_freeMemoryTree.root = &m_freeMemoryTree.sentinel;
+    }
+
     void BestFitPoolAllocTechnique::boot(const char* ContextName, size_t size, void* rawMemory, bool dynamic)
     {
-        RBTree::InitTree();
+        initTree();
+        
         m_availableSize = size;
         //TODO: Assert available size is greater than a certain threshold and power of 2
         if(m_availableSize < 1024)
@@ -475,7 +482,10 @@ std::mutex g_allocMutex;
         void* treeStartAddress = (char*)rawMemory + sizeof(MemoryChunk);
         
         RBTree::RBNode* node = new (treeStartAddress) RBTree::RBNode(m_availableSize);
-        RBTree::insert(node);
+        node->m_parent = &m_freeMemoryTree.sentinel;
+        node->m_left = &m_freeMemoryTree.sentinel;
+        node->m_right = &m_freeMemoryTree.sentinel;
+        RBTree::insert(&m_freeMemoryTree, node);
 
         //Creates initial Memory chunk
         m_isRunning = true;
@@ -489,10 +499,10 @@ std::mutex g_allocMutex;
     /*Returns ptr to RB-Tree node. Not Memory Chunk*/
     RBTree::RBNode* BestFitPoolAllocTechnique::getBestFit(size_t allocSize)
     {
-        RBTree::RBNode* bestFit = RBTree::sentinel;
-        RBTree::RBNode* current = RBTree::root;
+        RBTree::RBNode* bestFit = &m_freeMemoryTree.sentinel;
+        RBTree::RBNode* current = m_freeMemoryTree.root;
 
-        while(current != RBTree::sentinel)
+        while(current != &m_freeMemoryTree.sentinel)
         {
             if(current->m_size >= allocSize)
             {
@@ -511,7 +521,7 @@ std::mutex g_allocMutex;
 
         assert (bestFit->m_size >= allocSize && "Invalid best fit node retrieved");
 
-        return (bestFit == RBTree::sentinel) ? nullptr : bestFit;
+        return (bestFit == &m_freeMemoryTree.sentinel) ? nullptr : bestFit;
     }
 
     void* BestFitPoolAllocTechnique::alloc(size_t allocSize)
@@ -539,7 +549,7 @@ std::mutex g_allocMutex;
 
         assert(bestFit->m_size >= allocSize);
         //We start modifying the space occupied by RB-Tree node. Remove it here before proceeding
-        RBTree::remove(bestFit);
+        RBTree::remove(&m_freeMemoryTree, bestFit);
 
         
         std::memset(bestFit, 0, totalSize);
@@ -607,7 +617,10 @@ std::mutex g_allocMutex;
 
             void* treeNodeAdd = (char*)(newChunk) + sizeof(MemoryChunk);
             RBTree::RBNode* newNode = new (treeNodeAdd) RBTree::RBNode(sizeDiff);
-            RBTree::insert(newNode);
+            newNode->m_parent = &m_freeMemoryTree.sentinel;
+            newNode->m_left = &m_freeMemoryTree.sentinel;
+            newNode->m_right = &m_freeMemoryTree.sentinel;
+            RBTree::insert(&m_freeMemoryTree, newNode);
         }
 
 
@@ -654,7 +667,7 @@ std::mutex g_allocMutex;
         {
             RBTree::RBNode* node = (RBTree::RBNode*)((char*)chunk->m_right + sizeof(MemoryChunk));
             //chunk->right is free. Merge it
-            if(RBTree::containsNode(node))
+            if(RBTree::containsNode(&m_freeMemoryTree, node))
             {
                 chunk->m_right = chunk->m_right->m_right;
                 if(chunk->m_right != nullptr)
@@ -665,13 +678,13 @@ std::mutex g_allocMutex;
                 freeChunkSize += node->m_size + sizeof(MemoryChunk);
                 m_availableSize += sizeof(MemoryChunk);
 
-                RBTree::remove(node);
+                RBTree::remove(&m_freeMemoryTree, node);
             }
         }
         if(chunk->m_left != nullptr)
         {
             RBTree::RBNode* node = (RBTree::RBNode*)((char*)chunk->m_left + sizeof(MemoryChunk));
-            if(RBTree::containsNode(node))
+            if(RBTree::containsNode(&m_freeMemoryTree, node))
             {
                 //Remove current memory
                 chunk->m_left->m_right = chunk->m_right;
@@ -684,14 +697,17 @@ std::mutex g_allocMutex;
                 freeChunkSize += node->m_size + sizeof(MemoryChunk);
                 m_availableSize += sizeof(MemoryChunk);
 
-                RBTree::remove(node);
+                RBTree::remove(&m_freeMemoryTree, node);
             }
         }
 
         //TODO: check if this node is already in tree and trigger heap corruption
         
         RBTree::RBNode* newNode = new (freeChunkAddress) RBTree::RBNode(freeChunkSize);
-        RBTree::insert(newNode);
+        newNode->m_parent = &m_freeMemoryTree.sentinel;
+        newNode->m_left = &m_freeMemoryTree.sentinel;
+        newNode->m_right = &m_freeMemoryTree.sentinel;
+        RBTree::insert(&m_freeMemoryTree, newNode);
 
         //std::cout << "\nFree " << mem << " Chunk Size: " << freeChunkSize << " Remaining: " << m_availableSize << "\n";
     }

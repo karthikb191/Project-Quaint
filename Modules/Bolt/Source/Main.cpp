@@ -8,6 +8,7 @@
 #include <Types/QStaticString_W.h>
 #include <Types/QCTString.h>
 
+#include <BoltMemoryProvider.h>
 #include <MemoryModule.h>
 #include <LoggerModule.h>
 #include <RenderModule.h>
@@ -258,7 +259,7 @@ int main()
     testStr.length();
 
 
-    Quaint::IMemoryContext* context = Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext();
+    Quaint::IMemoryContext* context = Bolt::G_BOLT_DEFAULT_MEMORY;
     Bolt::RenderModule::get().start(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     //TODO: construct swapchain

@@ -60,7 +60,15 @@ namespace Quaint
 
     MemoryContext* MemoryManager::getMemoryContextByName(const char* name)
     {
-        assert(false && "Not Defined Yet");
+        for(int i = 0; i< m_validContexts; ++i)
+        {
+            if(strcmp(m_MemoryContexts[i].getContextName(), name) == 0)
+            {
+                return &m_MemoryContexts[i]; 
+            }
+        }
+        
+        assert(false && "No valid context found");
         return nullptr;
     }
 
