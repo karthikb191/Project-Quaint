@@ -222,7 +222,63 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
     modelHolder.pushBack(std::move(model));
 }
 
+
+
+// Delete after setting up testing framework for core
+#include <Types/QAllocator.h>
+#include <Types/QVector.h>
 int main()
+{
+    using namespace Quaint;
+    Quaint::IMemoryContext* context = Bolt::G_BOLT_DEFAULT_MEMORY;
+
+    Quaint::QAllocator<int> intAllocator(context, "testIntAllocator");
+
+
+    //Check validity of allocator
+    cout << "QVector(size) default construction test: " << endl;
+    Quaint::QVector<int> defVector;
+    std::cout << "Size: " << defVector.size() << " : Expected 0" << endl;
+
+    
+    cout << "QVector(size) constructor test: " << endl;
+    Quaint::QVector<int> intVector(10);
+    for(size_t i = 0; i < intVector.size(); ++i)
+    {
+        cout << intVector[i] << " ";
+    }
+    cout << endl;
+    cout << "QVector(size) assignment test: " << endl;
+    for(size_t i = 0; i < intVector.size(); ++i)
+    {
+        intVector[i] = i;
+    }
+    for(size_t i = 0; i < intVector.size(); ++i)
+    {
+         cout << intVector[i] << " ";
+    }
+    cout << endl;
+
+    //Constructor with allocator
+    cout << endl;
+    QVector<int, QAllocator<int>> intWithAllocator(intAllocator);
+    std::cout << "Size: " << intWithAllocator.size() << " : Expected 0" << endl;
+    
+    cout << "QVector(allocator, size) assignment test: " << endl;
+    QVector<int, QAllocator<int>> intWithAllocator2(intAllocator, 20);
+    for(size_t i = 0; i < intWithAllocator2.size(); ++i)
+    {
+        intWithAllocator2[i] = i;
+    }
+    for(size_t i = 0; i < intWithAllocator2.size(); ++i)
+    {
+         cout << intWithAllocator2[i] << " ";
+    }
+    
+    cout << "End of tests\n";
+}
+
+int main_SHOULD_REUSE_AFTER_TESTING()
 {
     //constexpr size_t offset = offsetof(SimpleTriShader, descriptors);
 

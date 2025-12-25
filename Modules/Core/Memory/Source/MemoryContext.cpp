@@ -48,6 +48,10 @@ namespace Quaint
 
     bool MemoryContext::Shutdown()
     {
+        char buffer[1024];
+        sprintf_s(buffer, "Memory Context %s shutting down", m_name);
+        QLOG_I(MemoryContextLogger, buffer);
+
         if(m_technique != nullptr)
         {
             m_technique->shutdown();

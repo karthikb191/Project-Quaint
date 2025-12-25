@@ -1,11 +1,15 @@
 #include <MemCore/Techniques/BestFitPoolAllocTechnique.h>
 #include <assert.h>
 #include <mutex>
+#include <QuaintLogger.h>
 
 namespace Quaint
 {
 #define GET_MULTIPLE_OF_ALIGNMENT(ALIGNMENT, DATA) ALIGNMENT * ((DATA + ALIGNMENT - 1) / ALIGNMENT)
 #define GET_MULTIPLE_OF_ALIGNMENT_WITH_PADDING(ALIGNMENT, DATA) GET_MULTIPLE_OF_ALIGNMENT(ALIGNMENT, DATA + PADDING_INFO_SIZE)
+
+DECLARE_LOG_CATEGORY(BestFitPoolAllocLogger);
+DEFINE_LOG_CATEGORY(BestFitPoolAllocLogger);
 
 std::mutex g_allocMutex;
 
@@ -725,6 +729,15 @@ std::mutex g_allocMutex;
 
     void BestFitPoolAllocTechnique::shutdown()
     {
-        //TODO:
+        MemoryChunk* current = m_root;
+        while(current != nullptr)
+        {
+            m_availableSize += sizeof(MemoryChunk);
+            current = current->m_right;
+        }
+        char buffer[1024];
+        sprintf_s(buffer, "Memory chunk overhead cleared from BestFitPoolAllocTechnique. Total available: %zu", m_availableSize);
+        QLOG_E(BestFitPoolAllocLogger, buffer);
+        m_isRunning = false;
     }
 }

@@ -15,7 +15,13 @@ namespace Quaint
     void LoggerBase::log(Category category, const char* message)
     {
         if(!mEnabled)
-            return;
+        {
+            mEnabled = LoggerModule::get().shouldPrintLogsInCategory(mLoggerName);
+            if(!mEnabled)
+            {
+                return;
+            }
+        }
 
         //std::stringstream stream;
         //stream << "[" << mLoggerName << "]: " << logCategoryToString(category) << ": " << message << '\n';
