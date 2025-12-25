@@ -319,33 +319,33 @@ namespace Quaint
     }
 
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::begin()
+    inline typename Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::begin()
     {
         return m_begin;
     }
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::begin() const
+    inline typename Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::begin() const
     {
         return m_begin;
     }
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cbegin() const
+    inline typename Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cbegin() const
     {
         return m_begin;
     }
 
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::end()
+    inline typename Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::end()
     {
         return m_end;
     }
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::end() const
+    inline typename Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::end() const
     {
         return m_end;
     }
     template<typename T, typename TAllocator>
-    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cend() const
+    inline typename Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cend() const
     {
         return m_end;
     }

@@ -173,7 +173,7 @@ namespace Quaint
         ForwardIterator current = first;
         while(current != last)
         {
-            *current->~value_type();
+            (*current).~value_type();
             ++current;
         }
     }
@@ -188,7 +188,7 @@ namespace Quaint
     inline void Destroy_In_Storage_Impl(ForwardIterator first, std::false_type)
     {
         typedef typename IteratorTraits<ForwardIterator>::value_type value_type;
-        *first->~value_type();
+        (*first).~value_type();
     }
     template<typename ForwardIterator>
     inline void Destroy_In_Storage_Impl(ForwardIterator first, std::true_type)

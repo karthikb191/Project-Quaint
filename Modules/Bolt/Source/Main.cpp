@@ -229,10 +229,18 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
 #include <Types/QVector.h>
 int main()
 {
+    struct Test
+    {
+        Test(int val) : m_val(val){}
+        /* data */
+        int m_val;
+    };
+    
     using namespace Quaint;
     Quaint::IMemoryContext* context = Bolt::G_BOLT_DEFAULT_MEMORY;
 
-    constexpr bool val = std::is_trivially_destructible<int>::value;
+    constexpr bool val = std::is_trivial<int>::value;
+    constexpr bool val2 = std::is_trivial<Test>::value;
 
     Quaint::QAllocator<int> intAllocator(context, "testIntAllocator");
 
@@ -291,7 +299,26 @@ int main()
     {
         cout << pbVector[i] << "  ";
     } 
-    cout << endl;
+    cout << endl << endl;
+    cout << "struct Test\n";
+    QVector<Test, QAllocator<Test>> vecOfStructs;
+    vecOfStructs.push_back(Test(10));
+    vecOfStructs.push_back(Test(9));
+    vecOfStructs.push_back(Test(8));
+    vecOfStructs.push_back(Test(7));
+    vecOfStructs.push_back(Test(6));
+    vecOfStructs.push_back(Test(5));
+    vecOfStructs.push_back(Test(4));
+    vecOfStructs.push_back(Test(3));
+    vecOfStructs.push_back(Test(2));
+    vecOfStructs.push_back(Test(1));
+    vecOfStructs.push_back(Test(0));
+    for(auto& v : vecOfStructs)
+    {
+        cout << v.m_val << " ";
+    }
+    cout << endl << endl;
+
     
     cout << "End of tests\n";
 }
