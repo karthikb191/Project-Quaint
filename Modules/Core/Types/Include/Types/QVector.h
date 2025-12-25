@@ -77,7 +77,7 @@ namespace Quaint
 
         //TODO: Reverse iteration
 
-        bool empty();
+        bool empty() const noexcept;
         size_type size() const noexcept;
         size_type capacity() const noexcept;
 
@@ -89,7 +89,12 @@ namespace Quaint
         
         size_type increaseCapacity(size_type size);
         pointer doAllocate(size_type size);
+        void doFree(pointer p);
         void doGrow(size_type size);
+        template<typename ...Args>
+        void increaseCapacityAndInsert(iterator position, Args&&... args);
+        template<typename ...Args>
+        reference increaseCapacityAndInsertEnd(Args&&... args);
 
         /*Retrieves more capacity than the provided size*/
         size_type getMoreCapacity(size_type size);
@@ -99,7 +104,6 @@ namespace Quaint
         pointer m_end;
         pointer m_capacityEnd;
         TAllocator m_allocator;
-        size_type m_capacity;
     };
 
     template<typename T, typename TAllocator>
@@ -170,6 +174,110 @@ namespace Quaint
     }
 
     template<typename T, typename TAllocator>
+    inline void Quaint::QVector<T, TAllocator>::push_back(const_reference t)
+    {
+        if(m_end < m_capacityEnd)
+        {
+            ::new(m_end) value_type(t);
+            ++m_end;
+        }
+        else
+        {
+            increaseCapacityAndInsertEnd(t);
+        }
+    }
+
+    template<typename T, typename TAllocator>
+    inline void Quaint::QVector<T, TAllocator>::push_back(value_type&& t)
+    {
+        if(m_end < m_capacityEnd)
+        {
+            ::new(m_end) value_type(std::move(t));
+            ++m_end;
+        }
+        else
+        {
+            increaseCapacityAndInsertEnd(std::move(t));
+        }
+    }
+
+    template<typename T, typename TAllocator>
+    inline void Quaint::QVector<T, TAllocator>::pop_back()
+    {
+        assert(m_end > m_begin && "Trying to pop empty array");
+        
+        --m_end;
+        m_end->~value_type();
+    }
+
+    template<typename T, typename TAllocator>
+    template<typename ...Args>
+    inline typename Quaint::QVector<T, TAllocator>::reference Quaint::QVector<T, TAllocator>::increaseCapacityAndInsertEnd(Args&&... args)
+    {
+        const size_type prevSize = size();
+		const size_type newSize  = getMoreCapacity(prevSize);
+		pointer const   newData  = doAllocate(newSize);
+
+        pointer pNewEnd = Move_Storage(m_begin, m_end, newData);
+        ::new((void*)pNewEnd) value_type(eastl::forward<Args>(args)...);
+        pNewEnd++;
+
+		Destroy_In_Storage(m_begin, m_end);
+		doFree(m_begin);
+
+		m_begin    = newData;
+		m_end      = pNewEnd;
+		m_capacityEnd = newData + newSize;
+
+        return *(m_end-1);
+    }
+    
+    template<typename T, typename TAllocator>
+    template<typename ...Args>
+    inline void Quaint::QVector<T, TAllocator>::increaseCapacityAndInsert(iterator position, Args&&... args)
+    {
+        assert((position >= m_begin && position < m_end) && "Trying to insert at invalid index");
+
+        if(m_end < m_capacityEnd)
+        {
+            size_t insertIndex = position - m_begin;
+            pointer insertDestination = m_begin + insertIndex;
+            
+            //Clone end-1 element into the end position
+            ::new(m_end) value_type(std::move(*(m_end-1)));
+            //Move storage
+            Move_Backward(insertDestination, m_end - 1, m_end);
+            Destroy_In_Storage(insertDestination);
+            ::new(insertDestination) value_type(std::forward<Args>(args)...);
+            ++m_end;
+        }
+        else
+        {
+            size_type currentSize = size();
+            size_type newSize = getMoreCapacity(currentSize);
+            size_t insertIndex = position - m_begin; 
+            pointer insertDestination = m_begin + insertIndex;
+            
+            pointer newLocation = doAllocate(newSize);
+            //Move from source till element before insert idx -> Insert element -> Move the rest
+            pointer newEnd = Move_Storage(m_begin, insertDestination, newLocation);
+            ::new(newEnd++) value_type(std::forward<Args>(args)...);
+            newEnd = Move_Storage(insertDestination, m_end, newEnd);
+
+            //Move data to insert element
+
+            //Destroy old storage
+            Destroy_In_Storage(m_begin, m_end);
+            //Free storage in memory
+            doFree(m_begin);
+
+            m_begin = newLocation;
+            m_end = newEnd;
+            m_capacityEnd = m_begin + newSize;
+        }
+    }
+
+    template<typename T, typename TAllocator>
     inline typename Quaint::QVector<T, TAllocator>::pointer Quaint::QVector<T, TAllocator>::doAllocate(size_type size)
     {
         //just allocates the memory and returns the pointer
@@ -186,6 +294,15 @@ namespace Quaint
     }
 
     template<typename T, typename TAllocator>
+    inline void Quaint::QVector<T, TAllocator>::doFree(pointer p)
+    {
+        if(p)
+        {
+            DeAllocateMemory(m_allocator, m_begin);
+        }
+    }
+
+    template<typename T, typename TAllocator>
     void Quaint::QVector<T, TAllocator>::doGrow(size_type size)
     {
         // Allocate
@@ -198,30 +315,95 @@ namespace Quaint
     typename Quaint::QVector<T, TAllocator>::size_type Quaint::QVector<T, TAllocator>::getMoreCapacity(size_type size)
     {
         //Gets 50% more size than provided input
-        return size * 1.5f;
+        return size != 0 ? (size_type)(size * 1.5f) : 4;
     }
 
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::begin()
+    {
+        return m_begin;
+    }
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::begin() const
+    {
+        return m_begin;
+    }
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cbegin() const
+    {
+        return m_begin;
+    }
+
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::iterator Quaint::QVector<T, TAllocator>::end()
+    {
+        return m_end;
+    }
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::end() const
+    {
+        return m_end;
+    }
+    template<typename T, typename TAllocator>
+    inline Quaint::QVector<T, TAllocator>::const_iterator Quaint::QVector<T, TAllocator>::cend() const
+    {
+        return m_end;
+    }
+
+    template<typename T, typename TAllocator>
+    typename bool Quaint::QVector<T, TAllocator>::empty() const noexcept
+    {
+        return m_end == m_begin;
+    }
     template<typename T, typename TAllocator>
     typename Quaint::QVector<T, TAllocator>::size_type Quaint::QVector<T, TAllocator>::size() const noexcept
     {
         return (m_end - m_begin);
     }
+    template<typename T, typename TAllocator>
+    typename Quaint::QVector<T, TAllocator>::size_type Quaint::QVector<T, TAllocator>::capacity() const noexcept
+    {
+        return (m_capacityEnd - m_begin);
+    }
 
     template<typename T, typename TAllocator>
-    typename Quaint::QVector<T, TAllocator>::reference Quaint::QVector<T, TAllocator>::operator[](size_type n)
+    typename Quaint::QVector<T, TAllocator>::pointer Quaint::QVector<T, TAllocator>::data() noexcept
+    {
+        return m_begin;
+    }
+
+    template<typename T, typename TAllocator>
+	inline typename Quaint::QVector<T, TAllocator>::const_pointer typename Quaint::QVector<T, TAllocator>::data() const noexcept
+    {
+        return m_begin;
+    }
+
+    template<typename T, typename TAllocator>
+    inline typename Quaint::QVector<T, TAllocator>::reference Quaint::QVector<T, TAllocator>::at(size_type n)
+    {
+        assert(n < size() && "Index out of bounds");
+        return *(m_begin + n);
+    }
+    template<typename T, typename TAllocator>
+	inline typename Quaint::QVector<T, TAllocator>::const_reference Quaint::QVector<T, TAllocator>::at(size_type n) const
+    {
+        assert(n < size() && "Index out of bounds");
+        return *(m_begin + n);
+    }
+
+    template<typename T, typename TAllocator>
+    inline typename Quaint::QVector<T, TAllocator>::reference Quaint::QVector<T, TAllocator>::operator[](size_type n)
     {
         assert(n < size() && "Accessing out of bounds element");
         return *(m_begin + n);
     }
 
     template<typename T, typename TAllocator>
-	typename Quaint::QVector<T, TAllocator>::const_reference Quaint::QVector<T, TAllocator>::operator[](size_type n) const
+	inline typename Quaint::QVector<T, TAllocator>::const_reference Quaint::QVector<T, TAllocator>::operator[](size_type n) const
     {
         assert(n < size() && "Accessing out of bounds element");
         return *(m_begin + n);
     }
-
-
 }
 
 #endif

@@ -232,6 +232,8 @@ int main()
     using namespace Quaint;
     Quaint::IMemoryContext* context = Bolt::G_BOLT_DEFAULT_MEMORY;
 
+    constexpr bool val = std::is_trivially_destructible<int>::value;
+
     Quaint::QAllocator<int> intAllocator(context, "testIntAllocator");
 
 
@@ -274,6 +276,22 @@ int main()
     {
          cout << intWithAllocator2[i] << " ";
     }
+
+    cout << "\n\nPush Back Tests\n";
+    QVector<int, QAllocator<int>> pbVector(intAllocator);
+    pbVector.push_back(0); 
+    pbVector.push_back(1); 
+    pbVector.push_back(2); 
+    pbVector.push_back(3); 
+    pbVector.push_back(4); 
+    pbVector.push_back(5); 
+    pbVector.push_back(6); 
+    pbVector.push_back(7);
+    for(size_t i = 0; i < pbVector.size(); ++i)
+    {
+        cout << pbVector[i] << "  ";
+    } 
+    cout << endl;
     
     cout << "End of tests\n";
 }
