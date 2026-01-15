@@ -10,18 +10,28 @@ namespace Quaint
 {
     inline QMat4x4 buildPerspectiveProjectionMatrix(float nearClip, float farClip, float fov, float aspectRatio)
     {
+        //Camera is rendered at -ve z;
+        
         //Vulkan's positive Y is downwards
         QMat4x4 res = QMat4x4::Identity();
-        float r = tanf(TO_RADIANS(fov/2.0f)) * nearClip;
+        float origR = tanf(TO_RADIANS(fov/2.0f)) * nearClip;
+        // Camera renders at it's -ve z. So, the camera would've essentially rotated 180 degrees around y.
+        // But we still expect right side to be +ve
+        // This will change the coordinate system to right-handed
+        float r = -origR;
         float l = -r;
-        float t = r * (1.f/aspectRatio);
+
+        //Top is negative, bottom is positive
+        float t = origR * (1.f/aspectRatio);
+        // In vulkan y points downwards... So, we pretty much invert this too 
+        t = r;
         float b = -t;
 
         float width = (r - l);
-        float height = (b - t);
+        float height = (t - b);
         float negDepth = (nearClip - farClip);
 
-        res.col0.x = (2 * nearClip) / width; 
+        res.col0.x = (2 * nearClip) / width;
         res.col2.x = (r + l) / width;   // 0 if canvas is centered. Right now, it should always be 0
 
         res.col1.y = (2 * nearClip) / height;
@@ -144,6 +154,7 @@ namespace Quaint
     {
         //+Z points away from camera view frustum
         QVec3 forward = (source - target).normalize();
+        //QVec3 forward = (target - source).normalize();
         QVec3 right = cross_vf(normalizedUp, forward).normalize();
         QVec3 up = cross_vf(forward, right).normalize();
 

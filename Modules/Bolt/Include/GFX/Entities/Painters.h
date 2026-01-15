@@ -73,7 +73,6 @@ namespace Bolt
             Model* model;
             VkDescriptorSet set;
             TBufferImplPtr uniformBuffer;
-            TBufferImplPtr materialBuffer;
         };
 
         GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);

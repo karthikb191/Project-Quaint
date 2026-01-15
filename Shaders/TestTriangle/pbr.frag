@@ -39,10 +39,14 @@ layout(binding = 2) uniform Lights
 
 layout(binding = 3) uniform sampler2D shadowMap;
 
-layout(binding = 4) uniform MaterialUniform
-{
-    Material data;
-}material;
+//PBR stuff
+//TODO: Move these to a new specularStrength
+//TODO: Convert to a texture array?
+layout(binding = 4) uniform sampler2D diffuseMap;
+layout(binding = 5) uniform sampler2D normalMap;
+layout(binding = 6) uniform sampler2D metallicMap;
+layout(binding = 7) uniform sampler2D roughnessMap;
+
 
 //layout (input_attachment_index=0, binding=3) uniform subpassInput myInputAttachment;
 
@@ -73,38 +77,9 @@ float calculateShadow(vec4 lightProjCoords)
 
 void main()
 {
-    float ambientStrength = 0.1;
-    float specularStrength = 0.5;
-    float globalLightIntensity = 0.5;
-
-    vec3 inColor = fragColor;
-
-    GlobalLight gLight = lights.globalLight;
-
-    vec3 ambient = gLight.color.xyz * ambientStrength;
-
-    float diff = max(dot(inNormal.xyz, normalize(-gLight.direction)), 0.0);
-    vec3 diffuse = diff * globalLightIntensity * gLight.color.xyz;
-
-    //Specular calculation. This is view-dependent
-    vec3 viewDir = normalize(viewPosWS - fragWorldPos).xyz;
-    vec3 reflectDir = reflect(normalize(gLight.direction), inNormal.xyz);
-    float specPower = pow(max(dot(viewDir, reflectDir), 0), material.data.shininess);
-    
-    vec3 specular = specularStrength * specPower * gLight.color.xyz;  
+    vec3 diffuse = texture(diffuseMap, fragTexCoord).xyz;
 
     float shadow = calculateShadow(inLightProjPos);
-    vec4 finalColor = vec4((ambient + (1.0 - shadow) * (specular + diffuse)), 1.0f);
+    vec4 finalColor = vec4((diffuse * (1.0 - shadow)).xyz, 1.0f);
     outColor = finalColor;
-
-    //outColor = vec4(ambient * (1.0 - shadow), 1.0f);
-    
-    //float depth = texture(shadowMap, fragTexCoord.xy).r;
-    //outColor = vec4(depth, depth, depth, 1);
-
-    //float dot = dot(reflectDir, inNormal.xyz);
-    //outColor = vec4(dot, dot, dot, 1.0f);
-
-    //outColor = vec4(inNormal.xyz, 1.0f);
-    //outColor = texture(texSampler, fragTexCoord);
 }

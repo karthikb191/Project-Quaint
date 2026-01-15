@@ -1,13 +1,16 @@
 #ifndef _H_BOLT_MEMORY_PROVIDER
 #define _H_BOLT_MEMORY_PROVIDER
 
-#include <MemoryModule.h>
-#include <MemoryManager.h>
-#include <MemoryConstants.h>
+namespace Quaint
+{
+    class IMemoryContext;
+}
+
+#define BOLT_ALLOCATOR Quaint::QAllocatorBase(Bolt::G_BOLT_DEFAULT_MEMORY, "BoltAllocator")
 
 namespace Bolt
 {
-    Quaint::IMemoryContext* G_BOLT_DEFAULT_MEMORY = Quaint::MemoryModule::get().getMemoryManager().getMemoryContextByName(BOLT_MEMORY_PARTITION);
+    extern Quaint::IMemoryContext* G_BOLT_DEFAULT_MEMORY;
 }
 
 #endif //_H_BOLT_MEMORY_PROVIDER

@@ -66,5 +66,7 @@ namespace Bolt
 
         bool m_engineRunning;
     };
+
+    extern Quaint::IMemoryContext* G_BOLT_DEFAULT_MEMORY;
 }
 #endif //_H_BOLT

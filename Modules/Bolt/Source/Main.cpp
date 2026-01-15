@@ -24,6 +24,7 @@
 #include <ImguiHandler.h>
 #include <GFX/Data/LightData.h>
 #include <GFX/Materials/SimpleMaterial.h>
+#include <GFX/Materials/PBRMaterial.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tinyobj/tiny_obj_loader.h>
@@ -162,8 +163,8 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
                 //Get the actual vertex from this
                 uint32_t vertexIdx = idx.vertex_index * 3;
                 vertices.push_back(attrib.vertices[vertexIdx]);
-                vertices.push_back(attrib.vertices[vertexIdx + 1]);
                 vertices.push_back(attrib.vertices[vertexIdx + 2]);
+                vertices.push_back(attrib.vertices[vertexIdx + 1]);
 
                 verts[v].x = attrib.vertices[vertexIdx];
                 verts[v].y = attrib.vertices[vertexIdx + 1];
@@ -173,8 +174,8 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
                 {
                     uint32_t normalIdx = idx.normal_index * 3;
                     fNormals.push_back(attrib.normals[normalIdx]);
-                    fNormals.push_back(attrib.normals[normalIdx + 1]);
                     fNormals.push_back(attrib.normals[normalIdx + 2]);
+                    fNormals.push_back(attrib.normals[normalIdx + 1]);
                 }
                 else
                 {
@@ -227,7 +228,7 @@ void LoadModelWithPerFaceNormals(Quaint::IMemoryContext* context, tinyobj::attri
 // Delete after setting up testing framework for core
 #include <Types/QAllocator.h>
 #include <Types/QVector.h>
-int main()
+int mainVector()
 {
     struct Test
     {
@@ -321,9 +322,11 @@ int main()
 
     
     cout << "End of tests\n";
+    return 0;
 }
 
-int main_SHOULD_REUSE_AFTER_TESTING()
+//int main_SHOULD_REUSE_AFTER_TESTING()
+int main()
 {
     //constexpr size_t offset = offsetof(SimpleTriShader, descriptors);
 
@@ -451,7 +454,7 @@ int main_SHOULD_REUSE_AFTER_TESTING()
     Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
     globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
-    globalLight.setDirection({0.f, -1.0f, 0.1f});
+    globalLight.setDirection({0.5f, -1.0f, 0.1f});
 
     scene->addGlobalLight(globalLight);
 
@@ -520,8 +523,8 @@ int main_SHOULD_REUSE_AFTER_TESTING()
     //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
-    shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     
     attributes.clear();
 
@@ -539,7 +542,34 @@ int main_SHOULD_REUSE_AFTER_TESTING()
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
-    // IMGUI SETUP. TODO: Should be moved to a different file
+    //PBR Pipeline setup
+    shaderDef.shaders.clear();
+    //TODO: Move PBR shaders to a new folder later
+    shaderDef.shaders.pushBack({"pbr.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"pbr.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\pbr.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    shaderDef.uniforms.clear();
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"Lights_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    //shaderDef.uniforms.pushBack({"CIS_TestTexture", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    
+    shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"DiffuseMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"NormalMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"MetallicMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"RoughnessMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+
+    Bolt::Pipeline* pbrPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("GeoPBRPipeline"), Quaint::QName("graphics"), geoStageIdx, shaderDef);
+    pbrPipeline->cullBack();
+    pbrPipeline->enableDepth();
+    pbrPipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pbrPipeline);
+
+
+    // IMGUI PIPELINE SETUP. TODO: Should be moved to a different file
     shaderDef = Bolt::ShaderDefinition();
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
@@ -580,6 +610,8 @@ int main_SHOULD_REUSE_AFTER_TESTING()
     Bolt::GeometryPainter* geoPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPipeline"));
     geoPainter->setupLightsData();
 
+    Bolt::GeometryPainter* geoPBRPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPBRPipeline"));
+    geoPBRPainter->setupLightsData();
 
     //TODO: Create IMGUI handler
     Bolt::ImguiHandler::Create(context);
@@ -637,6 +669,7 @@ int main_SHOULD_REUSE_AFTER_TESTING()
 
     //LoadModelWithSmoothNormals(context, attrib, shapes, materials, geoPainter, modelHolder
     //    , Quaint::QVec4(-200, 0, 0, 1), 1);
+
         
 
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
@@ -654,13 +687,29 @@ int main_SHOULD_REUSE_AFTER_TESTING()
     LoadModelWithPerFaceNormals(context, attrib, shapes, materials, geoPainter, modelHolder
     , Quaint::QVec4(-2, 5, -5, 1), 1, "cube6");
 
+
+    //PBR Material
+    Bolt::MaterialRef pbrMaterial = Quaint::makeShared<Bolt::Material>(context);
+    Bolt::PBRMaterial* pbrInstance = QUAINT_NEW(context, Bolt::PBRMaterial);
+    pbrInstance->loadDiffuseMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_albedo.png");
+    pbrInstance->loadNormalMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_metallic.png");
+    pbrInstance->loadRoughnessMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_normal_ogl.png");
+    pbrInstance->loadMetallicMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_roughness.png");
+    pbrMaterial.reset(pbrInstance);
+    
+    Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::Material>(context);
+    simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
+
     Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
     Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
     floorModel->setTranslation({0, -1, 0, 1});
+    //floorModel->setMaterial(simpleMaterial);
+    floorModel->setMaterial(pbrMaterial);
     floorModel->construct();
 
     shadowPainter->AddModel(floorModel.get());
-    geoPainter->AddModel(floorModel.get());
+    geoPBRPainter->AddModel(floorModel.get());
+    //geoPainter->AddModel(floorModel.get());
 
     for(auto& model : modelHolder)
     {
@@ -677,6 +726,7 @@ int main_SHOULD_REUSE_AFTER_TESTING()
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(shadowPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPBRPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);
 
 
@@ -707,6 +757,26 @@ int main_SHOULD_REUSE_AFTER_TESTING()
         
         Bolt::RenderModule::get().getBoltRenderer()->update();
         Bolt::ImguiHandler::Get()->EndFrame();
+
+        
+        
+        auto& camera = Bolt::RenderModule::get().getBoltRenderer()->getCamera();
+        auto view = camera.getViewMatrix();
+        auto projection = camera.getProjectionMatrix();
+        auto model = floorModel->getTransform();
+
+        Quaint::QVec4 vecres = model * Quaint::QVec4(-20.5, 0.0, 0.5, 1);
+        vecres = view * vecres;
+        vecres = projection * vecres;
+
+        Quaint::QVec4 vecres2 = model * Quaint::QVec4(0.5, 0.0, 0.5, 1);
+        vecres2 = view * vecres2;
+        vecres2 = projection * vecres2;
+
+
+        Quaint::QVec4 vecres3 = model * Quaint::QVec4(-0.5, 0.0, -0.5, 1);
+        vecres3 = view * vecres3;
+        vecres3 = projection * vecres3;
     }
 
     //Clear all models

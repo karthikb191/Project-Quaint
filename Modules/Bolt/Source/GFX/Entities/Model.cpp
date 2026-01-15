@@ -114,6 +114,7 @@ namespace Bolt
     , m_vertices(context)
     , m_indices(context)
     , m_modelImpl(nullptr, Quaint::Deleter<IModelImpl>(context))
+    , m_name(name)
     {
     }
 
@@ -132,6 +133,12 @@ namespace Bolt
     void Model::construct()
     {
         RenderObjectBuilder builder(m_context);
+
+        for(int i = 0; i < m_materials.getSize(); ++i)
+        {
+            m_materials[i]->construct();
+        }
+
         m_modelImpl = std::move(builder.buildFromModel(this));
     }
     void Model::destroy()
@@ -194,12 +201,8 @@ namespace Bolt
             ,  m_vertices.getSize(), vertDataOffset, numIndices, indexDataOffset);
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
-
-        auto it = std::find(m_materials.begin(), m_materials.end(), material);
-        if(it == m_materials.end())
-        {
-            m_materials.pushBack(material);
-        }
+        
+        setMaterial(material);
     }
 
     void PreDraw()
@@ -226,6 +229,15 @@ namespace Bolt
         if(m_modelImpl.get())
         {
             m_modelImpl->draw(scene);
+        }
+    }
+
+    void Model::setMaterial(MaterialRef material)
+    {
+        auto it = std::find(m_materials.begin(), m_materials.end(), material);
+        if(it == m_materials.end())
+        {
+            m_materials.pushBack(material);
         }
     }
     
@@ -263,38 +275,33 @@ namespace Bolt
         vertex.position *= scale;
         vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
-        vertex.texCoord = {0, 0, 0, 0};
+        vertex.texCoord = {1, 0, 0, 0};
         m_vertices.pushBack(vertex);
 
         vertex.position = {0.5, 0.0, -0.5, 1};
         vertex.position *= scale;
         vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
-        vertex.texCoord = {0, 0, 0, 0};
+        vertex.texCoord = {1, 1, 0, 0};
         m_vertices.pushBack(vertex);
 
         vertex.position = {-0.5, 0.0, -0.5, 1};
         vertex.position *= scale;
         vertex.position.w = 1;
         vertex.normal = {0, 1, 0, 0};
-        vertex.texCoord = {0, 0, 0, 0};
+        vertex.texCoord = {0, 1, 0, 0};
         m_vertices.pushBack(vertex);
         
         m_indices.pushBack(0);
-        m_indices.pushBack(1);
         m_indices.pushBack(2);
+        m_indices.pushBack(1);
         
         m_indices.pushBack(0);
-        m_indices.pushBack(2);
         m_indices.pushBack(3);
+        m_indices.pushBack(2);
 
-        Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::SimpleMaterial>(context);
-        simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
-        m_materials.pushBack(simpleMaterial);
         Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
             ,  4, 0, m_indices.getSize(), 0);
-        mesh->setMaterial(simpleMaterial);
-
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
     }

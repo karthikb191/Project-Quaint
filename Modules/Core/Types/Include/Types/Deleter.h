@@ -38,6 +38,11 @@ namespace Quaint
         
         void operator()(T* ptr)
         {
+            if(ptr == nullptr)
+            {
+                return;
+            }
+            
             QUAINT_DELETE(context, ptr);
         }
         Quaint::IMemoryContext* context = nullptr;

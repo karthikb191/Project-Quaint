@@ -48,6 +48,9 @@ namespace Bolt
         : IGFXEntity(context)
         {}
         virtual void construct(void* data) = 0;
+        virtual void map() = 0;
+        virtual void unmap() = 0;
+        virtual void** getMappedRegion() = 0;
     };
     typedef Quaint::QUniquePtr<IBufferImpl, Quaint::Deleter<IBufferImpl>> TBufferImplPtr;
 

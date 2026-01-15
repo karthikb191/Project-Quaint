@@ -4,10 +4,14 @@
 #include <RenderModule.h>
 #include <chrono>
 #include <GFX/Entities/Painters.h>
+#include <MemoryModule.h>
+#include <MemoryManager.h>
+#include <MemoryConstants.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 namespace Bolt
 {
+    Quaint::IMemoryContext* G_BOLT_DEFAULT_MEMORY = Quaint::MemoryModule::get().getMemoryManager().getMemoryContextByName(BOLT_MEMORY_PARTITION);
 
     BoltRenderer::BoltRenderer()
     {
@@ -82,7 +86,7 @@ namespace Bolt
     void BoltRenderer::initCamera()
     {
         CameraInitInfo info{};
-        info.translation = Quaint::QVec4(0, 0, 3, 1);
+        info.translation = Quaint::QVec4(0, 0, -10, 1);
         info.rotation = Quaint::QVec3(0, 0, 0);
         info.fov = 90.0f;
         info.nearClipDist = 1.0f;
@@ -101,7 +105,7 @@ namespace Bolt
         m_renderer_impl->render();
     }
 
-    float xyz[3] = {0, -0.89f, 5.0f};
+    float xyz[3] = {0, 0, -10.0f};
     void BoltRenderer::updateUniformBufferProxy()
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -125,7 +129,8 @@ namespace Bolt
         Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -1.5, 1);
         //Quaint::QVec4 res =  m_ubo.proj * Quaint::QVec4(0, 0, -10000.0f, 1);
         //res = m_ubo.view * Quaint::QVec4(0, 0, 0, 1);
-        
+
+
         int iiii = 100;
         iiii -= 10;
     }

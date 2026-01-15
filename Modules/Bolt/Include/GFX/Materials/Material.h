@@ -6,6 +6,9 @@
 #include <GFX/Interface/IEntityInterfaces.h>
 #include <EASTL/unordered_set.h>
 
+//TODO: Remove this from here
+#include <vulkan/vulkan.h>
+
 namespace Bolt
 {
     //TODO: Experiment with a material property block after getting shadows in
@@ -18,6 +21,10 @@ namespace Bolt
         virtual void construct() = 0;
         virtual void destroy() = 0;
         virtual void writeImgui() = 0;
+
+        //TODO: Move this to a platform-specific class
+        virtual void write(VkDescriptorSet set, uint16_t offset) = 0;
+        virtual void update() = 0;
         
         //TODO: Implement later once there's a system to push data dynamically to descriptors
         //template<typename T>

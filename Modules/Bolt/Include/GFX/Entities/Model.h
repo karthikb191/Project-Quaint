@@ -111,6 +111,8 @@ namespace Bolt
         
             //void removeMesh(MeshRef& mesh); TODO:
         //Mesh* getMesh(){ return m_mesh.get(); }
+        
+        void setMaterial(MaterialRef material);
 
         Quaint::QArray<MeshRef>& getMeshes() { return m_meshes; }
         Quaint::QArray<MaterialRef>& getMaterials() { return m_materials; }
