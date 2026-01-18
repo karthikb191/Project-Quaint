@@ -305,4 +305,69 @@ namespace Bolt
         Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
         m_meshes.pushBack(std::move(meshRef));
     }
+
+    SphereModel::SphereModel(Quaint::IMemoryContext* context, float scale, const Quaint::QName& name)
+    : Model(context, name)
+    {
+        const unsigned int X_SEGMENTS = 15;
+        const unsigned int Y_SEGMENTS = 15;
+        const float PI = 3.14159265359f;
+        for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+        {
+            for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
+            {
+                Quaint::QVertex vertex;
+                float xSegment = (float)x / (float)X_SEGMENTS;
+                float ySegment = (float)y / (float)Y_SEGMENTS;
+                float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+                float yPos = std::cos(ySegment * PI);
+                float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+                vertex.position = {xPos, yPos, zPos, 1.0f};
+                vertex.texCoord = {xSegment, ySegment, 0.0f, 0.0f};
+                vertex.normal = {xPos, yPos, zPos, 0.0f};
+                m_vertices.pushBack(vertex);
+            }
+        }
+
+        bool oddRow = false;
+        for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
+        {
+            //if (!oddRow) // even rows: y == 0, y == 2; and so on
+            {
+                for (unsigned int x = 0; x < X_SEGMENTS; ++x)
+                {
+                    //m_indices.pushBack(y * (X_SEGMENTS + 1) + x);
+                    //m_indices.pushBack((y + 1) * (X_SEGMENTS + 1) + x);
+                    
+                    int i1 = x * (Y_SEGMENTS + 1) + y;
+                    int i2 = i1 + 1;
+                    int i3 = (i2 + (Y_SEGMENTS + 1));
+                    int i4 = i1 + (Y_SEGMENTS + 1);
+                    
+                    m_indices.pushBack(i1);
+                    m_indices.pushBack(i2);
+                    m_indices.pushBack(i3);
+
+                    m_indices.pushBack(i1);
+                    m_indices.pushBack(i3);
+                    m_indices.pushBack(i4);
+                }
+            }
+            //else
+            //{
+            //    for (int x = X_SEGMENTS; x >= 0; --x)
+            //    {
+            //        //m_indices.pushBack((y + 1) * (X_SEGMENTS + 1) + x);
+            //        //m_indices.pushBack(y * (X_SEGMENTS + 1) + x);
+            //    }
+            //}
+            //oddRow = !oddRow;
+        }
+
+        Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
+            ,  m_vertices.getSize(), 0, m_indices.getSize(), 0);
+        Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
+        m_meshes.pushBack(std::move(meshRef));
+    }
 }

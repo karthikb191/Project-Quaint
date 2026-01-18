@@ -507,7 +507,7 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(shadowPipeline);
 
 
-    // Graphics pipeline
+    // Graphics pipeline --------------------------
     shaderDef.shaders.clear();
     shaderDef.uniforms.clear();
     shaderDef.pushConstants.clear();
@@ -542,7 +542,7 @@ int main()
     pipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pipeline);
 
-    //PBR Pipeline setup
+    ///PBR Pipeline setup -------------------------
     shaderDef.shaders.clear();
     //TODO: Move PBR shaders to a new folder later
     shaderDef.shaders.pushBack({"pbr.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\simpleTri.vert.spv"
@@ -557,6 +557,9 @@ int main()
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    
+    //PBR stuff
+    shaderDef.uniforms.pushBack({"PBRProperties", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"DiffuseMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"NormalMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"MetallicMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
@@ -569,7 +572,7 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pbrPipeline);
 
 
-    // IMGUI PIPELINE SETUP. TODO: Should be moved to a different file
+    // IMGUI PIPELINE SETUP. TODO: Should be moved to a different file ----------------------
     shaderDef = Bolt::ShaderDefinition();
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
@@ -692,16 +695,21 @@ int main()
     Bolt::MaterialRef pbrMaterial = Quaint::makeShared<Bolt::Material>(context);
     Bolt::PBRMaterial* pbrInstance = QUAINT_NEW(context, Bolt::PBRMaterial);
     pbrInstance->loadDiffuseMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_albedo.png");
-    pbrInstance->loadNormalMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_metallic.png");
-    pbrInstance->loadRoughnessMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_normal_ogl.png");
-    pbrInstance->loadMetallicMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_roughness.png");
+    pbrInstance->loadMetallicMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_metallic.png");
+    pbrInstance->loadNormalMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_normal_ogl.png");
+    pbrInstance->loadRoughnessMap("C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_roughness.png");
     pbrMaterial.reset(pbrInstance);
     
     Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::Material>(context);
     simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
 
-    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
-    Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
+    //Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
+    //Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
+    
+    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::SphereModel, context, 30.0f, Quaint::QName("Floor"));
+    Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::SphereModel>(context));
+
+    
     floorModel->setTranslation({0, -1, 0, 1});
     //floorModel->setMaterial(simpleMaterial);
     floorModel->setMaterial(pbrMaterial);

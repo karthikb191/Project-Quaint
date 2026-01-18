@@ -141,6 +141,12 @@ namespace Bolt
         FloorModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
     };
 
+    class SphereModel : public Model
+    {
+    public:
+        SphereModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+    };
+
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
 
 }
