@@ -118,7 +118,7 @@ namespace Bolt
         uint64_t timeNow = std::chrono::system_clock::now().time_since_epoch().count();
         float x = 5 * (float)std::sin(timeNow * 0.00000005);
 
-        ImGui::SliderFloat3("LookAt XYZ", xyz, -50, 50);
+        ImGui::SliderFloat3("Cam Pos", xyz, -50, 50);
         
         m_camera.lookAt( Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f), 
         Quaint::QVec4(xyz[0], xyz[1], xyz[2], 1.0f),

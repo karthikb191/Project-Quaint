@@ -114,7 +114,6 @@ void main()
     //normal = vec3(normal.x, normal.z, normal.y);
     //normal = normalize(normal);
     
-    vec3 halfwayVector = (lightDirection + normal) / length(lightDirection + normal);
 
     vec3 phi = gl.color.xyz; // Represents radiant flux
     vec4 p = fragWorldPos;
@@ -122,6 +121,7 @@ void main()
     vec3 wo = normalize(viewPosWS - fragWorldPos).xyz;
     float ndotl = max(dot(normal, wi), 0);
     float ndotv = max(dot(normal, wo), 0);
+    vec3 halfwayVector = (wi + wo) / length(wi + wo);
 
     /* Radiance calculation
     - Radiance is a function of position of fragment and incoming light ray
@@ -166,8 +166,8 @@ void main()
     float D = DistrubutionGGX_TrowbridgeReitz(halfwayVector, normal, roughness);
     float G = GeometryGGX_Smith(normal, wo, wi, roughness);
 
-    float denom = 4 * ndotl * ndotv;
-    vec3 specularWo = (F * D * G / denom) + 0.0001f;
+    float denom = (4 * ndotl * ndotv) + 0.001f;
+    vec3 specularWo = (F * D * G / denom);
 
     vec3 ks = F;
     vec3 kd = vec3(1.0f) - ks;
@@ -182,10 +182,11 @@ void main()
     //outColor = vec4(albedo * lightColor, 1.0f);
 
     //outColor = vec4(F, 1.0f);
-    //outColor = vec4(D, D, D, 1.0f);
+    outColor = vec4(D, D, D, 1.0f);
     //outColor = vec4(G, G, G, 1.0f);
     //outColor = vec4(specularWo, 1.0f);
-    outColor = vec4(radianceOutput, 1.0f);
+    //outColor = vec4(radianceOutput, 1.0f);
+    
     //outColor = vec4(radiance, 1.0f);
     //outColor = vec4(ndotl, ndotl, ndotl, 1.0f);
     //outColor = vec4(diffuseWo, 1.0f);
@@ -211,17 +212,16 @@ vec3 CalculateFresnel(vec3 h, vec3 v, vec3 albedo, float metallic)
 float DistrubutionGGX_TrowbridgeReitz(vec3 h, vec3 n, float roughness)
 {
     // Statistically approximates the relative surface area of microfacets aligned to the halfway vector
-    // This is not dependent on the view angle.
 
     // If surface is rough, microfacet area aligned to the halfway vector is lesser
     // For roughness = 0, there would ideally be a single point that aligns to the halfway vector
 
-    float rSqr = roughness * roughness;
+    float rSqr = roughness * roughness * roughness * roughness;
     float dp = max(dot(n, h), 0);
 
-    float denom = PI * ((rSqr - 1) * dp * dp + 1);
+    float denom = ((rSqr - 1) * dp * dp + 1);
 
-    return rSqr / denom;
+    return rSqr / (PI * denom * denom);
 }
 
 float GeometryGGX_Schlick(float ndotv, float k)
