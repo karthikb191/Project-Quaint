@@ -454,7 +454,7 @@ int main()
     Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
     globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
-    globalLight.setDirection({0.5f, -1.0f, 0.1f});
+    globalLight.setDirection({0.0f, 0.0f, 1.0f});
 
     scene->addGlobalLight(globalLight);
 
@@ -703,11 +703,11 @@ int main()
     Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::Material>(context);
     simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
 
-    //Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
-    //Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
+    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
+    Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
     
-    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::SphereModel, context, 30.0f, Quaint::QName("Floor"));
-    Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::SphereModel>(context));
+    //Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::SphereModel, context, 30.0f, Quaint::QName("Floor"));
+    //Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::SphereModel>(context));
 
     
     floorModel->setTranslation({0, -1, 0, 1});

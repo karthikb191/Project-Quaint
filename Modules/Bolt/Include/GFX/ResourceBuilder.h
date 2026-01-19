@@ -39,12 +39,12 @@ namespace Bolt
         : GraphicsResourceBuilderBase(context)
         {}
         //CombinedImageSamplerTextureBuilder& setSamplerInfo(); TODO: APP level sampler info structure
-        
+        CombinedImageSamplerTextureBuilder& setFormat(EFormat format) { m_format = format; return *this;}
         TImageSamplerImplPtr buildFromPath(const char* path);
         TImageSamplerImplPtr buildFromPixels(unsigned char* pixels, int width, int height);
 
     private:
-
+        EFormat m_format = EFormat::R8G8B8A8_SRGB;
     };
 //====================================================================================
 //====================================================================================

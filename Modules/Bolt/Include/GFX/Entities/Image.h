@@ -13,9 +13,10 @@ namespace Bolt
     class Image2d : public IGFXEntity
     {
         public:
-        static Image2dRef LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name);
+        static Image2dRef LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name, EFormat format = EFormat::R8G8B8A8_SRGB);
         
         Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name);
+        Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name, EFormat format);
         virtual void construct() override;
         virtual void destroy() override;
 
@@ -35,6 +36,7 @@ namespace Bolt
         int m_width = 0;
         int m_height = 0;
         bool boundToGPU = false;
+        EFormat m_format = EFormat::R8G8B8A8_SRGB;
     };
 }
 

@@ -1883,7 +1883,7 @@ namespace Bolt
         stbi_image_free(pixels);
     }
 
-    void VulkanRenderer::createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags)
+    void VulkanRenderer::createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags, const VkFormat format)
     {
         size_t bufferSize = width * height * 4;
         VkBuffer stagingBuffer; 
@@ -1903,7 +1903,7 @@ namespace Bolt
 
         VulkanTextureBuilder builder(m_context);
         outTexuture = builder
-        .setFormat(VK_FORMAT_R8G8B8A8_SRGB)
+        .setFormat(format)
         .setWidth(width)
         .setHeight(height)
         .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
@@ -1921,7 +1921,7 @@ namespace Bolt
 
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
-        transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB,
+        transitionImageLayout(m_device, outTexuture.getHandle(), format,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
          , m_graphicsCommandPool
          , queue);
@@ -1932,7 +1932,7 @@ namespace Bolt
         , queue);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
-        transitionImageLayout(m_device, outTexuture.getHandle(), VK_FORMAT_R8G8B8A8_SRGB, 
+        transitionImageLayout(m_device, outTexuture.getHandle(), format, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         , m_graphicsCommandPool
         , queue);

@@ -234,7 +234,7 @@ namespace Bolt
         void transitionDepthImageLayout(VkImage image);
 
         void createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
-        void createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
+        void createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT, const VkFormat format = VK_FORMAT_R8G8B8A8_SRGB);
 
         //TODO:
         void crateShaderInputTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);

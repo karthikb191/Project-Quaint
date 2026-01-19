@@ -95,8 +95,8 @@ void main()
     const float ambientStrength = 0.1f;
     
 
-    //vec3 albedo = texture(diffuseMap, fragTexCoord).xyz;
-    vec3 albedo = vec3(1.0f);
+    vec3 albedo = texture(diffuseMap, fragTexCoord).xyz;
+    //vec3 albedo = vec3(1.0f);
 
     float shadow = calculateShadow(inLightProjPos);
 
@@ -110,9 +110,11 @@ void main()
 
     vec3 lightDirection = normalize(-gl.direction);
     vec3 normal = inNormal.xyz;
-    //normal = texture(normalMap, fragTexCoord).xyz;
-    //normal = vec3(normal.x, normal.z, normal.y);
-    //normal = normalize(normal);
+    normal = texture(normalMap, fragTexCoord).xyz * 2.0f - 1.0f;
+    normal = vec3(normal.x, normal.z, normal.y);
+    normal = normalize(normal);
+
+    //TODO: Do normal mapping. The normals are all wrong here
     
 
     vec3 phi = gl.color.xyz; // Represents radiant flux
@@ -156,17 +158,17 @@ void main()
             Describes ratio of surface reflection at different surface angles
     */
 
-    //float metallic = texture(metallicMap, fragTexCoord).r;
-    //float roughness = texture(roughnessMap, fragTexCoord).r;
+    float metallic = texture(metallicMap, fragTexCoord).r;
+    float roughness = texture(roughnessMap, fragTexCoord).r;
 
-    float metallic = pbr.data.metallic;
-    float roughness = pbr.data.roughness;
+    //float metallic = pbr.data.metallic;
+    //float roughness = pbr.data.roughness;
 
     vec3 F = CalculateFresnel(halfwayVector, wo, albedo, metallic);
     float D = DistrubutionGGX_TrowbridgeReitz(halfwayVector, normal, roughness);
     float G = GeometryGGX_Smith(normal, wo, wi, roughness);
 
-    float denom = (4 * ndotl * ndotv) + 0.001f;
+    float denom = (4 * ndotl * ndotv) + 0.0001f;
     vec3 specularWo = (F * D * G / denom);
 
     vec3 ks = F;
@@ -181,11 +183,12 @@ void main()
     //vec3 lightColor = ambientLight + radiance * (1.0 - shadow);
     //outColor = vec4(albedo * lightColor, 1.0f);
 
-    //outColor = vec4(F, 1.0f);
-    outColor = vec4(D, D, D, 1.0f);
+    //outColor = vec4(F * D, 1.0f);
+    //outColor = vec4(D, D, D, 1.0f);
     //outColor = vec4(G, G, G, 1.0f);
     //outColor = vec4(specularWo, 1.0f);
-    //outColor = vec4(radianceOutput, 1.0f);
+    
+    outColor = vec4(radianceOutput, 1.0f);
     
     //outColor = vec4(radiance, 1.0f);
     //outColor = vec4(ndotl, ndotl, ndotl, 1.0f);

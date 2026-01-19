@@ -5,6 +5,7 @@
 #include <GFX/Entities/Model.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
 #include <GFX/Vulkan/Internal/VulkanRenderObject.h>
+#include <GFX/Vulkan/VulkanHelpers.h>
 
 //Vulkan Specific implementation of resource builder
 //TODO: Surround with VULKAN_API macro
@@ -82,7 +83,8 @@ namespace Bolt {
         VkResult res = vkCreateSampler(device, &samplerInfo, callbacks, &sampler);
 
         VulkanTexture* texPtr = QUAINT_NEW(m_context, VulkanTexture, m_context);
-        VulkanRenderer::get()->createShaderTextureFromPixels(*texPtr, pixels, width, height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        VkFormat format = toVulkanVkFormat(m_format);
+        VulkanRenderer::get()->createShaderTextureFromPixels(*texPtr, pixels, width, height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, format);
 
         VulkanTextureRef texRef(texPtr, Quaint::Deleter<VulkanTexture>(m_context));
 

@@ -219,15 +219,15 @@ namespace Bolt
     }
     void PBRMaterial::loadNormalMap(Quaint::QPath path)
     {
-        m_normalMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "normal");
+        m_normalMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "normal", EFormat::R8G8B8A8_UNORM);
     }
     void PBRMaterial::loadMetallicMap(Quaint::QPath path)
     {
-        m_metallicMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "metallic");
+        m_metallicMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "metallic", EFormat::R8G8B8A8_UNORM);
     }
     void PBRMaterial::loadRoughnessMap(Quaint::QPath path)
     {
-        m_roughnessMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "roughness");
+        m_roughnessMap = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, path, "roughness", EFormat::R8G8B8A8_UNORM);
     }
 
     void PBRMaterial::writeImgui()

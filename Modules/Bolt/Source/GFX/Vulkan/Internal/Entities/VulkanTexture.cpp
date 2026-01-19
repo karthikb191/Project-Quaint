@@ -80,6 +80,7 @@ namespace Bolt
     VulkanTextureBuilder& VulkanTextureBuilder::setFormat(const VkFormat format)
     {
         m_createInfo.imageInfo.format = format;
+        m_createInfo.imageViewInfo.format = format;
         return *this;
     }
     VulkanTextureBuilder& VulkanTextureBuilder::setUsage(const VkImageUsageFlags usage)

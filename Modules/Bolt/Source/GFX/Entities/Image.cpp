@@ -4,9 +4,9 @@
 
 namespace Bolt
 {
-    Image2dRef Image2d::LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name)
+    Image2dRef Image2d::LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name, EFormat format)
     {
-        Image2d* image = QUAINT_NEW(context, Image2d, context, name);
+        Image2d* image = QUAINT_NEW(context, Image2d, context, name, format);
         Image2dRef imageRef(nullptr, Quaint::Deleter<Image2d>(context));
         imageRef.reset(image);
         imageRef->loadFromPath(filePath);
@@ -19,6 +19,12 @@ namespace Bolt
     {
     }
 
+    Image2d::Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name, EFormat format)
+    : Image2d::Image2d(context, name)
+    {
+        m_format = format;
+    }
+
     void Image2d::construct()
     {   
         if(m_imageImpl.get() != nullptr)
@@ -28,6 +34,7 @@ namespace Bolt
         }
 
         CombinedImageSamplerTextureBuilder builder(m_context);
+        builder.setFormat(m_format);
         m_imageImpl = std::move(builder.buildFromPixels(m_data, m_width, m_height));
     }
 
