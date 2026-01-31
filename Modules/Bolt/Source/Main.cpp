@@ -376,7 +376,8 @@ int main()
     //Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     Bolt::RenderInfo info;
-    info.extents = Quaint::QVec2(~0, ~0);
+    //info.extents = Quaint::QVec2(~0, ~0);
+    info.extents = Quaint::QVec2(512, 512);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition swapchainDef;
@@ -384,7 +385,11 @@ int main()
     swapchainDef.name = "swapchain";
     swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
     swapchainDef.clearImage = true;
-    swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
+    
+    //swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
+    swapchainDef.type = Bolt::AttachmentDefinition::Type::Image;
+    swapchainDef.extents = info.extents;
+
     swapchainDef.format = Bolt::EFormat::R8G8B8A8_SRGB;
     swapchainDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
     info.attachments.pushBack(swapchainDef);
@@ -434,20 +439,52 @@ int main()
     geoStage.attachmentRefs.pushBack(swapchainRef);
     geoStage.attachmentRefs.pushBack(depthRef);
 
-    geoStage.dependentStage = 0;
+    geoStage.dependentStage = ~0;
     stages.pushBack(geoStage);
 
     //new stage for IMGUI that doesn't need depth buffer
+    //Bolt::RenderStage imguiStage;
+    //imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    //imguiStage.index = 1;
+    //imguiStage.dependentStage = 0;
+//
+    //imguiStage.attachmentRefs.pushBack(swapchainRef);
+    //stages.pushBack(imguiStage);
+
+    //TODO: Maybe move construction to a separate function
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
+
+
+    //-------------------------------------- PRESENTATION SCENE -------------------------------------------------
+    Bolt::RenderInfo presentInfo;
+    presentInfo.extents = Quaint::QVec2(~0, ~0);
+    presentInfo.offset = Quaint::QVec2({0, 0});
+    presentInfo.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    //Bolt::AttachmentDefinition swapchainDef;
+    swapchainDef.binding = 0;
+    swapchainDef.name = "swapchain";
+    swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
+    swapchainDef.clearImage = true;
+    
+    swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
+    
+    swapchainDef.format = Bolt::EFormat::R8G8B8A8_SRGB;
+    swapchainDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
+    presentInfo.attachments.pushBack(swapchainDef);
+
+    stages.clear();
     Bolt::RenderStage imguiStage;
     imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    imguiStage.index = 1;
-    imguiStage.dependentStage = 0;
+    imguiStage.index = 0;
+    imguiStage.dependentStage = ~0;
 
     imguiStage.attachmentRefs.pushBack(swapchainRef);
     stages.pushBack(imguiStage);
 
-    //TODO: Maybe move construction to a separate function
-    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("graphics", info, stages.getSize(), stages.getBuffer());
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("scene_presentation", presentInfo, stages.getSize(), stages.getBuffer());
+    
+
+    //TODO: Create a presentation scene
     
 
     //This is fine for now, but the structure of this should probably change
@@ -599,7 +636,8 @@ int main()
 
     //IMGUI pipeline uses the same stage and subpass
     //TODO: Probably best to use a new renderpass with no depth support for IMGUI
-    Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("graphics"), imguiStageIdx, shaderDef);
+    imguiStageIdx = 0;
+    Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("scene_presentation"), imguiStageIdx, shaderDef);
     imguiPipleline->enableBlend();
     imguiPipleline->addDynamicStage("viewport");
     imguiPipleline->addDynamicStage("scissor");
@@ -616,7 +654,6 @@ int main()
     Bolt::GeometryPainter* geoPBRPainter = QUAINT_NEW(context, Bolt::GeometryPainter, context, Quaint::QName("GeoPBRPipeline"));
     geoPBRPainter->setupLightsData();
 
-    //TODO: Create IMGUI handler
     Bolt::ImguiHandler::Create(context);
     Bolt::ImguiHandler::Get()->Initialize(Bolt::RenderModule::get().getBoltRenderer()->getWindow());
 
@@ -764,6 +801,7 @@ int main()
         ImGui::Text("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqustuvwxyz: 1234567890");
         
         Bolt::RenderModule::get().getBoltRenderer()->update();
+
         Bolt::ImguiHandler::Get()->EndFrame();
 
         

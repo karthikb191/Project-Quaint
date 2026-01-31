@@ -18,11 +18,12 @@ namespace Bolt{ namespace vulkan{
         void construct(const VulkanRenderScene* scene);
         void destroy();
 
-        VkFramebuffer getHandle(uint32_t index = 0) { assert(index < m_framebuffers.getSize()); return m_framebuffers[index]; }
+        VkFramebuffer getHandle();
     private:
         Quaint::IMemoryContext*             m_context;
         VkFramebufferCreateInfo             m_info = {};
         Quaint::QArray<VkFramebuffer>       m_framebuffers;
+        bool                                m_dependsOnSwapchain = false;
     };
 
 } }

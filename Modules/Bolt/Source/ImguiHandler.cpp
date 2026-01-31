@@ -60,6 +60,7 @@ namespace Bolt
 
     void ImguiHandler::EndFrame()
     {
+        ImGui::EndFrame();
         //Unused
     }
 

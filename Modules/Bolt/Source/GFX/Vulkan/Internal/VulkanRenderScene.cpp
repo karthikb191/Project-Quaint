@@ -249,8 +249,33 @@ namespace Bolt {
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
 
         const Bolt::RenderInfo& info = scene->getRenderInfo();
+        VkExtent2D& swapchainExtent = swapchain->getSwapchainExtent();
+        if(info.extents.x == -1 || info.extents.y == -1)
+        {
+            m_renderExtent = swapchainExtent;
+            m_renderOffset = {0, 0};
+        }
+        else
+        {
+            assert((info.extents.x + info.offset.x) <= swapchainExtent.width && "Invalid extent and offset combo");
+            assert((info.extents.y + info.offset.y) <= swapchainExtent.height && "Invalid extent and offset combo");
+
+            if(info.extents.x + info.offset.x > swapchainExtent.width
+            || info.extents.y + info.offset.y > swapchainExtent.height)
+            {
+                m_renderExtent = swapchainExtent;
+                m_renderOffset = {0, 0};
+            }
+            else
+            {
+                m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
+                m_renderOffset = {(int32_t)info.offset.x, (int32_t)info.offset.y};
+            }
+        }
+
         constructAttachments(info);
         constructSubpasses(scene);
 
@@ -302,7 +327,6 @@ namespace Bolt {
         constructFrameBuffer();
 
         //Constructing scene params
-        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
         uint32_t swapchainImages = swapchain->getNumSwapchainImages();
         //TODO: One for each swapchain image later
         m_sceneParams.commandBuffer = VulkanRenderer::get()->getGraphicsCommandBuffers(1)[0];
@@ -318,30 +342,6 @@ namespace Bolt {
         fenceInfo.pNext = nullptr;
         ASSERT_SUCCESS(vkCreateFence(device, &fenceInfo, callbacks, &m_sceneParams.renderFence), "failed to create fence");
 
-        //TODO: Make internal constructions bools and return failure if construction fails
-        VkExtent2D& swapchainExtent = swapchain->getSwapchainExtent();
-        if(info.extents.x == -1 || info.extents.y == -1)
-        {
-            m_renderExtent = swapchainExtent;
-            m_renderOffset = {0, 0};
-        }
-        else
-        {
-            assert((info.extents.x + info.offset.x) <= swapchainExtent.width && "Invalid extent and offset combo");
-            assert((info.extents.y + info.offset.y) <= swapchainExtent.height && "Invalid extent and offset combo");
-
-            if(info.extents.x + info.offset.x > swapchainExtent.width
-            || info.extents.y + info.offset.y > swapchainExtent.height)
-            {
-                m_renderExtent = swapchainExtent;
-                m_renderOffset = {0, 0};
-            }
-            else
-            {
-                m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
-                m_renderOffset = {(int32_t)info.offset.x, (int32_t)info.offset.y};
-            }
-        }
     }
 
     void VulkanRenderScene::constructAttachments(const Bolt::RenderInfo& info)
@@ -389,6 +389,18 @@ namespace Bolt {
         //TODO: Move this to builder
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.format = toVulkanVkFormat(def.format);
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
 
         //Creates, sets backing memory and creates image view
         VulkanTextureBuilder builder(m_context);
@@ -396,9 +408,11 @@ namespace Bolt {
         builder.setFormat(toVulkanVkFormat(def.format))
         .setWidth((uint32_t)def.extents.x)
         .setHeight((uint32_t)def.extents.y)
-        .setTiling(VK_IMAGE_TILING_LINEAR)
-        .setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        .setTiling(VK_IMAGE_TILING_OPTIMAL)
+        .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
         .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setImageViewInfo(viewInfo)
         .setBuildImage()
         .setBackingMemory()
@@ -627,7 +641,7 @@ namespace Bolt {
 
         VkRenderPassBeginInfo rpInfo{};
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.framebuffer = m_framebuffer->getHandle(swapchain->getCurrentSwapchainImageIndex());
+        rpInfo.framebuffer = m_framebuffer->getHandle();
         rpInfo.renderPass = m_renderpass;
         rpInfo.renderArea.extent = m_renderExtent;
         rpInfo.renderArea.offset = m_renderOffset;

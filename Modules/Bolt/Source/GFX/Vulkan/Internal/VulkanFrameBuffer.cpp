@@ -32,15 +32,31 @@ namespace Bolt{ namespace vulkan{
         VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
         uint32_t numImages = swapchain->getNumSwapchainImages();
 
-        
-        m_info.width = swapchain->getSwapchainExtent().width;
-        m_info.height = swapchain->getSwapchainExtent().height;
+        const VkExtent2D& extents = scene->getRenderExtent();
+        m_info.width = extents.width;
+        m_info.height = extents.height;
         m_info.layers = 1;
         m_info.pNext = nullptr;
         m_info.renderPass = scene->getRenderpass();
-        for(size_t i = 0; i < numImages; ++i)
+        
+        auto& attachments = scene->getAttachments(); 
+        for(auto& attachment : attachments)
         {
-            auto& attachments = scene->getAttachments();    
+            Bolt::AttachmentDefinition::Type type = attachment->getInfo().type;
+            if(type == Bolt::AttachmentDefinition::Type::Swapchain)
+            {
+                m_dependsOnSwapchain = true;
+            }
+        }
+
+        uint8_t numFramebuffersRequired = 1;
+        if(m_dependsOnSwapchain)
+        {
+            numFramebuffersRequired = numImages;
+        }
+
+        for(size_t i = 0; i < numFramebuffersRequired; ++i)
+        {   
             Quaint::QArray<VkImageView> views(m_context);
             for(auto& attachment : attachments)
             {
@@ -54,8 +70,11 @@ namespace Bolt{ namespace vulkan{
                     break;
                 }
                 case Bolt::AttachmentDefinition::Type::Swapchain:
+                {
+                    assert(m_dependsOnSwapchain && "If framebuffer is dependent on swapchain, the flag should be true");
                     views.pushBack(swapchain->getSwapchainImageView(i));
                     break;
+                }
                 case Bolt::AttachmentDefinition::Type::Depth:
                 {
                     VkImageView view = attachment->As<ImageAttachment>()->texture.getImageView();
@@ -72,6 +91,25 @@ namespace Bolt{ namespace vulkan{
             VkFramebuffer framebuffer = VK_NULL_HANDLE;
             ASSERT_SUCCESS(vkCreateFramebuffer(device, &m_info, callbacks, &framebuffer), "Failed to create framebuffer!!");
             m_framebuffers.pushBack(framebuffer);
+        }
+    }
+
+    VkFramebuffer FrameBuffer::getHandle()
+    {
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+        
+        // If framebuffer has a swapchain attachment, it depends on the swapchain retrieved for presentation.
+        // So we need multiple framebuffers
+        if(m_dependsOnSwapchain)
+        {
+            uint8_t index = swapchain->getCurrentSwapchainImageIndex();
+            assert(index < m_framebuffers.getSize()); 
+            return m_framebuffers[index];
+        }
+        else
+        {
+            assert(m_framebuffers.getSize() == 1 && "Invalid framebuffer size");
+            return m_framebuffers[0];
         }
     }
 }}
