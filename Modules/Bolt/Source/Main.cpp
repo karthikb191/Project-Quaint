@@ -377,7 +377,7 @@ int main()
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
-    info.extents = Quaint::QVec2(512, 512);
+    info.extents = Quaint::QVec2(1024, 1024);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition renderTargetDef;
@@ -506,8 +506,8 @@ int main()
     //This is fine for now, but the structure of this should probably change
     Bolt::RenderScene* graphicsScene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
-    globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
-    globalLight.setDirection({0.0f, 0.0f, 1.0f});
+    globalLight.setColor({1.0f, 1.0f, 1.0f, 1.0f});
+    globalLight.setDirection({0.0f, -1.0f, -0.5f});
 
     graphicsScene->addGlobalLight(globalLight);
 

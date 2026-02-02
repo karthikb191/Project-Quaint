@@ -260,16 +260,16 @@ namespace Bolt {
         }
         else
         {
-            assert((info.extents.x + info.offset.x) <= swapchainExtent.width && "Invalid extent and offset combo");
-            assert((info.extents.y + info.offset.y) <= swapchainExtent.height && "Invalid extent and offset combo");
-
-            if(info.extents.x + info.offset.x > swapchainExtent.width
-            || info.extents.y + info.offset.y > swapchainExtent.height)
-            {
-                m_renderExtent = swapchainExtent;
-                m_renderOffset = {0, 0};
-            }
-            else
+            //assert((info.extents.x + info.offset.x) <= swapchainExtent.width && "Invalid extent and offset combo");
+            //assert((info.extents.y + info.offset.y) <= swapchainExtent.height && "Invalid extent and offset combo");
+//
+            //if(info.extents.x + info.offset.x > swapchainExtent.width
+            //|| info.extents.y + info.offset.y > swapchainExtent.height)
+            //{
+            //    m_renderExtent = swapchainExtent;
+            //    m_renderOffset = {0, 0};
+            //}
+            //else
             {
                 m_renderExtent = {(uint32_t)info.extents.x, (uint32_t)info.extents.y};
                 m_renderOffset = {(int32_t)info.offset.x, (int32_t)info.offset.y};

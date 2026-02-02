@@ -179,8 +179,10 @@ void main()
     vec3 diffuseWo = kd * (albedo / PI);
 
     vec3 radianceOutput = (diffuseWo + specularWo) * radiance;
-    float strength = 0.75f;
-    vec4 finalColor = vec4((radianceOutput + (1.0 - shadow) * strength * radianceOutput), 1.0f);
+    float strength = 0.55f;
+    vec4 finalColor = vec4(radianceOutput * shadow * strength, 1.0f);
+    finalColor += vec4(radianceOutput * (1.0f - shadow), 1.0f);
+    finalColor.w = 1.0f;
 
     //vec3 lightColor = ambientLight + radiance * (1.0 - shadow);
     //outColor = vec4(albedo * lightColor, 1.0f);
@@ -190,7 +192,8 @@ void main()
     //outColor = vec4(G, G, G, 1.0f);
     //outColor = vec4(specularWo, 1.0f);
     
-    outColor = vec4(radianceOutput, 1.0f);
+    //outColor = vec4(radianceOutput, 1.0f);
+    outColor = vec4(finalColor);
     
     //outColor = vec4(radiance, 1.0f);
     //outColor = vec4(ndotl, ndotl, ndotl, 1.0f);
