@@ -2540,6 +2540,13 @@ namespace Bolt
         auto painters = RenderModule::get().getBoltRenderer()->getPainters();
 
         Quaint::QArray<VkSemaphore> semaphoresToWaitOn(m_context);
+        
+        //TODO: selectively fetch painters compatible with scene and stage
+        for(auto& painter : painters)
+        {
+            painter->prepare();
+        }   
+
         //Draw each render scene and wait for it to finish
         for(auto& scene : m_renderScenes)
         {
@@ -2549,9 +2556,13 @@ namespace Bolt
                 return;
             }
             VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
-            auto& stages = scene->getRenderStages();
+            auto& stages = scene->getRenderStages();         
 
-            //TODO: selectively fetch painters compatible with scene and stage
+            if(!vulkanScene->start())
+            {
+                return;
+            }
+
             for(auto& painter : painters)
             {
                 if(!painter->isCompatibleWithScene(scene->getName()))
@@ -2559,12 +2570,13 @@ namespace Bolt
                     continue;
                 }
                 painter->preRender(scene.get());
-            }            
+            }
 
-            if(!vulkanScene->begin())
+            if(!vulkanScene->beginRenderPass())
             {
                 return;
             }
+
             Quaint::QName boundPipeline = "";
 
             int currentStage = 0;

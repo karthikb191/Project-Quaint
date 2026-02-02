@@ -380,19 +380,19 @@ int main()
     info.extents = Quaint::QVec2(512, 512);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
-    Bolt::AttachmentDefinition swapchainDef;
-    swapchainDef.binding = 0;
-    swapchainDef.name = "swapchain";
-    swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
-    swapchainDef.clearImage = true;
+    Bolt::AttachmentDefinition renderTargetDef;
+    renderTargetDef.binding = 0;
+    renderTargetDef.name = "renderTarget";
+    renderTargetDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
+    renderTargetDef.clearImage = true;
     
     //swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
-    swapchainDef.type = Bolt::AttachmentDefinition::Type::Image;
-    swapchainDef.extents = info.extents;
+    renderTargetDef.type = Bolt::AttachmentDefinition::Type::Image;
+    renderTargetDef.extents = info.extents;
 
-    swapchainDef.format = Bolt::EFormat::R8G8B8A8_SRGB;
-    swapchainDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
-    info.attachments.pushBack(swapchainDef);
+    renderTargetDef.format = Bolt::EFormat::R8G8B8A8_SRGB;
+    renderTargetDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST | Bolt::EImageUsage::SAMPLED; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(renderTargetDef);
 
     Bolt::AttachmentDefinition depthDef;
     depthDef.binding = 1;
@@ -408,9 +408,9 @@ int main()
     depthDef.storePrevious = false;
 
     /* Attachment references in each sub-pass */
-    Bolt::RenderStage::AttachmentRef swapchainRef{};
-    swapchainRef.binding = 0;
-    swapchainRef.attachmentName = "swapchain";
+    Bolt::RenderStage::AttachmentRef renderTargetRef{};
+    renderTargetRef.binding = 0;
+    renderTargetRef.attachmentName = "renderTarget";
 
     Bolt::RenderStage::AttachmentRef depthRef{};
     depthRef.binding = 1;
@@ -429,14 +429,14 @@ int main()
     
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("scene_lightmap", info, stages.getSize(), stages.getBuffer());
 
-
+    // Geometry scene setup ---------------------------------------------------
     stages.clear();
 
     Bolt::RenderStage geoStage;
     geoStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
     geoStage.index = 0;
 
-    geoStage.attachmentRefs.pushBack(swapchainRef);
+    geoStage.attachmentRefs.pushBack(renderTargetRef);
     geoStage.attachmentRefs.pushBack(depthRef);
 
     geoStage.dependentStage = ~0;
@@ -460,7 +460,7 @@ int main()
     presentInfo.extents = Quaint::QVec2(~0, ~0);
     presentInfo.offset = Quaint::QVec2({0, 0});
     presentInfo.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
-    //Bolt::AttachmentDefinition swapchainDef;
+    Bolt::AttachmentDefinition swapchainDef;
     swapchainDef.binding = 0;
     swapchainDef.name = "swapchain";
     swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
@@ -472,11 +472,27 @@ int main()
     swapchainDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST; //Hardcoded the same as VulkanSwapchain for now
     presentInfo.attachments.pushBack(swapchainDef);
 
+    Bolt::RenderStage::AttachmentRef swapchainRef{};
+    swapchainRef.binding = 0;
+    swapchainRef.attachmentName = "swapchain";
+
+    
+    uint8_t tonemapStageIdx = 0;
+    uint8_t imguiStageIdx = 1;
+
+
     stages.clear();
+    Bolt::RenderStage tonemapStage;
+    tonemapStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    tonemapStage.index = tonemapStageIdx;
+    tonemapStage.dependentStage = ~0;
+    tonemapStage.attachmentRefs.pushBack(swapchainRef);
+    stages.pushBack(tonemapStage);
+
     Bolt::RenderStage imguiStage;
     imguiStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
-    imguiStage.index = 0;
-    imguiStage.dependentStage = ~0;
+    imguiStage.index = imguiStageIdx;
+    imguiStage.dependentStage = 0;
 
     imguiStage.attachmentRefs.pushBack(swapchainRef);
     stages.pushBack(imguiStage);
@@ -488,12 +504,12 @@ int main()
     
 
     //This is fine for now, but the structure of this should probably change
-    Bolt::RenderScene* scene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
+    Bolt::RenderScene* graphicsScene = Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->getRenderScene("graphics");
     Bolt::GlobalLight globalLight("Simple Global");
     globalLight.setColor({1.0f, 0.0f, 0.0f, 1.0f});
     globalLight.setDirection({0.0f, 0.0f, 1.0f});
 
-    scene->addGlobalLight(globalLight);
+    graphicsScene->addGlobalLight(globalLight);
 
     
     //def.clearColor = Quaint::QVec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -511,11 +527,11 @@ int main()
     uint8_t shadowStadeIdx = 0;
 
     uint32_t geoStageIdx = 0;
-    uint8_t imguiStageIdx = 1;
 
-    //Create a pipeline for capturing depth texture for lights
+    // Pipelines Setup --------------------------------------------------------------------------------
+    // Lightmap pipeline -------------------------------------------------------------------------------
+    // Captures the Shadowmap
 
-    // Pipeline creation
     Bolt::ShaderDefinition shaderDef{};
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
     shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
@@ -609,6 +625,29 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(pbrPipeline);
 
 
+    // Pipelines supporting presentation scene -----------------------------------------------------------------------------------
+    // Tonemap Pipeline setup -----------------------------------------------------------------------------
+
+    shaderDef.shaders.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.uniforms.clear();
+
+    //TODO: Move PBR shaders to a new folder later
+    shaderDef.shaders.pushBack({"tonemap.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\tonemap.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"tonemap.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\tonemap.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    shaderDef.uniforms.pushBack({"RenderTarget", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+
+    Bolt::Pipeline* presentationPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("TonemapPipeline"), Quaint::QName("scene_presentation"), tonemapStageIdx, shaderDef);
+    presentationPipeline->cullBack();
+    //presentationPipeline->enableDepth();
+    presentationPipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(presentationPipeline);
+
+
     // IMGUI PIPELINE SETUP. TODO: Should be moved to a different file ----------------------
     shaderDef = Bolt::ShaderDefinition();
     shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
@@ -636,7 +675,6 @@ int main()
 
     //IMGUI pipeline uses the same stage and subpass
     //TODO: Probably best to use a new renderpass with no depth support for IMGUI
-    imguiStageIdx = 0;
     Bolt::Pipeline* imguiPipleline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IMGUIPipeline"), Quaint::QName("scene_presentation"), imguiStageIdx, shaderDef);
     imguiPipleline->enableBlend();
     imguiPipleline->addDynamicStage("viewport");
@@ -644,6 +682,9 @@ int main()
     imguiPipleline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(imguiPipleline);
 
+    // End of Pipeline setup -------------------------------------------------------------------------------------------
+
+    // Painters creation -------------------------------------------------------------------------------------------------
     //Shadow painter for capturing shadow maps
     Bolt::ShadowPainter* shadowPainter = QUAINT_NEW(context, Bolt::ShadowPainter, context, Quaint::QName("ShadowPipeline"));
 
@@ -657,9 +698,11 @@ int main()
     Bolt::ImguiHandler::Create(context);
     Bolt::ImguiHandler::Get()->Initialize(Bolt::RenderModule::get().getBoltRenderer()->getWindow());
 
-    //TODO: Create IMGUI painter
     Bolt::ImguiPainter* imguiPainter = QUAINT_NEW(context, Bolt::ImguiPainter, context, Quaint::QName("IMGUIPipeline"));
 
+    Bolt::ToneMapPainter* tonemapPainter = QUAINT_NEW(context, Bolt::ToneMapPainter, context, Quaint::QName("TonemapPipeline"));
+
+    // End of painters creation ----------------------------------------------------------------------------------------------------------
 
     //Goal: To create concrete representations of combined image samplers and UniformBuffer
 
@@ -773,6 +816,9 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPBRPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);
+
+    tonemapPainter->UpdateRenderTarget(graphicsScene, "renderTarget");
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(tonemapPainter);
 
 
     //TODO: Loop through application module 

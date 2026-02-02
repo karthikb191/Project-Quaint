@@ -8,5 +8,5 @@ layout(location = 1) in vec4 inNormal;
 void main()
 {
     //Empty as writing to depth buffer happens in vulkan pipeline
-    //outColor = outColor;
+    //outColor = vec4(1.0f);
 }

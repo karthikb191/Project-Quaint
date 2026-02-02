@@ -49,7 +49,7 @@ namespace Bolt {
     bool RenderScene::begin()
     {
         VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
-        return scene->begin();
+        return scene->start();
     }
     bool RenderScene::render()
     {
@@ -402,6 +402,8 @@ namespace Bolt {
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
 
+        VkImageUsageFlags usageFlags = toVulkanImageUsage(def.usage);
+
         //Creates, sets backing memory and creates image view
         VulkanTextureBuilder builder(m_context);
         VulkanTexture tex = 
@@ -410,7 +412,7 @@ namespace Bolt {
         .setHeight((uint32_t)def.extents.y)
         .setTiling(VK_IMAGE_TILING_OPTIMAL)
         .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-        .setUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        .setUsage(usageFlags)
         .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setImageViewInfo(viewInfo)
@@ -624,7 +626,7 @@ namespace Bolt {
         m_framebuffer->construct(this);
     }
 
-    bool VulkanRenderScene::begin()
+    bool VulkanRenderScene::start()
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
@@ -638,7 +640,11 @@ namespace Bolt {
         cbinfo.pNext = nullptr;
 
         vkBeginCommandBuffer(m_sceneParams.commandBuffer, &cbinfo);
+        return true;
+    }
 
+    bool VulkanRenderScene::beginRenderPass()
+    {
         VkRenderPassBeginInfo rpInfo{};
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpInfo.framebuffer = m_framebuffer->getHandle();

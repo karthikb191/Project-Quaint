@@ -22,6 +22,7 @@ namespace Bolt
         //TODO: There should be a destroy function
 
 
+        virtual void prepare() = 0;
         virtual void preRender(RenderScene* scene) = 0;
         virtual void render(RenderScene* scene) = 0;
         virtual void postRender(RenderScene* scene) = 0;
@@ -48,8 +49,9 @@ namespace Bolt
         };
 
         ShadowPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
-        virtual void render(RenderScene* scene) override;
+        virtual void prepare() override;
         virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
         virtual void postRender(RenderScene* scene) override;
 
         void AddModel(Model* model);
@@ -76,8 +78,9 @@ namespace Bolt
         };
 
         GeometryPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
-        virtual void render(RenderScene* scene) override;
+        virtual void prepare() override;
         virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
         virtual void postRender(RenderScene* scene) override;
 
         void AddModel(Model* model);
@@ -89,6 +92,21 @@ namespace Bolt
         TBufferImplPtr m_lightsbuffer;
         TBufferImplPtr m_lightsMvpBuffer;
         VkSampler m_sampler;
+    };
+
+    class ToneMapPainter : public Painter
+    {
+    public:
+        ToneMapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual void prepare() override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
+        virtual void postRender(RenderScene* scene) override;
+        
+        void UpdateRenderTarget(RenderScene* scene, const Quaint::QName& renderTarget);
+    private:
+        VkSampler m_sampler;
+        VkDescriptorSet m_set;
     };
 
     class ImguiPainter : public Painter
@@ -108,8 +126,9 @@ namespace Bolt
 
     public:
         ImguiPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
-        virtual void render(RenderScene* scene) override;
+        virtual void prepare() override;
         virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
         virtual void postRender(RenderScene* scene) override;
 
     private:

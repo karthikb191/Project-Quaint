@@ -49,13 +49,13 @@ namespace Bolt
 
     enum EImageUsage : uint32_t
     {
-        COLOR_ATTACHMENT = 0,
-        DEPTH_ATTACHMENT = 1 << 0,
-        INPUT_ATTACHMENT = 1 << 1,
-        SAMPLED = 1 << 2,
-        COMBINED_IMAGE_SAMPLER = 1 << 3,
-        COPY_SRC = 1 << 4, // Used as source of copy operations
-        COPY_DST = 1 << 5, // Used as destination of copy operations
+        COLOR_ATTACHMENT = 1,
+        DEPTH_ATTACHMENT = 1 << 1,
+        INPUT_ATTACHMENT = 1 << 2,
+        SAMPLED = 1 << 3,
+        COMBINED_IMAGE_SAMPLER = 1 << 4,
+        COPY_SRC = 1 << 5, // Used as source of copy operations
+        COPY_DST = 1 << 6, // Used as destination of copy operations
     };
     typedef uint32_t EImageUsageFlags; 
 

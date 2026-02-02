@@ -176,6 +176,7 @@ namespace Bolt
 
                 VkPipelineColorBlendAttachmentState state {};
                 state.blendEnable = m_blendEnabled ? VK_TRUE : VK_FALSE;
+                state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
                 //TODO: Make it generic
                 if(attachmentRefs[i].attachmentName == "swapchain")
                 {
@@ -186,7 +187,6 @@ namespace Bolt
                     state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
                     state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                     state.alphaBlendOp = VK_BLEND_OP_ADD;
-                    state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
                 }
                 m_blendAttachments.pushBack(state);
             }

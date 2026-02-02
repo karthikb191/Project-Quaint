@@ -123,7 +123,8 @@ namespace Bolt {
         virtual void construct(const Bolt::RenderScene* scene);
         virtual void destroy();
     
-        virtual bool begin();
+        virtual bool start();
+        virtual bool beginRenderPass();
         virtual void finishSubpass();
         virtual SceneParams end(VkQueue queue);
         virtual void submit(VkQueue queue);

@@ -5,6 +5,12 @@
 
 namespace Bolt{ namespace vulkan{
     
+    #define TRY_CONSUME_FLAG(res, ipFlags, IMAGE_FLAG, VULKAN_FLAG) \
+        if(ipFlags & IMAGE_FLAG) { \
+            ipFlags &= ~IMAGE_FLAG; \
+            res |= VULKAN_FLAG; \
+        }\
+    
     inline VkDescriptorType toVulkanDescriptorType(const EShaderResourceType type)
     {
         switch(type)
@@ -75,5 +81,22 @@ namespace Bolt{ namespace vulkan{
             case EShaderStage::COMPUTE: return VK_SHADER_STAGE_COMPUTE_BIT;
             default: return VK_SHADER_STAGE_ALL;
         }
+    }
+
+    inline VkImageUsageFlags toVulkanImageUsage(const EImageUsageFlags flags)
+    {
+        EImageUsageFlags remainingFlags = flags;
+        VkImageUsageFlags res = 0;
+
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::COLOR_ATTACHMENT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::DEPTH_ATTACHMENT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::INPUT_ATTACHMENT, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::SAMPLED, VK_IMAGE_USAGE_SAMPLED_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::COMBINED_IMAGE_SAMPLER, VK_IMAGE_USAGE_SAMPLED_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::COPY_DST, VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+        TRY_CONSUME_FLAG(res, remainingFlags, EImageUsage::COPY_SRC, VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+
+        assert(remainingFlags == 0 && "Not all flags have been consumed");
+        return res;
     }
 }}
