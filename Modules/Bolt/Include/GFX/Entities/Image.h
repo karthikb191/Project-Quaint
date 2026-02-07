@@ -26,6 +26,9 @@ namespace Bolt
         template<typename T>
         T* getImplAs(){ return static_cast<T*>(m_imageImpl.get()); }
 
+        const bool isBound() { return m_boundToGPU;}
+        const unsigned char* const data() const { return m_data; }
+
         private:
         void loadFromPath(const Quaint::QPath& path);
 
@@ -35,7 +38,7 @@ namespace Bolt
         unsigned char* m_data = nullptr;
         int m_width = 0;
         int m_height = 0;
-        bool boundToGPU = false;
+        bool m_boundToGPU = false;
         EFormat m_format = EFormat::R8G8B8A8_SRGB;
     };
 }

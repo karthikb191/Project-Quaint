@@ -107,6 +107,8 @@ namespace Bolt
     private:
         VkSampler m_sampler;
         VkDescriptorSet m_set;
+
+        TImageSamplerImplPtr m_tempCubemap;
     };
 
     class ImguiPainter : public Painter

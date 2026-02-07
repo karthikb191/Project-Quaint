@@ -8,6 +8,7 @@
 #include <GFX/ResourceBuilder.h>
 #include <GFX/Materials/SimpleMaterial.h>
 #include <GFX/Data/MaterialData.h>
+#include <GFX/Entities/Image.h>
 
 // TODO: Remove this from here
 #include <GFX/Vulkan/VulkanRenderer.h>
@@ -500,6 +501,7 @@ namespace Bolt
 
     ToneMapPainter::ToneMapPainter(Quaint::IMemoryContext *context, const Quaint::QName &pipeline)
         : Painter(context, pipeline)
+        , m_tempCubemap(nullptr, Quaint::Deleter<IImageSamplerImpl>(context))
     {
         VkDevice device = VulkanRenderer::get()->getDevice();
         VkSamplerCreateInfo info = {};
@@ -514,6 +516,16 @@ namespace Bolt
         info.maxLod = 1000;
         info.maxAnisotropy = 1.0f;
         VkResult res = vkCreateSampler(device, &info, VulkanRenderer::get()->getAllocationCallbacks(), &m_sampler);
+
+        Image2dRef img = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, "C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_albedo.png", "diffuse");
+        Image2dRef img2 = Image2d::LoadFromFile(Bolt::G_BOLT_DEFAULT_MEMORY, "C:\\Works\\Project-Quaint\\Data\\Textures\\PBR_Floor\\granite_normal_ogl.png", "diffuse");
+        const unsigned char* dataArray[6] = {img->data(), img2->data(), img->data(), img2->data(), img->data(), img2->data()};
+
+        //TODO: Remove all of this stuff
+        CombinedImageSamplerTextureBuilder cubemapBuilder(context);
+        m_tempCubemap = cubemapBuilder.buildCubemapFromPixels(dataArray, img->getWidth(), img->getHeight());
+        
+
         ASSERT_SUCCESS(res, "[IMGUI]: Failed to create sampler");
     }
 
@@ -548,7 +560,21 @@ namespace Bolt
         renderTargetWrite.pImageInfo = &desc_image;
         renderTargetWrite.dstBinding = 0;
 
-        VkWriteDescriptorSet writes[] = {renderTargetWrite};
+        //TODO: Remove this
+        VulkanCombinedImageSamplerResource* cubemapRes = static_cast<VulkanCombinedImageSamplerResource*>(m_tempCubemap.get());
+        VkDescriptorImageInfo cubeMapImageInfo = {};
+        cubeMapImageInfo.sampler = m_sampler;
+        cubeMapImageInfo.imageView = cubemapRes->getTexture()->getImageView();
+        cubeMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet cubemapWrite = {};
+        cubemapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        cubemapWrite.dstSet = m_set;
+        cubemapWrite.descriptorCount = 1;
+        cubemapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        cubemapWrite.pImageInfo = &cubeMapImageInfo;
+        cubemapWrite.dstBinding = 1;
+
+        VkWriteDescriptorSet writes[] = {renderTargetWrite, cubemapWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
     }

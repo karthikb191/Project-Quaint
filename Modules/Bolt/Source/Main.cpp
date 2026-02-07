@@ -640,6 +640,8 @@ int main()
         , "main", Bolt::EShaderStage::FRAGMENT});
 
     shaderDef.uniforms.pushBack({"RenderTarget", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    //TODO: Remvoe after testing
+    shaderDef.uniforms.pushBack({"TestCubeMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
 
     Bolt::Pipeline* presentationPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("TonemapPipeline"), Quaint::QName("scene_presentation"), tonemapStageIdx, shaderDef);
     presentationPipeline->cullBack();

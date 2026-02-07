@@ -14,7 +14,7 @@ namespace Bolt{
     
     //TODO: Should other resource class also be created and have a separation with entities?
     
-    // Resource would own the enclosing API onbject created
+    // Resource would own the enclosing API object created
     class VulkanCombinedImageSamplerResource : public IImageSamplerImpl
     {
     public:
@@ -24,9 +24,9 @@ namespace Bolt{
         , m_texture(std::move(textureRef))
         {}
 
-        virtual void constructFromPath(char* path) override;
-        virtual void constructFromPixels(void* pixels, uint32_t width, uint32_t height) override;
-        virtual void destroy() override;
+        virtual void constructFromPath(char* path) {}
+        virtual void constructFromPixels(void* pixels, uint32_t width, uint32_t height) {}
+        virtual void destroy();
         
         VkSampler getSampler() const { return m_sampler; }
         const VulkanTextureRef& getTexture() { return m_texture; }

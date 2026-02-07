@@ -3,6 +3,7 @@
 
 #include <MemoryConstants.h>
 #include <Types/QAllocator.h>
+#include <EASTL/utility.h>
 
 namespace Quaint
 {

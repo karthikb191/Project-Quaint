@@ -42,6 +42,8 @@ namespace Bolt
         CombinedImageSamplerTextureBuilder& setFormat(EFormat format) { m_format = format; return *this;}
         TImageSamplerImplPtr buildFromPath(const char* path);
         TImageSamplerImplPtr buildFromPixels(unsigned char* pixels, int width, int height);
+        //TImageSamplerImplPtr buildCubemapFromPath(char* path);
+        TImageSamplerImplPtr buildCubemapFromPixels(const unsigned char* pixels[6], uint32_t width, uint32_t height);
 
     private:
         EFormat m_format = EFormat::R8G8B8A8_SRGB;

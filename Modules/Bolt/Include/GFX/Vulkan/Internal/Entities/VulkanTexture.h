@@ -36,6 +36,11 @@ namespace Bolt {
         /* Takes ownership of the VkImage passed */
         VulkanTexture(Quaint::IMemoryContext* context, const VulkanImageCreateInfo& info, VkImage image, bool isSwapchainImage = false);
         ~VulkanTexture();
+
+        // TODO: Delete copy, move and assignment.
+        // VulkanTexture is only supposed to be passed by reference to adhere to RAII principles.
+        // Becomes extremely hard to track down the original owner of the resource otherwise
+
         void destroy();
 
         static VulkanTexture* create(Quaint::IMemoryContext* context);
@@ -58,6 +63,8 @@ namespace Bolt {
         const uint32_t getHeight() const { return m_createInfo.imageInfo.extent.height; }
         const VulkanImageCreateInfo& getCreateInfo() const { return m_createInfo; }
         const bool getIsSwapchainImage() const { return m_isSwapchainImage; }
+        const uint16_t getLayerCount() const { return m_layerCount; }
+        const uint16_t getMipCount() const { return m_mipCount; }
         VkAttachmentDescription buildAttachmentDescription(VkImageLayout initialLayout, VkImageLayout finalLayout,
                                                             VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
                                                             VkAttachmentDescriptionFlags flags);
@@ -78,9 +85,14 @@ namespace Bolt {
         VkMemoryPropertyFlags       m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         VkImageLayout               m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         bool                        m_isSwapchainImage =  false;
+        bool                        m_isCubemap = false;
+        uint16_t                    m_layerCount = 1;
+        uint16_t                    m_mipCount = 1;
     };
     using VulkanTextureRef = Quaint::QUniquePtr<VulkanTexture, Quaint::Deleter<VulkanTexture>>;
     
+    // This should probably depend on a different builder that's platform agnostic.
+    // Very convoluted and doesn't really serve any real purpose. Easier to just populate the image and view structs directly
     class VulkanTextureBuilder
     {
     public:
@@ -100,10 +112,17 @@ namespace Bolt {
         VulkanTextureBuilder& setBuildImage() { m_buildImage = true; return *this;}
         VulkanTextureBuilder& setBackingMemory() { m_setBackingMemory = true; return *this;}
         VulkanTextureBuilder& setBuildImageView() { m_buildImageView = true; return *this;}
+        VulkanTextureBuilder& setIsCubeMap() { m_isCubeMap = true; return *this; }
+        VulkanTextureBuilder& setLayerCount(uint16_t layers);
+        VulkanTextureBuilder& setMipLevelCount(uint16_t layers);
 
         VulkanTextureBuilder& setImageCreateInfo(const VkImageCreateInfo& imageInfo);
         VulkanTextureBuilder& setImageViewInfo(const VkImageViewCreateInfo& info);
         VulkanTexture build();
+
+        // VkImageCreateInfo getDefaultCreateInfoForShaderTexture();
+        // VkImageCreateInfo getDefaultCreateInfoForShaderCubemapTexture();
+        // VkImageCreateInfo getDefaultImageViewInfoForShaderTexture();
 
     private:
         Quaint::IMemoryContext*         m_context = nullptr;
@@ -112,6 +131,7 @@ namespace Bolt {
         bool                            m_buildImage = false;
         bool                            m_setBackingMemory = false;
         bool                            m_buildImageView = false; 
+        bool                            m_isCubeMap = false;
     };
 
     /* Has an Image-View that can be bound */

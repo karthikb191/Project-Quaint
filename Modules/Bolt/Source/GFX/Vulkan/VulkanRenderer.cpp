@@ -25,6 +25,8 @@
 #include <Gfx/Entities/Resources.h>
 #include <Gfx/Entities/Painters.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
+#include <Types/QVector.h>
+#include <BoltMemoryProvider.h>
 
 namespace Bolt
 {
@@ -1750,9 +1752,8 @@ namespace Bolt
     }
 
     void copyImageFromStaging(const VkDevice device, const VkImage image, const VkBuffer stagingBuffer,
-    const uint32_t width, const uint32_t height, const VkCommandPool pool, const VkQueue queue)
+    const uint32_t width, const uint32_t height, const VkCommandBuffer cmdBuffer)
     {
-        VkCommandBuffer cpyCmd = beginOneTimeCommands(device, pool);
         VkBufferImageCopy imgCpy;
         imgCpy.bufferOffset = 0;
         imgCpy.bufferRowLength = 0;
@@ -1766,9 +1767,32 @@ namespace Bolt
 
         // dstImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) is the layout that this command expects the image to be in
         // when the command executes
-        vkCmdCopyBufferToImage(cpyCmd, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCpy);
+        vkCmdCopyBufferToImage(cmdBuffer, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCpy);
+    }
 
-        endOneTimeCommands(device, cpyCmd, pool, queue);
+    void copyCubemapFromStaging(const VkDevice device, const VkImage image, const VkBuffer stagingBuffer,
+    const uint32_t width, const uint32_t height, const VkCommandBuffer cmdBuffer)
+    {
+        Quaint::QVector<VkBufferImageCopy> copies(BOLT_ALLOCATOR);
+        uint32_t sliceSize = width * height * 4;
+        for(int i = 0; i < 6; ++i)
+        {
+            VkBufferImageCopy imgCpy;
+            imgCpy.bufferOffset = i * sliceSize;
+            imgCpy.bufferRowLength = 0;
+            imgCpy.bufferImageHeight = 0;
+            imgCpy.imageOffset = {0, 0, 0};
+            imgCpy.imageExtent = {width, height, 1};
+            imgCpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imgCpy.imageSubresource.baseArrayLayer = i;
+            imgCpy.imageSubresource.mipLevel = 0;
+            imgCpy.imageSubresource.layerCount = 1;
+            copies.push_back(imgCpy);
+        }
+
+        // dstImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) is the layout that this command expects the image to be in
+        // when the command executes
+        vkCmdCopyBufferToImage(cmdBuffer, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copies.size(), copies.data());
     }
 
     void VulkanRenderer::transitionDepthImageLayout(VkImage image)
@@ -1813,10 +1837,8 @@ namespace Bolt
     }
 
     void transitionImageLayout(const VkDevice device, const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
-    const VkCommandPool cmdPool, const VkQueue queue)
+    VkCommandBuffer cmdBuffer, uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1)
     {
-        VkCommandBuffer transitionBuffer = beginOneTimeCommands(device, cmdPool);
-
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout = srcLayout;
@@ -1825,10 +1847,10 @@ namespace Bolt
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = image;
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.baseMipLevel = baseMipLevel;
+        barrier.subresourceRange.levelCount = levelCount;
+        barrier.subresourceRange.baseArrayLayer = baseArrayLayer;
+        barrier.subresourceRange.layerCount = layerCount;
 
         // srcStage specifies the operations in pipeline stage that should happen before the barrier.
         // dstStage specifies the operations in pipeline stage that should wait on the barrier.
@@ -1862,15 +1884,13 @@ namespace Bolt
         //TODO:
 
         vkCmdPipelineBarrier(
-        transitionBuffer,
+        cmdBuffer,
         srcStage, dstStage,     // src and dst pipeline stage masks
         0,                      // Dependency flags
         0, nullptr,             // Memory Barriers
         0, nullptr,             // Buffer Barriers
         1, &barrier             // Image Barriers
-        );   
-
-        endOneTimeCommands(device, transitionBuffer, cmdPool, queue);
+        );
     }
     //-------
 
@@ -1921,23 +1941,90 @@ namespace Bolt
 
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
+        
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+
         transitionImageLayout(m_device, outTexuture.getHandle(), format,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-         , m_graphicsCommandPool
-         , queue);
+         , transitionCmd);
 
         //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
         copyImageFromStaging(m_device, outTexuture.getHandle(), stagingBuffer, width, height
-        , m_graphicsCommandPool
-        , queue);
+        , transitionCmd);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
         transitionImageLayout(m_device, outTexuture.getHandle(), format, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        , m_graphicsCommandPool
-        , queue);
+        , transitionCmd);
+
+        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, queue);
 
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
+        vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
+        vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
+    }
+
+    void VulkanRenderer::createCubemapFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels[6], int width, int height, const VkImageUsageFlags flags, const VkFormat format)
+    {
+        //Copy pixel data to storage buffer
+        uint32_t sliceSize = width * height * 4;
+        size_t bufferSize = sliceSize * 6;
+
+        uint32_t family = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getQueueFamily();
+        VkQueue queue = m_deviceManager->getDeviceDefinition().getQueueOfType(EQueueType::Graphics).getVulkanQueueHandle();
+
+        VulkanTextureBuilder builder(m_context);
+        outTexuture = builder
+        .setFormat(format)
+        .setWidth(width)
+        .setHeight(height)
+        .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+        .setTiling(VK_IMAGE_TILING_OPTIMAL)
+        .setUsage(flags)
+        .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        .setQueueFamilies(1, &family)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setIsCubeMap()
+        .setLayerCount(6)
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferGpuMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBufferGpuMemory, stagingBuffer);
+
+        //map storage buffer
+        void* mappedData;
+        vkMapMemory(m_device, stagingBufferGpuMemory, 0, bufferSize, 0, &mappedData);
+        for(int i = 0; i < 6; ++i)
+        {
+            uint32_t offset = i * sliceSize;
+            void* dst = (unsigned char*)mappedData + offset;
+            memcpy(dst, pixels[i], sliceSize);
+        }
+        vkUnmapMemory(m_device, stagingBufferGpuMemory);
+
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+
+        // Transition cubemap to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to prepare for data transfer
+        transitionImageLayout(m_device, outTexuture.getHandle(), format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                transitionCmd, 0, 1, 0, 6);
+
+        // Copy from staging buffer to each of the image slices
+        copyCubemapFromStaging(m_device, outTexuture.getHandle(), stagingBuffer, width, height, transitionCmd);
+
+        // Transition cubemap to the layout that shader can read VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        transitionImageLayout(m_device, outTexuture.getHandle(), format
+                            , VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                            , transitionCmd, 0, 1, 0, 6);
+
+        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
+
+        //Destroy buffers
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
         vkDestroyBuffer(m_device, stagingBuffer, m_allocationPtr);
     }
@@ -1993,15 +2080,19 @@ namespace Bolt
 
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+
         transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB,
-         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_transferCommandPool, m_transferQueue);
+         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, transitionCmd);
 
         //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
-        copyImageFromStaging(m_device, m_texture, stagingBuffer, width, height, m_transferCommandPool, m_transferQueue);
+        copyImageFromStaging(m_device, m_texture, stagingBuffer, width, height, transitionCmd);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
         transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB, 
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_graphicsCommandPool, m_graphicsQueue);
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, transitionCmd);
+
+        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
 
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);

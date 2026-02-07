@@ -119,6 +119,16 @@ namespace Bolt
         m_createInfo.imageInfo = imageInfo;
         return *this;
     }
+    VulkanTextureBuilder& VulkanTextureBuilder::setLayerCount(uint16_t layers)
+    {
+        m_createInfo.imageInfo.arrayLayers = layers;
+        return *this;
+    }
+    VulkanTextureBuilder& VulkanTextureBuilder::setMipLevelCount(uint16_t levels)
+    {
+        m_createInfo.imageInfo.mipLevels = levels;
+        return *this;
+    }
 
     VulkanTextureBuilder& VulkanTextureBuilder::setImageViewInfo(const VkImageViewCreateInfo& info)
     {
@@ -135,6 +145,36 @@ namespace Bolt
 
     VulkanTexture VulkanTextureBuilder::build()
     {
+        if(m_isCubeMap)
+        {
+            m_createInfo.imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            assert(m_createInfo.imageInfo.arrayLayers % 6 == 0 && "Invalid number of array layers passed to cubemap texture. Should be a multiple of 6");
+        }
+        else
+        {
+            if(m_createInfo.imageInfo.arrayLayers > 1)
+            {
+                m_createInfo.imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+            }
+        }
+
+        if(m_buildImageView)
+        {
+            if(m_isCubeMap)
+            {
+                m_createInfo.imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+                m_createInfo.imageViewInfo.subresourceRange.layerCount = m_createInfo.imageInfo.arrayLayers;
+                if(m_createInfo.imageInfo.arrayLayers > 6 && m_createInfo.imageInfo.arrayLayers % 6 == 0)
+                {
+                    m_createInfo.imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+                }
+            }
+            else if(m_createInfo.imageInfo.arrayLayers > 1)
+            {
+                m_createInfo.imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            }
+        }
+
         //If it's a swapchain image
         if(m_createInfo.isSwapchainImage)
         {

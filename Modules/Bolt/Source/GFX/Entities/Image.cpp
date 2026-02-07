@@ -36,6 +36,7 @@ namespace Bolt
         CombinedImageSamplerTextureBuilder builder(m_context);
         builder.setFormat(m_format);
         m_imageImpl = std::move(builder.buildFromPixels(m_data, m_width, m_height));
+        m_boundToGPU = true;
     }
 
     void Image2d::destroy()
@@ -44,6 +45,7 @@ namespace Bolt
         {
             m_imageImpl->destroy();
             m_imageImpl.release();
+            m_boundToGPU = false;
         }
         if(m_data != nullptr)
         {
