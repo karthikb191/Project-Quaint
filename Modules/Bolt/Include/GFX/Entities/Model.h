@@ -91,6 +91,7 @@ namespace Bolt
     public:
         Model(Quaint::IMemoryContext* context, Quaint::QName name = "");
         Model(Quaint::IMemoryContext* context, MeshRef& mesh);
+        virtual ~Model(){}
 
         void draw(RenderScene* scene);
         virtual void construct() override;
@@ -150,18 +151,21 @@ namespace Bolt
     {
     public:
         FloorModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+        virtual ~FloorModel(){}
     };
 
     class SphereModel : public Model
     {
     public:
         SphereModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+        virtual ~SphereModel(){}
     };
     
     class CubeModel : public Model
     {
     public:
         CubeModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+        virtual ~CubeModel(){}
     };
 
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
@@ -170,6 +174,7 @@ namespace Bolt
     {
     public:
         DefaultVertexDataProvider(Model* model);
+        virtual ~DefaultVertexDataProvider(){}
 
         virtual uint32_t getVertexBufferSize();
         virtual void* getVertexBufferData();

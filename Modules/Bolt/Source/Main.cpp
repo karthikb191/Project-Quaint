@@ -356,7 +356,7 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     Bolt::AttachmentDefinition renderTargetDef;
     renderTargetDef.binding = 0;
     renderTargetDef.name = "renderTarget";
-    renderTargetDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
+    renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
     renderTargetDef.clearImage = true;
     renderTargetDef.storePrevious = true;
     renderTargetDef.type = Bolt::AttachmentDefinition::Type::CubeMap;
@@ -377,7 +377,8 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     renderStage.attachmentRefs.pushBack(renderTargetRef);
     stages.pushBack(renderStage);
 
-    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addImmediateRenderScene("scene_envmap_capture", info, stages.getSize(), stages.getBuffer());
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()
+                ->addImmediateCubemapRenderScene("scene_envmap_capture", info, stages.getSize(), stages.getBuffer());
 
     //pipeline
     attributes.clear();
@@ -397,9 +398,11 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
 
     Bolt::Pipeline* cubemapCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("CubemapCapturePipeline"), Quaint::QName("scene_envmap_capture"), 0, shaderDef);
-    cubemapCapturePipeline->cullBack();
-    cubemapCapturePipeline->enableDepth();
+    //cubemapCapturePipeline->cullFront();
+    //cubemapCapturePipeline->enableDepth();
     cubemapCapturePipeline->construct();
+    
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(cubemapCapturePipeline);
 
     Bolt::CubemapCapturePainter* cubemapPainter = QUAINT_NEW(context, Bolt::CubemapCapturePainter, context, Quaint::QName("CubemapCapturePipeline"));
 
@@ -472,6 +475,7 @@ int main()
     //Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
     //TODO: There should be an explicit transition texture layout transition step
+    EquirectangularToCubemap(context);
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
@@ -703,6 +707,7 @@ int main()
     shaderDef.attributeSets.pushBack(attributes);
     
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     //TODO: Pass in cubemap uniform
 
     Bolt::Pipeline* debugEnvMapPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("DebugEnvMapPipeline"), Quaint::QName("graphics"), debugEnvMapStageIdx, shaderDef);

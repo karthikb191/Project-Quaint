@@ -410,6 +410,7 @@ namespace Bolt
     //, m_renderScene(context, MAX_FRAMES_IN_FLIGHT)
     , m_immediateContext(context)
     , m_renderScenes(context)
+    , m_immediateScenes(context)
     , m_pipelines(context)
     {
         s_Instance = this;
@@ -1190,7 +1191,7 @@ namespace Bolt
             if(scene->getName() == name)
             {
                 char buffer[1024];
-                sprintf_s(buffer, "Render Scene: %s has already been added", scene->getName().getBuffer());
+                sprintf_s(buffer, "Immediate Render Scene: %s has already been added", scene->getName().getBuffer());
                 QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
                 return;
             }
@@ -1199,6 +1200,32 @@ namespace Bolt
         //Constructing the scene
         RenderScene* scene = QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo);
         TRenderScenePtr scenePtr(scene, Deleter<RenderScene>(m_context));
+        
+        for(uint32_t i = 0; i < numStages; ++i)
+        {
+            scene->addRenderStage(*(pStages + i));
+        }
+        scene->construct();
+        m_immediateScenes.pushBack(std::move(scenePtr));
+    }
+
+    void VulkanRenderer::addImmediateCubemapRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages)
+    {
+        //TODO: Address code duplication
+        for(auto& scene : m_immediateScenes)
+        {
+            if(scene->getName() == name)
+            {
+                char buffer[1024];
+                sprintf_s(buffer, "Immediate Render Scene: %s has already been added", scene->getName().getBuffer());
+                QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
+                return;
+            }
+        }
+
+        //Constructing the scene
+        CubemapRenderScene* scene = QUAINT_NEW(m_context, CubemapRenderScene, m_context, name, renderInfo);
+        TRenderScenePtr scenePtr(scene, Deleter<CubemapRenderScene>(m_context));
         
         for(uint32_t i = 0; i < numStages; ++i)
         {
@@ -1749,7 +1776,7 @@ namespace Bolt
         assert(res == VK_SUCCESS && "Failed to bind Image to GPU Backing Memory");
     }
 
-    VkCommandBuffer beginOneTimeCommands(const VkDevice device, const VkCommandPool commandPool)
+    VkCommandBuffer VulkanRenderer::beginOneTimeCommands(const VkCommandPool commandPool)
     {
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1759,7 +1786,7 @@ namespace Bolt
         allocInfo.pNext = nullptr;
 
         VkCommandBuffer cmdBuffer;
-        VkResult res = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);
+        VkResult res = vkAllocateCommandBuffers(m_device, &allocInfo, &cmdBuffer);
         assert(res == VK_SUCCESS && "Failed to create a single usage command buffer");
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -1771,7 +1798,7 @@ namespace Bolt
         return cmdBuffer;
     }
 
-    void endOneTimeCommands(const VkDevice device, const VkCommandBuffer commandBuffer, const VkCommandPool commandPool, const VkQueue queue)
+    void VulkanRenderer::endOneTimeCommands(const VkCommandBuffer commandBuffer, const VkCommandPool commandPool, const VkQueue queue)
     {
         VkResult res = vkEndCommandBuffer(commandBuffer);
         assert(res == VK_SUCCESS && "Failed to end the single usage command buffer");
@@ -1784,7 +1811,7 @@ namespace Bolt
         res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
         assert(res == VK_SUCCESS && "Failed to submit command buffer to queue");
         vkQueueWaitIdle(queue);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(m_device, commandPool, 1, &commandBuffer);
     }
 
     void copyImageFromStaging(const VkDevice device, const VkImage image, const VkBuffer stagingBuffer,
@@ -1833,7 +1860,7 @@ namespace Bolt
 
     void VulkanRenderer::transitionDepthImageLayout(VkImage image)
     {
-        VkCommandBuffer transitionBuffer = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+        VkCommandBuffer transitionBuffer = beginOneTimeCommands(m_graphicsCommandPool);
 
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1869,11 +1896,11 @@ namespace Bolt
         1, &barrier             // Image Barriers
         );   
 
-        endOneTimeCommands(m_device, transitionBuffer, m_graphicsCommandPool, m_graphicsQueue);
+        endOneTimeCommands(transitionBuffer, m_graphicsCommandPool, m_graphicsQueue);
     }
 
-    void transitionImageLayout(const VkDevice device, const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
-    VkCommandBuffer cmdBuffer, uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1)
+    void VulkanRenderer::transitionImageLayout(const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
+    VkCommandBuffer cmdBuffer, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount)
     {
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1911,6 +1938,14 @@ namespace Bolt
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             
             srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else if(srcLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && dstLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        {
+            barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            
+            srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         }
         else
@@ -1978,9 +2013,9 @@ namespace Bolt
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
         
-        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_graphicsCommandPool);
 
-        transitionImageLayout(m_device, outTexuture.getHandle(), format,
+        transitionImageLayout(outTexuture.getHandle(), format,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
          , transitionCmd);
 
@@ -1989,11 +2024,11 @@ namespace Bolt
         , transitionCmd);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
-        transitionImageLayout(m_device, outTexuture.getHandle(), format, 
+        transitionImageLayout(outTexuture.getHandle(), format, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         , transitionCmd);
 
-        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, queue);
+        endOneTimeCommands(transitionCmd, m_graphicsCommandPool, queue);
 
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
@@ -2044,21 +2079,21 @@ namespace Bolt
         }
         vkUnmapMemory(m_device, stagingBufferGpuMemory);
 
-        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_graphicsCommandPool);
 
         // Transition cubemap to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to prepare for data transfer
-        transitionImageLayout(m_device, outTexuture.getHandle(), format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        transitionImageLayout(outTexuture.getHandle(), format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 transitionCmd, 0, 1, 0, 6);
 
         // Copy from staging buffer to each of the image slices
         copyCubemapFromStaging(m_device, outTexuture.getHandle(), stagingBuffer, width, height, transitionCmd);
 
         // Transition cubemap to the layout that shader can read VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        transitionImageLayout(m_device, outTexuture.getHandle(), format
+        transitionImageLayout(outTexuture.getHandle(), format
                             , VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                             , transitionCmd, 0, 1, 0, 6);
 
-        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
+        endOneTimeCommands(transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
 
         //Destroy buffers
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
@@ -2116,19 +2151,19 @@ namespace Bolt
 
         // Transition image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL in transfer queue.
         // If this Image has explicit ownership 
-        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_device, m_graphicsCommandPool);
+        VkCommandBuffer transitionCmd = beginOneTimeCommands(m_graphicsCommandPool);
 
-        transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB,
+        transitionImageLayout(m_texture, VK_FORMAT_R8G8B8A8_SRGB,
          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, transitionCmd);
 
         //The image/texture should have the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to perform the copy
         copyImageFromStaging(m_device, m_texture, stagingBuffer, width, height, transitionCmd);
 
         //TODO: This might cause some issues when using inside graphics queue if sharing mode of the image is exclusive. BEWARE!! 
-        transitionImageLayout(m_device, m_texture, VK_FORMAT_R8G8B8A8_SRGB, 
+        transitionImageLayout(m_texture, VK_FORMAT_R8G8B8A8_SRGB, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, transitionCmd);
 
-        endOneTimeCommands(m_device, transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
+        endOneTimeCommands(transitionCmd, m_graphicsCommandPool, m_graphicsQueue);
 
         //After pixels are written to a VkImage, they are not going to be updated again. Destroy temporary staging buffer and GPU memory
         vkFreeMemory(m_device, stagingBufferGpuMemory, m_allocationPtr);
@@ -2240,9 +2275,9 @@ namespace Bolt
         
     }
 
-    void copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool)
+    void VulkanRenderer::copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool)
     {
-        VkCommandBuffer copyBuffer = beginOneTimeCommands(device, srcCommandPool);
+        VkCommandBuffer copyBuffer = beginOneTimeCommands(srcCommandPool);
 
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0; // Optional
@@ -2250,7 +2285,7 @@ namespace Bolt
         copyRegion.size = size;
         vkCmdCopyBuffer(copyBuffer, src, dst, 1, &copyRegion);
 
-        endOneTimeCommands(device, copyBuffer, srcCommandPool, transferQueue);
+        endOneTimeCommands(copyBuffer, srcCommandPool, transferQueue);
     }
 
     void VulkanRenderer::createBuffer(size_t bufferSize, void* data, VkBufferUsageFlags usageFlags,
@@ -2708,6 +2743,7 @@ namespace Bolt
         vulkanScene->submit(m_graphicsQueue);
 
         vkQueueWaitIdle(m_graphicsQueue);
+        vkDeviceWaitIdle(VulkanRenderer::get()->getDevice());
         //auto& params = vulkanScene->getSceneParams();
         // Should presentation wait on this semaphore? Seems very unlikely
         //semaphoresToWaitOn.pushBack(params.renderFinishedSemaphore);

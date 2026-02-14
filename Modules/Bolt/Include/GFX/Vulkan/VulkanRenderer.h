@@ -231,8 +231,15 @@ namespace Bolt
         VkMemoryPropertyFlags propertyFlags,
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
-
+        
+        VkCommandPool getGraphicsCommanPool() { return m_graphicsCommandPool; }
+        VkQueue getGraphicsQueue() { return m_graphicsQueue; }
+        VkCommandBuffer beginOneTimeCommands(const VkCommandPool commandPool);
+        void copyBuffer(VkDevice device, VkQueue transferQueue, VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandPool srcCommandPool);
+        void endOneTimeCommands(const VkCommandBuffer commandBuffer, const VkCommandPool commandPool, const VkQueue queue);
         void transitionDepthImageLayout(VkImage image);
+        void transitionImageLayout(const VkImage image, const VkFormat format, const VkImageLayout srcLayout, const VkImageLayout dstLayout, 
+                        VkCommandBuffer cmdBuffer, uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1);
 
         void createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
         void createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT, const VkFormat format = VK_FORMAT_R8G8B8A8_SRGB);
@@ -248,6 +255,7 @@ namespace Bolt
         virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx) override;
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual void addImmediateRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
+        virtual void addImmediateCubemapRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual RenderScene* getRenderScene(Quaint::QName name) override;
         void constructPendingRenderScenes();
 

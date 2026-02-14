@@ -14,18 +14,14 @@ namespace Bolt {
     RenderScene::RenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo)
     : m_name(name)
     , m_stages(context)
-    , m_impl(nullptr, context)
+    , m_impl(nullptr, Deleter<RenderSceneImpl>(context))
     , m_context(context)
     , m_renderInfo(renderInfo)
     {
-        m_impl.reset(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
-        assert(m_impl != nullptr && "Vulkan scene not constructed");
     }
     CubemapRenderScene::CubemapRenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo)
     : RenderScene(context, name, renderInfo)
     {
-        m_impl.reset(QUAINT_NEW(context, vulkan::VulkanCubeMapRenderScene, context));
-        assert(m_impl != nullptr && "Vulkan scene not constructed");
     }
 
     RenderScene::~RenderScene()
@@ -47,8 +43,10 @@ namespace Bolt {
 
     bool RenderScene::construct()
     {
-        VulkanRenderScene* scene = getRenderSceneImplAs<VulkanRenderScene>();
+        vulkan::VulkanRenderScene* scene = QUAINT_NEW(m_context, vulkan::VulkanRenderScene, m_context);
         scene->construct(this);
+        m_impl.reset(scene);
+        assert(m_impl != nullptr && "Vulkan scene not constructed");
         m_isValid = true;
         return true;
     }
@@ -89,6 +87,17 @@ namespace Bolt {
     void RenderScene::addPointLight(const PointLight& light)
     {
         m_pointLights.pushBack(light);
+    }
+
+    bool CubemapRenderScene::construct()
+    {
+        vulkan::VulkanCubeMapRenderScene* scene = QUAINT_NEW(m_context, vulkan::VulkanCubeMapRenderScene, m_context);
+        scene->construct(this);
+        m_impl.reset(scene);
+        assert(m_impl != nullptr && "Vulkan scene not constructed");
+        
+        m_isValid = true;
+        return true;
     }
     
     namespace vulkan{
@@ -730,7 +739,8 @@ namespace Bolt {
             if(attachment->getInfo().clearImage)
             {
                 if(attachment->getInfo().type == AttachmentDefinition::Type::Swapchain 
-                || attachment->getInfo().type == AttachmentDefinition::Type::Image)
+                || attachment->getInfo().type == AttachmentDefinition::Type::Image
+                || attachment->getInfo().type == AttachmentDefinition::Type::CubeMap)
                 {
                     VkClearValue val{};
                     val.color = {{attachment->getInfo().clearColor.x, 
@@ -798,8 +808,16 @@ namespace Bolt {
         info.commandBufferCount = 1;
         info.pCommandBuffers = &m_sceneParams.commandBuffer;
 
-        info.signalSemaphoreCount = 1;
-        info.pSignalSemaphores = &m_sceneParams.renderFinishedSemaphore;
+        if(!m_skipSemaphores)
+        {
+            info.signalSemaphoreCount = 1;
+            info.pSignalSemaphores = &m_sceneParams.renderFinishedSemaphore;
+        }
+        else
+        {
+            info.signalSemaphoreCount = 0;
+            info.pSignalSemaphores = nullptr;
+        }
 
         info.pNext = nullptr;
 
@@ -810,6 +828,19 @@ namespace Bolt {
     VulkanCubeMapRenderScene::VulkanCubeMapRenderScene(Quaint::IMemoryContext* context)
     : VulkanRenderScene(context)
     {
+        m_skipSemaphores = true;
+    }
+
+    void VulkanCubeMapRenderScene::constructFrameBuffer()
+    {
+        //TODO: Fix code duplication
+        if(m_framebuffer.get() != nullptr)
+        {
+            m_framebuffer->destroy();
+        }
+        m_framebuffer.reset(QUAINT_NEW( m_context, FrameBuffer, m_context));
+
+        m_framebuffer->construct(this);
     }
     
     void VulkanCubeMapRenderScene::constructAttachments(const Bolt::RenderInfo& info)
@@ -853,6 +884,7 @@ namespace Bolt {
                 attachment->addImageView(5, 1);
                 m_attachments.emplace(attachment, Bolt::Deleter<Attachment>(m_context));
             }
+            break;
             default:
                 assert(false && "Not yet supported");
             break;
@@ -898,6 +930,7 @@ namespace Bolt {
         .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .setImageViewInfo(viewInfo)
         .setIsCubeMap()
+        .setLayerCount(6)
         .setBuildImage()
         .setBackingMemory()
         .setBuildImageView()

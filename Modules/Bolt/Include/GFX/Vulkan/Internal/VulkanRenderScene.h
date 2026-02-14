@@ -15,6 +15,7 @@ namespace Bolt {
     class RenderSceneImpl
     {
     public:
+        virtual ~RenderSceneImpl(){}
 
     protected:
     };
@@ -78,6 +79,7 @@ namespace Bolt {
         : Attachment(info)
         , m_context(context)
         , texture(tex)
+        , cubemapViews(context)
         {}
         
         virtual void buildAttachmentReference() override;
@@ -158,6 +160,8 @@ namespace Bolt {
         const SceneParams& getSceneParams() const { return m_sceneParams; }
         const VkExtent2D& getRenderExtent() const { return m_renderExtent; }
         const VkOffset2D& getRenderOffset() const { return m_renderOffset; }
+        
+        bool skipSemaphores() { m_skipSemaphores = true; }
 
     protected:
         virtual void constructAttachments(const Bolt::RenderInfo& info);
@@ -183,6 +187,8 @@ namespace Bolt {
         VkOffset2D                                                  m_renderOffset = {0, 0};
         bool                                                        m_hasDepth = false;
         uint32_t                                                    m_currentSubpass = 0;
+        
+        bool                                                        m_skipSemaphores = false;
     };
 
     //Has support to render to cubemap
@@ -194,13 +200,13 @@ namespace Bolt {
 
     private:
         virtual void constructAttachments(const Bolt::RenderInfo& info) override;
+        virtual void constructFrameBuffer() override;
         
         VulkanTexture constructCubemapTexture(const Bolt::AttachmentDefinition def);
 
         uint8_t m_renderToFace = 0;
 
         Quaint::QVector<VkImageView> m_cubemapViews;
-        Quaint::QVector<TFramebufferPtr> m_framebuffers;
     };
 
     struct MVP

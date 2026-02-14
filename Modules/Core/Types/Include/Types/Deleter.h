@@ -42,6 +42,7 @@ namespace Quaint
             {
                 return;
             }
+            T* p = static_cast<T*>(ptr);
             
             QUAINT_DELETE(context, ptr);
         }

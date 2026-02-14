@@ -12,6 +12,7 @@ namespace Bolt
         IGFXEntity(Quaint::IMemoryContext* context)
         : m_context(context)
         {}
+        virtual ~IGFXEntity(){};
 
         Quaint::IMemoryContext* m_context = nullptr;
         Quaint::IMemoryContext* getMemoryContext() { return m_context; }
@@ -26,6 +27,7 @@ namespace Bolt
         IPipelineImpl(Quaint::IMemoryContext* context)
         : IGFXEntity(context)
         {}
+        virtual ~IPipelineImpl(){};
     };
     typedef Quaint::QUniquePtr<IPipelineImpl, Quaint::Deleter<IPipelineImpl>> TPipelineImplPtr;
 

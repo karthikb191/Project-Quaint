@@ -24,6 +24,26 @@ namespace Bolt
         uint32_t                                dependentStage = ~0ul;
         Quaint::QArray<AttachmentRef>           attachmentRefs; 
     };
+
+    
+    struct NewDeleter
+    {
+        NewDeleter(Quaint::IMemoryContext* pContext)
+        : context(pContext)
+        {}
+
+        void operator()(void* ptr)
+        {
+            if(ptr == nullptr)
+            {
+                return;
+            }
+            
+            QUAINT_DELETE(context, ptr);
+        }
+        Quaint::IMemoryContext* context = nullptr;
+    };
+
     class RenderScene
     {
     public:
@@ -79,6 +99,7 @@ namespace Bolt
     {
     public:
         CubemapRenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo);
+        virtual bool construct() override;
     };
 }
 

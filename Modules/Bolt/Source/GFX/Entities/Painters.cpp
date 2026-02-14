@@ -628,6 +628,33 @@ namespace Bolt
 
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        RenderScene* envMapCaptureScene = VulkanRenderer::get()->getRenderScene("scene_envmap_capture");
+        VulkanRenderScene *vulkanGraphicsScene = envMapCaptureScene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+
+        VkCommandBuffer buffer = VulkanRenderer::get()->beginOneTimeCommands(VulkanRenderer::get()->getGraphicsCommanPool());
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    , buffer
+                    , 0, 1
+                    , 0, 6);
+        VulkanRenderer::get()->endOneTimeCommands(buffer, VulkanRenderer::get()->getGraphicsCommanPool(), VulkanRenderer::get()->getGraphicsQueue());
+
+        VkSamplerCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        info.magFilter = VK_FILTER_LINEAR;
+        info.minFilter = VK_FILTER_LINEAR;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        info.minLod = -1000;
+        info.maxLod = 1000;
+        info.maxAnisotropy = 1.0f;
+        VkResult res = vkCreateSampler(device, &info, VulkanRenderer::get()->getAllocationCallbacks(), &m_sampler);
 
         // Create a buffer for MVP matrices and map it
         const uint32_t size = sizeof(Bolt::UniformBufferObject);
@@ -649,7 +676,7 @@ namespace Bolt
         allocInfo.pSetLayouts = layouts;
 
         m_set = VK_NULL_HANDLE;
-        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &m_set);
+        res = vkAllocateDescriptorSets(device, &allocInfo, &m_set);
         
         VkDescriptorBufferInfo desc_mvpBuffer = {};
         desc_mvpBuffer.buffer = mvpResource->getBufferhandle();
@@ -664,10 +691,22 @@ namespace Bolt
         mvpBufferWrite.pBufferInfo = &desc_mvpBuffer;
         mvpBufferWrite.dstBinding = 0;
 
-        VkWriteDescriptorSet writes[] = {mvpBufferWrite};
+        VkDescriptorImageInfo desc_image = {};
+        desc_image.sampler = m_sampler;
+        desc_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        desc_image.imageView = attachment->texture.getImageView();
+
+        VkWriteDescriptorSet radianceMapWrite = {};
+        radianceMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        radianceMapWrite.dstSet = m_set;
+        radianceMapWrite.descriptorCount = 1;
+        radianceMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        radianceMapWrite.pImageInfo = &desc_image;
+        radianceMapWrite.dstBinding = 1;
+
+        VkWriteDescriptorSet writes[] = {mvpBufferWrite, radianceMapWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
-
 
 
         //Finally create the model
@@ -720,7 +759,7 @@ namespace Bolt
     CubemapCapturePainter::CubemapCapturePainter(Quaint::IMemoryContext* context, const Quaint::QName& pipelineName)
     : Painter(context, pipelineName)
     , m_uniformbuffer(nullptr, Quaint::Deleter<Bolt::IBufferImpl>(context))
-    , m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
+    //, m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
     , m_model(nullptr, Quaint::Deleter<Bolt::Model>(context))
     , m_dataProviderRef(nullptr, Quaint::Deleter<Bolt::IVertexDataProvider>(context))
     {
@@ -770,16 +809,25 @@ namespace Bolt
 
 
         //Finally create the model
-        CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
+        CubeModel* cube = QUAINT_NEW(context, CubeModel, context, 100.0f);
         DebugCubemapVertexDataProvider* dataProvider = QUAINT_NEW(context, DebugCubemapVertexDataProvider, context, cube);
         m_dataProviderRef.reset(dataProvider); 
         m_model.reset(cube);
         m_model->overrideVertexDataProvider(dataProvider);
         m_model->construct();
 
-        m_mvp.proj = Quaint::buildPerspectiveProjectionMatrix(0.1, 10, 90, 1.0f);
+        m_mvp.proj = Quaint::buildPerspectiveProjectionMatrix(0.1f, 100, 90, 1.0f);
         m_mvp.model = Quaint::QMat4x4::Identity();
     }
+
+    CubemapCapturePainter::~CubemapCapturePainter()
+    {
+        m_model->destroy();
+        m_dataProviderRef.release();
+        m_uniformbuffer->destroy();
+        //TODO: Free vulkan resources
+    }
+
     void CubemapCapturePainter::prepare()
     {
         const Camera &camera = RenderModule::get().getBoltRenderer()->getCamera();
@@ -792,8 +840,8 @@ namespace Bolt
 
             Quaint::UniformBufferObject mvp{};
             mvp.view = camera.getViewMatrix();
-            mvp.proj = camera.getProjectionMatrix();
-            mvp.model = m_model->getTransform();
+            //mvp.proj = camera.getProjectionMatrix();
+            //mvp.model = m_model->getTransform();
 
             memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
         }

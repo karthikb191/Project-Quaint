@@ -133,12 +133,14 @@ namespace Bolt
         Bolt::ModelRef m_model;
         VkDescriptorSet m_set;
         TVertexDataProviderRef m_dataProviderRef;
+        VkSampler m_sampler;
     };
 
     class CubemapCapturePainter : public Painter
     {
     public:
         CubemapCapturePainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual ~CubemapCapturePainter();
         virtual void prepare() override;
         virtual void preRender(RenderScene* scene) override;
         virtual void render(RenderScene* scene) override;
@@ -147,11 +149,12 @@ namespace Bolt
 
     private:
         TBufferImplPtr m_uniformbuffer;
-        TImageSamplerImplPtr m_tempCubemap;
+        //TImageSamplerImplPtr m_tempCubemap;
         Bolt::ModelRef m_model;
         VkDescriptorSet m_set;
         TVertexDataProviderRef m_dataProviderRef;
         Quaint::UniformBufferObject m_mvp;
+        VkSampler m_sampler;
     };
 
     class ImguiPainter : public Painter

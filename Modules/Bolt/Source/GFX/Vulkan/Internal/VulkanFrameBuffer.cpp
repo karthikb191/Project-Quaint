@@ -94,7 +94,6 @@ namespace Bolt{ namespace vulkan{
         }
     }
 
-
     void FrameBuffer::construct(const VulkanCubeMapRenderScene* scene)
     {
         DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
@@ -139,6 +138,7 @@ namespace Bolt{ namespace vulkan{
                     VkImageView view = attachment->As<CubemapAttachment>()->cubemapViews[i];
                     views.pushBack(view);
                 }
+                break;
                 default:
                     assert(false && "Unsupported attachment type");
                     break;
