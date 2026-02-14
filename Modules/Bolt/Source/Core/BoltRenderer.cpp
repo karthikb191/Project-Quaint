@@ -99,6 +99,12 @@ namespace Bolt
         m_painters.pushBack(painter);
     }
 
+    Painter* BoltRenderer::getPainter(Quaint::QName& painter) const
+    {
+        //TODO: populate this once we have an identity for painters
+        return nullptr;
+    }
+
     void BoltRenderer::update()
     {
         updateUniformBufferProxy();

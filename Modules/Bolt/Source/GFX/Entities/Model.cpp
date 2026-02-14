@@ -104,6 +104,19 @@ namespace Bolt
         m_material = material;
     }
 
+    DefaultVertexDataProvider::DefaultVertexDataProvider(Model* model)
+    {
+        m_model = model;
+    }
+
+    void* DefaultVertexDataProvider::getVertexBufferData()
+    {
+        return (void*)m_model->getVertexBuffer();
+    }
+    uint32_t DefaultVertexDataProvider::getVertexBufferSize()
+    {
+        return m_model->getVertexBufferSize();
+    }
 
     
     Model::Model(Quaint::IMemoryContext* context, Quaint::QName name)
@@ -115,13 +128,24 @@ namespace Bolt
     , m_indices(context)
     , m_modelImpl(nullptr, Quaint::Deleter<IModelImpl>(context))
     , m_name(name)
+    , m_vertexDataProvider(nullptr, Quaint::Deleter<IVertexDataProvider>(context))
     {
+        DefaultVertexDataProvider* provider = QUAINT_NEW(context, DefaultVertexDataProvider, this);
+        m_vertexDataProvider.reset(provider);
     }
 
     Model::Model(Quaint::IMemoryContext* context, MeshRef& mesh)
     : Model(context)
     {
         m_meshes.pushBack(std::move(mesh));
+    }
+
+    void Model::overrideVertexDataProvider(IVertexDataProvider* vertexDataProvider)
+    {
+        assert(vertexDataProvider != nullptr && "nullptr passed for vertex data provider.");
+        assert(vertexDataProvider->getVertexBufferSize() > 0 && "No data in passed vertex data provider");
+        assert(vertexDataProvider->getVertexBufferData() != nullptr && "Invalid data passed in vertex data provider");
+        m_vertexDataProvider.reset(vertexDataProvider);
     }
 
     void Model::setTranslation(const Quaint::QVec4& translation)
@@ -147,6 +171,7 @@ namespace Bolt
         {
             m_modelImpl->destroy();
         }
+        m_vertexDataProvider.release();
     }
 
     void Model::addMesh(float* vertices, uint32_t numVerts
@@ -364,6 +389,94 @@ namespace Bolt
             //}
             //oddRow = !oddRow;
         }
+
+        Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
+            ,  m_vertices.getSize(), 0, m_indices.getSize(), 0);
+        Bolt::MeshRef meshRef(mesh, Quaint::Deleter<Bolt::Mesh>(m_context));
+        m_meshes.pushBack(std::move(meshRef));
+    }
+
+    CubeModel::CubeModel(Quaint::IMemoryContext* context, float scale, const Quaint::QName& name)
+    : Model(context, name)
+    {
+        //NOTE: These don't have per-vertex normals
+        //TODO: Pass in another flag to calculate per-vertex normals
+
+        Quaint::QVertex vertex;
+        vertex.position = {-0.5, -0.5, -0.5, 1}; //0: FLD
+        vertex.normal = {-0.5774f, -0.5774f, -0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {0.5, -0.5, -0.5, 1}; //1: FRD
+        vertex.normal = {0.5774f, -0.5774f, -0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {-0.5, 0.5, -0.5, 1}; //2: FLU
+        vertex.normal = {-0.5774f, 0.5774f, -0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {0.5, 0.5, -0.5, 1}; //3: FRU
+        vertex.normal = {0.5774f, 0.5774f, -0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        
+        //Backward faces
+        vertex.position = {0.5, 0.5, 0.5, 1}; //4: BRU
+        vertex.normal = {0.5774f, 0.5774f, 0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {-0.5, 0.5, 0.5, 1}; //5: BLU
+        vertex.normal = {-0.5774f, 0.5774f, 0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {0.5, -0.5, 0.5, 1}; //6: BRD
+        vertex.normal = {0.5774f, -0.5774f, 0.5774f, 0};
+        m_vertices.pushBack(vertex);
+        vertex.position = {-0.5, -0.5, 0.5, 1}; //7: BLD
+        vertex.normal = {-0.5774f, -0.5774f, 0.5774f, 0};
+        m_vertices.pushBack(vertex);
+
+        //Back
+        m_indices.pushBack(0);
+        m_indices.pushBack(1);
+        m_indices.pushBack(2);
+        m_indices.pushBack(3);
+        m_indices.pushBack(2);
+        m_indices.pushBack(1);
+
+        //Top
+        m_indices.pushBack(5);
+        m_indices.pushBack(2);
+        m_indices.pushBack(3);
+        m_indices.pushBack(5);
+        m_indices.pushBack(3);
+        m_indices.pushBack(4);
+        
+        //Left
+        m_indices.pushBack(3);
+        m_indices.pushBack(1);
+        m_indices.pushBack(6);
+        m_indices.pushBack(3);
+        m_indices.pushBack(6);
+        m_indices.pushBack(4);
+
+        //Front
+        m_indices.pushBack(4);
+        m_indices.pushBack(7);
+        m_indices.pushBack(5);
+        m_indices.pushBack(4);
+        m_indices.pushBack(6);
+        m_indices.pushBack(7);
+        
+        //Right
+        m_indices.pushBack(2);
+        m_indices.pushBack(7);
+        m_indices.pushBack(0);
+        m_indices.pushBack(2);
+        m_indices.pushBack(5);
+        m_indices.pushBack(7);
+
+        //Bottom
+        m_indices.pushBack(0);
+        m_indices.pushBack(7);
+        m_indices.pushBack(1);
+        m_indices.pushBack(1);
+        m_indices.pushBack(7);
+        m_indices.pushBack(6);
 
         Bolt::Mesh* mesh = QUAINT_NEW(m_context, Bolt::Mesh, m_context
             ,  m_vertices.getSize(), 0, m_indices.getSize(), 0);

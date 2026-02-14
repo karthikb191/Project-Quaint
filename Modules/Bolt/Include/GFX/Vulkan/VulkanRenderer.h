@@ -29,6 +29,7 @@ namespace Bolt
     class VulkanRenderer;
     class RenderScene;
     class RenderStage;
+    class Painter;
 
     namespace vulkan
     {
@@ -230,6 +231,8 @@ namespace Bolt
         VkMemoryPropertyFlags propertyFlags,
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
+
+        void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter);
 
         void transitionDepthImageLayout(VkImage image);
 

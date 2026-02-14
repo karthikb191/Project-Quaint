@@ -130,8 +130,8 @@ namespace Bolt { namespace vulkan {
     void VulkanRenderObject::createBuffersFromModel(Model* model)
     {
         BufferResourceBuilder builder(m_context);
-        builder.setBuffer((void*)model->getVertexBuffer())
-        .setDataSize(model->getVertexBufferSize())
+        builder.setBuffer(model->getVertexDataProvider()->getVertexBufferData())
+        .setDataSize(model->getVertexDataProvider()->getVertexBufferSize())
         .copyDataToBuffer(true)
         .setBufferType(EBufferType::VERTEX)
         .setDataOffset(0)

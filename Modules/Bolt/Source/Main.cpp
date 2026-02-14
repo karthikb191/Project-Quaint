@@ -325,6 +325,14 @@ int mainVector()
     return 0;
 }
 
+
+/*
+
+MY COORDINATE SYSTEM IS LEFT-HANDED
++X IS TOWARDS RIGHT +Y IS TOWARDS UP +Z GOES INTO THE SCREEN
+
+*/
+
 //int main_SHOULD_REUSE_AFTER_TESTING()
 int main()
 {
@@ -375,6 +383,8 @@ int main()
 
     //Bolt::RenderQuad quad(Quaint::MemoryModule::get().getMemoryManager().getDefaultMemoryContext());
 
+    //TODO: There should be an explicit transition texture layout transition step
+
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
     info.extents = Quaint::QVec2(1024, 1024);
@@ -385,6 +395,7 @@ int main()
     renderTargetDef.name = "renderTarget";
     renderTargetDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
     renderTargetDef.clearImage = true;
+    renderTargetDef.storePrevious = true;
     
     //swapchainDef.type = Bolt::AttachmentDefinition::Type::Swapchain;
     renderTargetDef.type = Bolt::AttachmentDefinition::Type::Image;
@@ -405,7 +416,7 @@ int main()
     depthDef.extents = info.extents;
     info.attachments.pushBack(depthDef);
 
-    depthDef.storePrevious = false;
+    depthDef.storePrevious = true;
 
     /* Attachment references in each sub-pass */
     Bolt::RenderStage::AttachmentRef renderTargetRef{};
@@ -429,6 +440,22 @@ int main()
     
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("scene_lightmap", info, stages.getSize(), stages.getBuffer());
 
+    
+    //TODO: Environment map debug doesnt need a new scene. If it does, the framebuffer should own the attachments to be shared across the scenes.
+    // Right now, the scene owns the attachments and passes them on to the framebuffer
+    // debug envmap scene setup -----------------------------------------------
+    // stages.clear();
+    // Bolt::RenderStage dbEnvStage;
+    // dbEnvStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    // dbEnvStage.index = 0;
+
+    // dbEnvStage.attachmentRefs.pushBack(renderTargetRef);
+    // dbEnvStage.attachmentRefs.pushBack(depthRef);
+
+    // dbEnvStage.dependentStage = ~0;
+    // stages.pushBack(dbEnvStage);
+    //Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addRenderScene("scene_debug_envmap", info, stages.getSize(), stages.getBuffer());
+
     // Geometry scene setup ---------------------------------------------------
     stages.clear();
 
@@ -441,6 +468,17 @@ int main()
 
     geoStage.dependentStage = ~0;
     stages.pushBack(geoStage);
+
+    // Debug environment map stage
+    Bolt::RenderStage dbEnvStage;
+    dbEnvStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    dbEnvStage.index = 1;
+
+    dbEnvStage.attachmentRefs.pushBack(renderTargetRef);
+    dbEnvStage.attachmentRefs.pushBack(depthRef);
+
+    dbEnvStage.dependentStage = 0;
+    stages.pushBack(dbEnvStage);
 
     //new stage for IMGUI that doesn't need depth buffer
     //Bolt::RenderStage imguiStage;
@@ -527,6 +565,7 @@ int main()
     uint8_t shadowStadeIdx = 0;
 
     uint32_t geoStageIdx = 0;
+    uint32_t debugEnvMapStageIdx = 1;
 
     // Pipelines Setup --------------------------------------------------------------------------------
     // Lightmap pipeline -------------------------------------------------------------------------------
@@ -558,6 +597,31 @@ int main()
     shadowPipeline->enableDepth();
     shadowPipeline->construct();
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(shadowPipeline);
+
+
+    // Debug Environment map piepline -----------------------------------
+    attributes.clear();
+    shaderDef.shaders.clear();
+    shaderDef.uniforms.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.shaders.pushBack({"envmapToCube.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\envmapToCube.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"envmapToCube.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\envmapToCube.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes);
+    
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    //TODO: Pass in cubemap uniform
+
+    Bolt::Pipeline* debugEnvMapPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("DebugEnvMapPipeline"), Quaint::QName("graphics"), debugEnvMapStageIdx, shaderDef);
+    debugEnvMapPipeline->cullBack();
+    debugEnvMapPipeline->enableDepth();
+    debugEnvMapPipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(debugEnvMapPipeline);
 
 
     // Graphics pipeline --------------------------
@@ -657,7 +721,7 @@ int main()
     shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
     shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
 
-    shaderDef.shaders.pushBack({"glsl_shader.vert.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.vert.spv"
+    shaderDef.shaders.pushBack({"glsl_shader.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.vert.spv"
         , "main", Bolt::EShaderStage::VERTEX});
     shaderDef.shaders.pushBack({"glsl_shader.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\Imgui\\glsl_shader.frag.spv"
         , "main", Bolt::EShaderStage::FRAGMENT});
@@ -703,6 +767,8 @@ int main()
     Bolt::ImguiPainter* imguiPainter = QUAINT_NEW(context, Bolt::ImguiPainter, context, Quaint::QName("IMGUIPipeline"));
 
     Bolt::ToneMapPainter* tonemapPainter = QUAINT_NEW(context, Bolt::ToneMapPainter, context, Quaint::QName("TonemapPipeline"));
+
+    Bolt::DebugCubemapPainter* debugEnvMapPainter = QUAINT_NEW(context, Bolt::DebugCubemapPainter, context, Quaint::QName("DebugEnvMapPipeline"));
 
     // End of painters creation ----------------------------------------------------------------------------------------------------------
 
@@ -815,6 +881,7 @@ int main()
 
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(shadowPainter);
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(debugEnvMapPainter); //TODO: Delete this later
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPBRPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);

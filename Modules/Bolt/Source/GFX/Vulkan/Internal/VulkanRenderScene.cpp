@@ -512,7 +512,7 @@ namespace Bolt {
                     //TODO: Remove this workaround from here
                     if(stage.index == 1)
                     {
-                        ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        //ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
                     desc.hasDepthAttachment = true;
@@ -706,7 +706,7 @@ namespace Bolt {
         }
     }
 
-    VulkanRenderScene::SceneParams VulkanRenderScene::end(VkQueue queue)
+    VulkanRenderScene::SceneParams VulkanRenderScene::end()
     {
         vkCmdEndRenderPass(m_sceneParams.commandBuffer);
         //submit(queue);

@@ -2609,6 +2609,74 @@ namespace Bolt
         //memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
     }
 
+    void VulkanRenderer::renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter)
+    {
+        RenderScene* scene = getRenderScene(name);
+        if(scene == nullptr || scene->isValid() == false)
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "No scene found with given name for immediate scene render");
+            return;
+        }
+        if(painter == nullptr)
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "Painter pass is null for rendering scene immediately");
+            return;
+        }
+        if(painter->isCompatibleWithScene(name) == false)
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "Passed painter and scene combination is incompatible. Will not render scene immediately");
+            return;
+        }
+        VulkanRenderScene* vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        
+        painter->prepare();
+        if(!vulkanScene->start())
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "Scene could not start");
+            return;
+        }
+
+        painter->preRender(scene);
+        if(!vulkanScene->beginRenderPass())
+        {
+            QLOG_E(VULKAN_RENDERER_LOGGER, "Scene failed to begin renderpass");
+            vulkanScene->end();
+            return;
+        }
+        
+        auto& stages = scene->getRenderStages();
+        for(auto& stage : stages)
+        {
+            Bolt::Pipeline* pipeline = painter->getPipeline();
+            assert(pipeline != nullptr && "Could not fetch the required pipeline. Exiting");
+
+            //If pipeline is not compatible with this stage, continue
+            uint32_t compatibleStage = painter->getPipeline()->getStageIdx(); 
+            if(compatibleStage != stage.index)
+            {
+                QLOG_E(VULKAN_RENDERER_LOGGER, "Unsupported pipeline detected in immediate submit. Currently only supporting passes with single subpass for immediate submission");
+                continue;
+            }
+
+            VulkanGraphicsPipeline* vulkanPipeline = pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+            
+            //TODO: currently only supporting graphics bind point. Update as required later
+            vkCmdBindPipeline(vulkanScene->getSceneParams().commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->getPipelineHandle());
+
+            painter->render(scene);
+            vulkanScene->finishSubpass();
+        }
+
+        vulkanScene->end();
+        painter->postRender(scene);
+        vulkanScene->submit(m_graphicsQueue);
+
+        auto& params = vulkanScene->getSceneParams();
+        // Should presentation wait on this semaphore? Seems very unlikely
+        //semaphoresToWaitOn.pushBack(params.renderFinishedSemaphore);
+        m_sceneFences.pushBack(params.renderFence);
+    }
+
     void VulkanRenderer::drawFrame()
     {
         //updateUniformBufferProxy();
@@ -2705,7 +2773,7 @@ namespace Bolt
                 vulkanScene->finishSubpass();
             }
 
-            vulkanScene->end(m_graphicsQueue);
+            vulkanScene->end();
             
             for(auto& painter : painters)
             {

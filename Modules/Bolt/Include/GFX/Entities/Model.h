@@ -26,6 +26,14 @@ namespace Quaint
 namespace Bolt
 {
 
+    class IVertexDataProvider
+    {
+    public:
+        virtual uint32_t getVertexBufferSize() = 0;
+        virtual void* getVertexBufferData() = 0;
+    };
+    using TVertexDataProviderRef = Quaint::QUniquePtr<IVertexDataProvider, Quaint::Deleter<IVertexDataProvider>>;
+
     /*Mesh just references the data that should be owned by another container*/
     class Mesh
     {
@@ -97,8 +105,11 @@ namespace Bolt
             , float* uvs, uint32_t numUVs
             , float scale = 1.0f, MaterialRef material = nullptr);
         void addMesh(MeshRef mesh);
-
             
+        IVertexDataProvider* getVertexDataProvider() { return m_vertexDataProvider.get(); }
+        void overrideVertexDataProvider(IVertexDataProvider* vertexDataProvider);
+        
+        const Quaint::QArray<Quaint::QVertex>& getVertices() const { return m_vertices; }
         virtual uint32_t getVertexCount() const { return (uint32_t)m_vertices.getSize(); }
         uint32_t getVertexBufferSize() const { return m_vertices.getSize() * sizeof(Quaint::QVertex); }
         virtual const Quaint::QVertex* getVertexBuffer() const { return m_vertices.getBuffer(); }
@@ -108,8 +119,7 @@ namespace Bolt
         uint32_t getIndexBufferSize() const { return m_indices.getSize() * sizeof(decltype(m_indices)::value_type); }
         uint8_t getIndexBufferElementSize() const { return sizeof(decltype(m_indices)::value_type); }
         
-        
-            //void removeMesh(MeshRef& mesh); TODO:
+        //void removeMesh(MeshRef& mesh); TODO:
         //Mesh* getMesh(){ return m_mesh.get(); }
         
         void setMaterial(MaterialRef material);
@@ -133,6 +143,7 @@ namespace Bolt
         Quaint::QArray<Quaint::QVertex> m_vertices = Quaint::QArray<Quaint::QVertex>::GetInvalidPlaceholder();
         Quaint::QArray<uint32_t> m_indices = Quaint::QArray<uint32_t>::GetInvalidPlaceholder();
         TModelImplPtr m_modelImpl;
+        TVertexDataProviderRef m_vertexDataProvider;
     };
 
     class FloorModel : public Model
@@ -146,8 +157,26 @@ namespace Bolt
     public:
         SphereModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
     };
+    
+    class CubeModel : public Model
+    {
+    public:
+        CubeModel(Quaint::IMemoryContext* context, float scale = 1.0f, const Quaint::QName& name = "");
+    };
 
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
+
+    class DefaultVertexDataProvider : public IVertexDataProvider
+    {
+    public:
+        DefaultVertexDataProvider(Model* model);
+
+        virtual uint32_t getVertexBufferSize();
+        virtual void* getVertexBufferData();
+
+    private:
+        Model* m_model;
+    };
 
 }
 

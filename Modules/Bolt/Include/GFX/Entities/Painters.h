@@ -15,9 +15,14 @@ namespace Bolt
     class Pipeline;
     class Model;
     class RenderScene;
+    class IVertexDataProvider;
+    using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
+    using TVertexDataProviderRef = Quaint::QUniquePtr<IVertexDataProvider, Quaint::Deleter<IVertexDataProvider>>;
+
     class Painter 
     {
     public:
+        //TODO: add a name to the painter
         Painter::Painter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         //TODO: There should be a destroy function
 
@@ -109,6 +114,24 @@ namespace Bolt
         VkDescriptorSet m_set;
 
         TImageSamplerImplPtr m_tempCubemap;
+    };
+
+    class DebugCubemapPainter : public Painter
+    {
+    public:
+        DebugCubemapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual void prepare() override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
+        virtual void postRender(RenderScene* scene) override;
+
+
+    private:
+        TBufferImplPtr m_uniformbuffer;
+        TImageSamplerImplPtr m_tempCubemap;
+        Bolt::ModelRef m_model;
+        VkDescriptorSet m_set;
+        TVertexDataProviderRef m_dataProviderRef;
     };
 
     class ImguiPainter : public Painter

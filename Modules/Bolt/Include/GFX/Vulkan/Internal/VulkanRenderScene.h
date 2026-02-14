@@ -126,7 +126,7 @@ namespace Bolt {
         virtual bool start();
         virtual bool beginRenderPass();
         virtual void finishSubpass();
-        virtual SceneParams end(VkQueue queue);
+        virtual SceneParams end();
         virtual void submit(VkQueue queue);
 
         GraphicsContext*    getContext() { return &m_graphicsContext; }
