@@ -809,7 +809,7 @@ namespace Bolt
 
 
         //Finally create the model
-        CubeModel* cube = QUAINT_NEW(context, CubeModel, context, 100.0f);
+        CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
         DebugCubemapVertexDataProvider* dataProvider = QUAINT_NEW(context, DebugCubemapVertexDataProvider, context, cube);
         m_dataProviderRef.reset(dataProvider); 
         m_model.reset(cube);
@@ -824,7 +824,7 @@ namespace Bolt
     {
         m_model->destroy();
         m_dataProviderRef.release();
-        m_uniformbuffer->destroy();
+        //m_uniformbuffer->destroy();
         //TODO: Free vulkan resources
     }
 
@@ -838,12 +838,12 @@ namespace Bolt
         {
             void **region = uniformBuffer->getMappedRegion();
 
-            Quaint::UniformBufferObject mvp{};
-            mvp.view = camera.getViewMatrix();
+            //Quaint::UniformBufferObject mvp{};
+            //mvp.view = camera.getViewMatrix();
             //mvp.proj = camera.getProjectionMatrix();
             //mvp.model = m_model->getTransform();
 
-            memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
+            memcpy(*region, &m_mvp, uniformBuffer->getBufferInfo().size);
         }
     }
     void CubemapCapturePainter::preRender(RenderScene* scene)

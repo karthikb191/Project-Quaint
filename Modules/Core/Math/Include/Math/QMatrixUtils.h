@@ -188,16 +188,16 @@ namespace Quaint
 
         QMat4x4 view = QMat3x3::Identity();
         view.col0.x = right.x;
-        view.col1.x = right.x;
-        view.col2.x = right.x;
+        view.col1.x = right.y;
+        view.col2.x = right.z;
 
         view.col0.y = up.x;
-        view.col1.y = up.x;
-        view.col2.y = up.x;
+        view.col1.y = up.y;
+        view.col2.y = up.z;
 
         view.col0.z = forward.x;
-        view.col1.z = forward.x;
-        view.col2.z = forward.x;
+        view.col1.z = forward.y;
+        view.col2.z = forward.z;
         view.col3 = invTranslation;
 
         return view;

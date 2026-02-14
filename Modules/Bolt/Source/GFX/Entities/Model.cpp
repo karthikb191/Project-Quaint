@@ -430,6 +430,12 @@ namespace Bolt
         vertex.normal = {-0.5774f, -0.5774f, 0.5774f, 0};
         m_vertices.pushBack(vertex);
 
+        for(auto& vertex : m_vertices)
+        {
+            vertex.position *= scale;
+            vertex.position.w = 1.0f;
+        }
+
         //Back
         m_indices.pushBack(0);
         m_indices.pushBack(1);
