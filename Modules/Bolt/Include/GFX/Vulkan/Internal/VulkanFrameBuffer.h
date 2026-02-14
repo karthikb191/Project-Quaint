@@ -8,6 +8,7 @@
 namespace Bolt{ namespace vulkan{
 
     class VulkanRenderScene;
+    class VulkanCubeMapRenderScene;
     struct AttachmentInfo;
 
     /* Creates and Owns any attachments provided */
@@ -16,9 +17,10 @@ namespace Bolt{ namespace vulkan{
     public:
         FrameBuffer(Quaint::IMemoryContext* context);
         void construct(const VulkanRenderScene* scene);
+        void construct(const VulkanCubeMapRenderScene* scene);
         void destroy();
 
-        VkFramebuffer getHandle();
+        VkFramebuffer getHandle(uint32_t idx = 0);
     private:
         Quaint::IMemoryContext*             m_context;
         VkFramebufferCreateInfo             m_info = {};

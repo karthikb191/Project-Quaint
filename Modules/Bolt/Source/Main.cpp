@@ -332,6 +332,94 @@ MY COORDINATE SYSTEM IS LEFT-HANDED
 +X IS TOWARDS RIGHT +Y IS TOWARDS UP +Z GOES INTO THE SCREEN
 
 */
+void EquirectangularToCubemap(Quaint::IMemoryContext* context)
+{
+    /*
+    1. Create a new scene that has cubemap as an attachment
+    2. Painter should load and own the hdr image and pass it into the shader
+    3. Render
+    */
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::ShaderDefinition shaderDef{};
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+
+    Bolt::RenderInfo info;
+    //info.extents = Quaint::QVec2(~0, ~0);
+    info.extents = Quaint::QVec2(1024, 1024);
+    info.offset = Quaint::QVec2({0, 0});
+    info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    Bolt::AttachmentDefinition renderTargetDef;
+    renderTargetDef.binding = 0;
+    renderTargetDef.name = "renderTarget";
+    renderTargetDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
+    renderTargetDef.clearImage = true;
+    renderTargetDef.storePrevious = true;
+    renderTargetDef.type = Bolt::AttachmentDefinition::Type::CubeMap;
+    renderTargetDef.extents = info.extents;
+    renderTargetDef.format = Bolt::EFormat::R32G32B32A32_SFLOAT;
+    renderTargetDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST | Bolt::EImageUsage::SAMPLED; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(renderTargetDef);
+
+    Bolt::RenderStage::AttachmentRef renderTargetRef{};
+    renderTargetRef.binding = 0;
+    renderTargetRef.attachmentName = "renderTarget";
+
+    //Stage setup
+    Bolt::RenderStage renderStage;
+    renderStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    renderStage.index = 0;
+    renderStage.dependentStage = ~0;
+    renderStage.attachmentRefs.pushBack(renderTargetRef);
+    stages.pushBack(renderStage);
+
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addImmediateRenderScene("scene_envmap_capture", info, stages.getSize(), stages.getBuffer());
+
+    //pipeline
+    attributes.clear();
+    shaderDef.shaders.clear();
+    shaderDef.uniforms.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.shaders.pushBack({"cubemapCapture.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"cubemapCapture.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes);
+    
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+
+    Bolt::Pipeline* cubemapCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("CubemapCapturePipeline"), Quaint::QName("scene_envmap_capture"), 0, shaderDef);
+    cubemapCapturePipeline->cullBack();
+    cubemapCapturePipeline->enableDepth();
+    cubemapCapturePipeline->construct();
+
+    Bolt::CubemapCapturePainter* cubemapPainter = QUAINT_NEW(context, Bolt::CubemapCapturePainter, context, Quaint::QName("CubemapCapturePipeline"));
+
+    //How to pass in camera information
+    cubemapPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 0);
+    cubemapPainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 1);
+    cubemapPainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 2);
+    cubemapPainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 3);
+    cubemapPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render bottom
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 4);
+    cubemapPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render bottom
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 5);
+    
+    QUAINT_DELETE(context, cubemapCapturePipeline);
+    QUAINT_DELETE(context, cubemapPainter);
+}
 
 //int main_SHOULD_REUSE_AFTER_TESTING()
 int main()

@@ -35,7 +35,7 @@ namespace Bolt
             Quaint::QName signalTo = "";
         };
 
-        RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo);
+        RenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo);
         virtual ~RenderScene();
         void addRenderStage(const RenderStage& stage);
         void addGlobalLight(const GlobalLight& light);
@@ -73,6 +73,12 @@ namespace Bolt
         Quaint::QArray<PointLight>              m_pointLights;
 
         bool                                    m_isValid = false;
+    };
+
+    class CubemapRenderScene : public RenderScene
+    {
+    public:
+        CubemapRenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo);
     };
 }
 

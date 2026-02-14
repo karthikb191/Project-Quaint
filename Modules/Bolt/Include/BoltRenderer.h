@@ -49,6 +49,7 @@ namespace Bolt
         const Quaint::UniformBufferObject& getMVPMatrix() { return m_ubo; }
         void addPainter(Painter* painter);
         const Quaint::QArray<Painter*>& getPainters() const { return m_painters; }
+        Painter* getPainter(Quaint::QName& painter) const;
 
     private:
         BoltRenderer();

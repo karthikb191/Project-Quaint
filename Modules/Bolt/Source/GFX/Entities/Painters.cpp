@@ -2,7 +2,6 @@
 #include <GFX/Entities/Model.h>
 #include <ImguiHandler.h>
 #include <RenderModule.h>
-#include <BoltRenderer.h>
 #include <GFX/Entities/RenderScene.h>
 #include <GFX/Entities/Pipeline.h>
 #include <GFX/ResourceBuilder.h>
@@ -52,7 +51,7 @@ namespace Bolt
         {
             return m_vertices.data();
         }
-        
+
     private:
         Quaint::QVector<CubemapDebugVertex> m_vertices;
     };
@@ -716,6 +715,113 @@ namespace Bolt
     {
 
     }
+
+
+    CubemapCapturePainter::CubemapCapturePainter(Quaint::IMemoryContext* context, const Quaint::QName& pipelineName)
+    : Painter(context, pipelineName)
+    , m_uniformbuffer(nullptr, Quaint::Deleter<Bolt::IBufferImpl>(context))
+    , m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
+    , m_model(nullptr, Quaint::Deleter<Bolt::Model>(context))
+    , m_dataProviderRef(nullptr, Quaint::Deleter<Bolt::IVertexDataProvider>(context))
+    {
+        //Create model and it's MVP buffer
+
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+
+        // Create a buffer for MVP matrices and map it
+        const uint32_t size = sizeof(Bolt::UniformBufferObject);
+        BufferResourceBuilder builder(m_context);
+        m_uniformbuffer = std::move(builder.setBufferType(EBufferType::UNIFORM)
+                                                 .setDataSize(size)
+                                                 .setDataOffset(0)
+                                                 .build());
+
+        VulkanBufferObjectResource *mvpResource = static_cast<VulkanBufferObjectResource *>(m_uniformbuffer.get());
+        mvpResource->map();
+
+        // Creates descriptor set
+        VkDescriptorSetLayout layouts[] = {pipeline->getDescriptorSetLayout()};
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = pipeline->getDescriptorPool();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = layouts;
+
+        m_set = VK_NULL_HANDLE;
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &m_set);
+        
+        VkDescriptorBufferInfo desc_mvpBuffer = {};
+        desc_mvpBuffer.buffer = mvpResource->getBufferhandle();
+        desc_mvpBuffer.offset = 0;
+        desc_mvpBuffer.range = mvpResource->getBufferInfo().size;
+
+        VkWriteDescriptorSet mvpBufferWrite = {};
+        mvpBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        mvpBufferWrite.dstSet = m_set;
+        mvpBufferWrite.descriptorCount = 1;
+        mvpBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        mvpBufferWrite.pBufferInfo = &desc_mvpBuffer;
+        mvpBufferWrite.dstBinding = 0;
+
+        VkWriteDescriptorSet writes[] = {mvpBufferWrite};
+        const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
+        vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
+
+
+        //Finally create the model
+        CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
+        DebugCubemapVertexDataProvider* dataProvider = QUAINT_NEW(context, DebugCubemapVertexDataProvider, context, cube);
+        m_dataProviderRef.reset(dataProvider); 
+        m_model.reset(cube);
+        m_model->overrideVertexDataProvider(dataProvider);
+        m_model->construct();
+
+        m_mvp.proj = Quaint::buildPerspectiveProjectionMatrix(0.1, 10, 90, 1.0f);
+        m_mvp.model = Quaint::QMat4x4::Identity();
+    }
+    void CubemapCapturePainter::prepare()
+    {
+        const Camera &camera = RenderModule::get().getBoltRenderer()->getCamera();
+
+        VkDescriptorBufferInfo bufferInfo{};
+        VulkanBufferObjectResource *uniformBuffer = (VulkanBufferObjectResource *)m_uniformbuffer.get();
+
+        {
+            void **region = uniformBuffer->getMappedRegion();
+
+            Quaint::UniformBufferObject mvp{};
+            mvp.view = camera.getViewMatrix();
+            mvp.proj = camera.getProjectionMatrix();
+            mvp.model = m_model->getTransform();
+
+            memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
+        }
+    }
+    void CubemapCapturePainter::preRender(RenderScene* scene)
+    {
+
+    }
+    void CubemapCapturePainter::render(RenderScene* scene)
+    {
+        VulkanRenderScene *vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+        
+        VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipelineLayout(), 0, 1, &m_set, 0, nullptr);
+        
+        m_model->draw(scene);
+    }
+    void CubemapCapturePainter::postRender(RenderScene* scene)
+    {
+
+    }
+    void CubemapCapturePainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)
+    {
+        m_mvp.view = Quaint::lookAt_CorrectVersion(direction, Quaint::QVec4(), up);
+    }
+
 
 
 

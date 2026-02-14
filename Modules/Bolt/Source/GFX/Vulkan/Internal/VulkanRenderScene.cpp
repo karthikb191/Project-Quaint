@@ -11,7 +11,7 @@
 
 
 namespace Bolt { 
-    RenderScene::RenderScene(Quaint::IMemoryContext* context, Quaint::QName name, const RenderInfo& renderInfo)
+    RenderScene::RenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo)
     : m_name(name)
     , m_stages(context)
     , m_impl(nullptr, context)
@@ -21,6 +21,13 @@ namespace Bolt {
         m_impl.reset(QUAINT_NEW(context, vulkan::VulkanRenderScene, context));
         assert(m_impl != nullptr && "Vulkan scene not constructed");
     }
+    CubemapRenderScene::CubemapRenderScene(Quaint::IMemoryContext* context, const Quaint::QName& name, const RenderInfo& renderInfo)
+    : RenderScene(context, name, renderInfo)
+    {
+        m_impl.reset(QUAINT_NEW(context, vulkan::VulkanCubeMapRenderScene, context));
+        assert(m_impl != nullptr && "Vulkan scene not constructed");
+    }
+
     RenderScene::~RenderScene()
     {
         if(m_isValid)
@@ -182,6 +189,57 @@ namespace Bolt {
         attachmentReference.attachment = info.binding;
         attachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
+    
+    void CubemapAttachment::buildAttachmentReference()
+    {
+        attachmentDescription.initialLayout = texture.getCreateInfo().imageInfo.initialLayout;
+        attachmentDescription.format = texture.getCreateInfo().imageInfo.format;
+        attachmentDescription.samples = texture.getCreateInfo().imageInfo.samples;
+        if(info.clearImage)
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+        else
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    void CubemapAttachment::buildAttachmentDescription()
+    {
+        attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        attachmentReference.attachment = info.binding;
+    }
+    void CubemapAttachment::addImageView(int layer, int count)
+    {
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        
+        VkImageViewCreateInfo imageViewInfo{};
+        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewInfo.image = texture.getHandle();
+        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewInfo.format = texture.getCreateInfo().imageInfo.format;
+        //components field allows to swizzle color channels around. For eg, you can map all channels to red for a monochromatic view
+        imageViewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        //subresource range selects mipmap levels and array layers to be accessible to the view
+        imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewInfo.subresourceRange.baseArrayLayer = layer;
+        imageViewInfo.subresourceRange.layerCount = count;
+        imageViewInfo.subresourceRange.baseMipLevel = 0;
+        imageViewInfo.subresourceRange.levelCount = 1;
+
+        VkImageView view = VK_NULL_HANDLE;
+        VkResult res = vkCreateImageView(device, &imageViewInfo, callbacks, &view);
+        ASSERT_SUCCESS(res, "failed to create image view for cubemap attachment");
+        cubemapViews.pushBack(view);
+    }
 
     void ShadowMapAttachment::buildAttachmentDescription()
     {
@@ -213,6 +271,9 @@ namespace Bolt {
 
     void VulkanRenderScene::destroy()
     {
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+        VkDevice device = VulkanRenderer::get()->getDevice();
+
         //Free all attachments
         for(auto& attachment : m_attachments)
         {
@@ -233,6 +294,16 @@ namespace Bolt {
                 case AttachmentDefinition::Type::Depth:
                 {
                     DepthAttachment* atch = attachment->As<DepthAttachment>();
+                    atch->texture.destroy();
+                    attachment.release();
+                }
+                case AttachmentDefinition::Type::CubeMap:
+                {
+                    CubemapAttachment* atch = attachment->As<CubemapAttachment>();
+                    for(auto view : atch->cubemapViews)
+                    {
+                        vkDestroyImageView(device, view, callbacks);
+                    }
                     atch->texture.destroy();
                     attachment.release();
                 }
@@ -623,6 +694,7 @@ namespace Bolt {
             m_framebuffer->destroy();
         }
         m_framebuffer.reset(QUAINT_NEW( m_context, FrameBuffer, m_context));
+
         m_framebuffer->construct(this);
     }
 
@@ -643,11 +715,11 @@ namespace Bolt {
         return true;
     }
 
-    bool VulkanRenderScene::beginRenderPass()
+    bool VulkanRenderScene::beginRenderPass(uint32_t framebufferIdx)
     {
         VkRenderPassBeginInfo rpInfo{};
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.framebuffer = m_framebuffer->getHandle();
+        rpInfo.framebuffer = m_framebuffer->getHandle(framebufferIdx);
         rpInfo.renderPass = m_renderpass;
         rpInfo.renderArea.extent = m_renderExtent;
         rpInfo.renderArea.offset = m_renderOffset;
@@ -734,4 +806,104 @@ namespace Bolt {
         VkResult res = vkQueueSubmit(queue, 1, &info, m_sceneParams.renderFence);
         ASSERT_SUCCESS(res, "failed to submit to queue");
     }
+
+    VulkanCubeMapRenderScene::VulkanCubeMapRenderScene(Quaint::IMemoryContext* context)
+    : VulkanRenderScene(context)
+    {
+    }
+    
+    void VulkanCubeMapRenderScene::constructAttachments(const Bolt::RenderInfo& info)
+    {
+        //TODO: Fix code duplication
+        for(size_t i = 0; i < info.attachments.getSize(); ++i)
+        {
+            const Bolt::AttachmentDefinition& def = info.attachments[i];
+            switch (def.type)
+            {
+            case AttachmentDefinition::Type::Image:
+            {
+                //TODO: handle the scenario where we need multiple textures for each swapchain image
+                VulkanTexture texture = constructVulkanTexture(def);
+                m_attachments.emplace(QUAINT_NEW(m_context, ImageAttachment, def, texture), Bolt::Deleter<Attachment>(m_context));
+            }
+            break;
+            //No swapchain support for this type of scene
+            // case AttachmentDefinition::Type::Swapchain:
+            // {
+            //     m_attachments.emplace(QUAINT_NEW(m_context, SwapchainAttachment, def), Bolt::Deleter<Attachment>(m_context));
+            // }
+            // break;
+            case AttachmentDefinition::Type::Depth:
+            {
+                VulkanTexture texture = constructDepthTexture(def);
+                m_attachments.emplace(QUAINT_NEW(m_context, DepthAttachment, def, texture), Bolt::Deleter<Attachment>(m_context));
+                
+                VulkanRenderer::get()->transitionDepthImageLayout(*texture.getImageRef()); 
+            }
+            break;
+            case AttachmentDefinition::Type::CubeMap:
+            {
+                VulkanTexture texture = constructCubemapTexture(def);
+                CubemapAttachment* attachment = QUAINT_NEW(m_context, CubemapAttachment, m_context, def, texture);
+                attachment->addImageView(0, 1);
+                attachment->addImageView(1, 1);
+                attachment->addImageView(2, 1);
+                attachment->addImageView(3, 1);
+                attachment->addImageView(4, 1);
+                attachment->addImageView(5, 1);
+                m_attachments.emplace(attachment, Bolt::Deleter<Attachment>(m_context));
+            }
+            default:
+                assert(false && "Not yet supported");
+            break;
+            }
+        }
+
+        //Construct all attachments
+        for(auto& attachment : m_attachments)
+        {
+            attachment->construct();
+        }
+    }
+
+    VulkanTexture VulkanCubeMapRenderScene::constructCubemapTexture(const Bolt::AttachmentDefinition def)
+    {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.format = toVulkanVkFormat(def.format);
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 6;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+
+        VkImageUsageFlags usageFlags = toVulkanImageUsage(def.usage);
+
+        //Creates, sets backing memory and creates image view
+        VulkanTextureBuilder builder(m_context);
+        VulkanTexture tex = 
+        builder.setFormat(toVulkanVkFormat(def.format))
+        .setWidth((uint32_t)def.extents.x)
+        .setHeight((uint32_t)def.extents.y)
+        .setTiling(VK_IMAGE_TILING_OPTIMAL)
+        .setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+        .setUsage(usageFlags)
+        .setMemoryProperty(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .setSharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        .setImageViewInfo(viewInfo)
+        .setIsCubeMap()
+        .setBuildImage()
+        .setBackingMemory()
+        .setBuildImageView()
+        .build();
+        return tex;
+    }
+
+
 }}

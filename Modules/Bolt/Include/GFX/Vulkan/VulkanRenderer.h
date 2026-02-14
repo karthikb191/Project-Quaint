@@ -232,8 +232,6 @@ namespace Bolt
         VkDeviceMemory& deviceMemory,
         VkBuffer& buffer);
 
-        void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter);
-
         void transitionDepthImageLayout(VkImage image);
 
         void createTextureFromFile(const char* path, VulkanTexture& outTexuture, const VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -246,7 +244,10 @@ namespace Bolt
 
         void mapBufferToMemory();
 
+
+        virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx) override;
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
+        virtual void addImmediateRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual RenderScene* getRenderScene(Quaint::QName name) override;
         void constructPendingRenderScenes();
 
@@ -424,6 +425,7 @@ namespace Bolt
         vulkan::GraphicsContext             m_immediateContext;
         Quaint::QUniquePtr<VulkanSwapchain> m_vulkanSwapchain = nullptr;
         TRenderSceneArray                   m_renderScenes;
+        TRenderSceneArray                   m_immediateScenes;
         PipelineRefArray                    m_pipelines;
 
     #ifdef DEBUG_BUILD      

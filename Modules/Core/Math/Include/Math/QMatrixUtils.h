@@ -165,6 +165,46 @@ namespace Quaint
 
         return rotMatrix;
     }
+
+    inline QMat4x4 lookAt_CorrectVersion(const QVec4& target, const QVec4& source, const QVec3& normalizedUp)
+    {
+        QVec3 forward = (source - target).normalize();
+        QVec3 up = normalizedUp;
+        QVec3 right = cross_vf(normalizedUp, forward).normalize();
+
+        Quaint::QVec4 invTranslation;
+        invTranslation.x = -Quaint::dot_vf(right, source);
+        invTranslation.y = -Quaint::dot_vf(up, source);
+        invTranslation.z = -Quaint::dot_vf(forward, source);
+        invTranslation.w = 1.0f;
+
+
+        QMat3x3 rotation = QMat3x3::Identity();
+        rotation.col0 = right;
+        rotation.col1 = up;
+        rotation.col2 = forward;
+        Quaint::QMat4x4 invRotation = Quaint::transpose_mf(rotation);
+
+
+        QMat4x4 view = QMat3x3::Identity();
+        view.col0.x = right.x;
+        view.col1.x = right.x;
+        view.col2.x = right.x;
+
+        view.col0.y = up.x;
+        view.col1.y = up.x;
+        view.col2.y = up.x;
+
+        view.col0.z = forward.x;
+        view.col1.z = forward.x;
+        view.col2.z = forward.x;
+        view.col3 = invTranslation;
+
+        return view;
+        //return Quaint::makeTransform(invTranslation, invRotation);
+
+    }
+
 }
 
 #endif //_H_Q_PROJECTION_UTILS

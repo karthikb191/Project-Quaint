@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <QMath.h>
 #include <Types/QArray.h>
+#include <Types/QVector.h>
 #include "VulkanGraphicsContext.h"
 #include "VulkanFrameBuffer.h"
 #include "Entities/VulkanTexture.h"
@@ -71,7 +72,23 @@ namespace Bolt {
 
         VulkanTexture texture;
     };
+    struct CubemapAttachment : public Attachment
+    {
+        CubemapAttachment(Quaint::IMemoryContext* context, const Bolt::AttachmentDefinition& info, VulkanTexture tex)
+        : Attachment(info)
+        , m_context(context)
+        , texture(tex)
+        {}
+        
+        virtual void buildAttachmentReference() override;
+        virtual void buildAttachmentDescription() override;
+        void addImageView(int layer, int count);
 
+        VulkanTexture texture;
+        Quaint::QArray<VkImageView> cubemapViews;
+    private:
+        Quaint::IMemoryContext* m_context;
+    };
     //This holds a reference to the depth map. This is then converted to shader input format
     struct ShadowMapAttachment : public Attachment
     {
@@ -124,7 +141,7 @@ namespace Bolt {
         virtual void destroy();
     
         virtual bool start();
-        virtual bool beginRenderPass();
+        virtual bool beginRenderPass(uint32_t framebufferIdx = 0);
         virtual void finishSubpass();
         virtual SceneParams end();
         virtual void submit(VkQueue queue);
@@ -141,13 +158,14 @@ namespace Bolt {
         const SceneParams& getSceneParams() const { return m_sceneParams; }
         const VkExtent2D& getRenderExtent() const { return m_renderExtent; }
         const VkOffset2D& getRenderOffset() const { return m_renderOffset; }
+
     protected:
-        void constructAttachments(const Bolt::RenderInfo& info);
+        virtual void constructAttachments(const Bolt::RenderInfo& info);
         VulkanTexture constructVulkanTexture(const Bolt::AttachmentDefinition def);
         VulkanTexture constructDepthTexture(const Bolt::AttachmentDefinition def);
 
-        void constructSubpasses(const Bolt::RenderScene* scene);
-        void constructFrameBuffer();
+        virtual void constructSubpasses(const Bolt::RenderScene* scene);
+        virtual void constructFrameBuffer();
 
         
         Attachment* getAttachment_internal(const Quaint::QName& name) const;
@@ -165,6 +183,24 @@ namespace Bolt {
         VkOffset2D                                                  m_renderOffset = {0, 0};
         bool                                                        m_hasDepth = false;
         uint32_t                                                    m_currentSubpass = 0;
+    };
+
+    //Has support to render to cubemap
+    class VulkanCubeMapRenderScene : public VulkanRenderScene
+    {
+    public:
+        VulkanCubeMapRenderScene(Quaint::IMemoryContext* context);
+        void setCubemapFaceToRender(uint8_t face) { m_renderToFace = face; }
+
+    private:
+        virtual void constructAttachments(const Bolt::RenderInfo& info) override;
+        
+        VulkanTexture constructCubemapTexture(const Bolt::AttachmentDefinition def);
+
+        uint8_t m_renderToFace = 0;
+
+        Quaint::QVector<VkImageView> m_cubemapViews;
+        Quaint::QVector<TFramebufferPtr> m_framebuffers;
     };
 
     struct MVP

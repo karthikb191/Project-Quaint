@@ -94,7 +94,66 @@ namespace Bolt{ namespace vulkan{
         }
     }
 
-    VkFramebuffer FrameBuffer::getHandle()
+
+    void FrameBuffer::construct(const VulkanCubeMapRenderScene* scene)
+    {
+        DeviceManager* dm = VulkanRenderer::get()->getDeviceManager();
+        const VkDevice& device = dm->getDeviceDefinition().getDevice();
+        VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
+
+        VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
+        uint32_t numImages = swapchain->getNumSwapchainImages();
+
+        const VkExtent2D& extents = scene->getRenderExtent();
+        m_info.width = extents.width;
+        m_info.height = extents.height;
+        m_info.layers = 1;
+        m_info.pNext = nullptr;
+        m_info.renderPass = scene->getRenderpass();
+        
+        auto& attachments = scene->getAttachments();
+        const uint8_t numFramebuffersRequired = 6;
+
+        for(size_t i = 0; i < numFramebuffersRequired; ++i)
+        {   
+            Quaint::QArray<VkImageView> views(m_context);
+            for(auto& attachment : attachments)
+            {
+                Bolt::AttachmentDefinition::Type type = attachment->getInfo().type;
+                switch (type)
+                {
+                case Bolt::AttachmentDefinition::Type::Image:
+                {
+                    VkImageView view = attachment->As<ImageAttachment>()->texture.getImageView();
+                    views.pushBack(view);
+                    break;
+                }
+                case Bolt::AttachmentDefinition::Type::Depth:
+                {
+                    VkImageView view = attachment->As<ImageAttachment>()->texture.getImageView();
+                    views.pushBack(view);
+                    break;
+                }
+                case Bolt::AttachmentDefinition::Type::CubeMap:
+                {
+                    VkImageView view = attachment->As<CubemapAttachment>()->cubemapViews[i];
+                    views.pushBack(view);
+                }
+                default:
+                    assert(false && "Unsupported attachment type");
+                    break;
+                }
+            }
+            m_info.attachmentCount = (uint32_t)views.getSize();
+            m_info.pAttachments = views.getBuffer();
+
+            VkFramebuffer framebuffer = VK_NULL_HANDLE;
+            ASSERT_SUCCESS(vkCreateFramebuffer(device, &m_info, callbacks, &framebuffer), "Failed to create framebuffer!!");
+            m_framebuffers.pushBack(framebuffer);
+        }
+    }
+
+    VkFramebuffer FrameBuffer::getHandle(uint32_t idx)
     {
         VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
         
@@ -108,8 +167,8 @@ namespace Bolt{ namespace vulkan{
         }
         else
         {
-            assert(m_framebuffers.getSize() == 1 && "Invalid framebuffer size");
-            return m_framebuffers[0];
+            assert(idx < m_framebuffers.getSize() && "Invalid framebuffer size");
+            return m_framebuffers[idx];
         }
     }
 }}

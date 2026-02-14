@@ -1172,17 +1172,53 @@ namespace Bolt
         }
 
         //Constructing the scene
-        m_renderScenes.emplace(QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo), Deleter<RenderScene>(m_context));
+        RenderScene* scene = QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo);
+        TRenderScenePtr scenePtr(scene, Deleter<RenderScene>(m_context));
+
         for(uint32_t i = 0; i < numStages; ++i)
         {
-            m_renderScenes[m_renderScenes.getSize() - 1]->addRenderStage(*(pStages + i));
+            scenePtr->addRenderStage(*(pStages + i));
         }
-        m_renderScenes[m_renderScenes.getSize() - 1]->construct();
+        scenePtr->construct();
+        m_renderScenes.pushBack(std::move(scenePtr));
+    }
+
+    void VulkanRenderer::addImmediateRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages)
+    {
+        for(auto& scene : m_immediateScenes)
+        {
+            if(scene->getName() == name)
+            {
+                char buffer[1024];
+                sprintf_s(buffer, "Render Scene: %s has already been added", scene->getName().getBuffer());
+                QLOG_E(VULKAN_RENDERER_LOGGER, buffer);
+                return;
+            }
+        }
+
+        //Constructing the scene
+        RenderScene* scene = QUAINT_NEW(m_context, RenderScene, m_context, name, renderInfo);
+        TRenderScenePtr scenePtr(scene, Deleter<RenderScene>(m_context));
+        
+        for(uint32_t i = 0; i < numStages; ++i)
+        {
+            scene->addRenderStage(*(pStages + i));
+        }
+        scene->construct();
+        m_immediateScenes.pushBack(std::move(scenePtr));
     }
 
     RenderScene* VulkanRenderer::getRenderScene(Quaint::QName name)
     {
         for(auto& scene : m_renderScenes)
+        {
+            if(scene->getName() == name)
+            {
+                return scene.get();
+            }
+        }
+
+        for(auto& scene : m_immediateScenes)
         {
             if(scene->getName() == name)
             {
@@ -2609,7 +2645,7 @@ namespace Bolt
         //memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
     }
 
-    void VulkanRenderer::renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter)
+    void VulkanRenderer::renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx)
     {
         RenderScene* scene = getRenderScene(name);
         if(scene == nullptr || scene->isValid() == false)
@@ -2637,7 +2673,7 @@ namespace Bolt
         }
 
         painter->preRender(scene);
-        if(!vulkanScene->beginRenderPass())
+        if(!vulkanScene->beginRenderPass(framebufferIdx))
         {
             QLOG_E(VULKAN_RENDERER_LOGGER, "Scene failed to begin renderpass");
             vulkanScene->end();
@@ -2671,10 +2707,11 @@ namespace Bolt
         painter->postRender(scene);
         vulkanScene->submit(m_graphicsQueue);
 
-        auto& params = vulkanScene->getSceneParams();
+        vkQueueWaitIdle(m_graphicsQueue);
+        //auto& params = vulkanScene->getSceneParams();
         // Should presentation wait on this semaphore? Seems very unlikely
         //semaphoresToWaitOn.pushBack(params.renderFinishedSemaphore);
-        m_sceneFences.pushBack(params.renderFence);
+        //m_sceneFences.pushBack(params.renderFence);
     }
 
     void VulkanRenderer::drawFrame()
