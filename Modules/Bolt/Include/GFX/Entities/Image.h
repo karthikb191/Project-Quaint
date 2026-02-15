@@ -14,9 +14,12 @@ namespace Bolt
     {
         public:
         static Image2dRef LoadFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name, EFormat format = EFormat::R8G8B8A8_SRGB);
+        static Image2dRef LoadHDRFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name, EFormat format = EFormat::R8G8B8A8_SRGB);
         
         Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name);
         Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name, EFormat format);
+        virtual ~Image2d(){}
+
         virtual void construct() override;
         virtual void destroy() override;
 
@@ -31,6 +34,7 @@ namespace Bolt
 
         private:
         void loadFromPath(const Quaint::QPath& path);
+        void loadHDRFromPath(const Quaint::QPath& path);
 
         /* TODO: Clear CPU-side data once bound to GPU */
         //Quaint::IMemoryContext* m_context;

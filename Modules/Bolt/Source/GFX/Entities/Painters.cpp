@@ -13,6 +13,8 @@
 #include <GFX/Vulkan/VulkanRenderer.h>
 #include <GFX/Vulkan/Internal/Resource/VulkanResources.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanPipeline.h>
+#include <GFX/Vulkan/VulkanHelpers.h>
+#include <GFX/Vulkan/VulkanResourceHelpers.h>
 #include <Types/QVector.h>
 #include <BoltMemoryProvider.h>
 #include <stb/stb_image.h>
@@ -762,11 +764,18 @@ namespace Bolt
     //, m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
     , m_model(nullptr, Quaint::Deleter<Bolt::Model>(context))
     , m_dataProviderRef(nullptr, Quaint::Deleter<Bolt::IVertexDataProvider>(context))
+    , m_envMap(nullptr, Quaint::Deleter<Bolt::Image2d>(context))
     {
         //Create model and it's MVP buffer
 
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+
+        m_envMap = Image2d::LoadHDRFromFile(context
+                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\autumn_hilly_field_1k.hdr"
+                                        , "environmentMap"
+                                        , EFormat::R32G32B32A32_SFLOAT);
+        m_envMap->construct();
 
         // Create a buffer for MVP matrices and map it
         const uint32_t size = sizeof(Bolt::UniformBufferObject);
@@ -791,22 +800,38 @@ namespace Bolt
         VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &m_set);
         
         VkDescriptorBufferInfo desc_mvpBuffer = {};
-        desc_mvpBuffer.buffer = mvpResource->getBufferhandle();
-        desc_mvpBuffer.offset = 0;
-        desc_mvpBuffer.range = mvpResource->getBufferInfo().size;
+        // desc_mvpBuffer.buffer = mvpResource->getBufferhandle();
+        // desc_mvpBuffer.offset = 0;
+        // desc_mvpBuffer.range = mvpResource->getBufferInfo().size;
 
-        VkWriteDescriptorSet mvpBufferWrite = {};
-        mvpBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        mvpBufferWrite.dstSet = m_set;
-        mvpBufferWrite.descriptorCount = 1;
-        mvpBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        mvpBufferWrite.pBufferInfo = &desc_mvpBuffer;
-        mvpBufferWrite.dstBinding = 0;
+        // VkWriteDescriptorSet mvpBufferWrite = {};
+        // mvpBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        // mvpBufferWrite.dstSet = m_set;
+        // mvpBufferWrite.descriptorCount = 1;
+        // mvpBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        // mvpBufferWrite.pBufferInfo = &desc_mvpBuffer;
+        // mvpBufferWrite.dstBinding = 0;
 
-        VkWriteDescriptorSet writes[] = {mvpBufferWrite};
+        VkWriteDescriptorSet mvpBufferWrite = vulkan::getUniformBufferDescriptorWrite(m_set, &desc_mvpBuffer, mvpResource, 1, 0);
+
+        VulkanCombinedImageSamplerResource* envResource = m_envMap->getImplAs<vulkan::VulkanCombinedImageSamplerResource>();
+        VkDescriptorImageInfo imgInfo = {};
+        // imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // imgInfo.sampler = envResource->getSampler();
+        // imgInfo.imageView = envResource->getTexture()->getImageView();
+
+        // VkWriteDescriptorSet envMapWrite = {};
+        // envMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        // envMapWrite.dstSet = m_set;
+        // envMapWrite.descriptorCount = 1;
+        // envMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        // envMapWrite.pImageInfo = &imgInfo;
+        // envMapWrite.dstBinding = 1;
+        VkWriteDescriptorSet envMapWrite = vulkan::getCombinedImageSamplerDescriptorWrite(m_set, &imgInfo, envResource, 1, 1);
+
+        VkWriteDescriptorSet writes[] = {mvpBufferWrite, envMapWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
-
 
         //Finally create the model
         CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
@@ -868,6 +893,15 @@ namespace Bolt
     void CubemapCapturePainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)
     {
         m_mvp.view = Quaint::lookAt_CorrectVersion(direction, Quaint::QVec4(), up);
+
+        // Quaint::QVec3 top(0, 1, 0);
+        // Quaint::QVec3 topView = m_mvp.view * top;
+        // Quaint::QVec3 topRes = m_mvp.proj * topView;
+        
+        // Quaint::QVec3 bottom(0, -1, 0);
+        // Quaint::QVec3 bottomView = m_mvp.view * bottom;
+        // Quaint::QVec3 bottomRes = m_mvp.proj * bottomView;
+        // bottomRes = m_mvp.proj * top;
     }
 
 

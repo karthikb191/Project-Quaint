@@ -17,8 +17,12 @@ namespace Bolt
     class Model;
     class RenderScene;
     class IVertexDataProvider;
+    class Image2d;
+
+    //These type definitions needs to be immediately moved to some common header file
     using ModelRef = Quaint::QUniquePtr<Model, Quaint::Deleter<Model>>;
     using TVertexDataProviderRef = Quaint::QUniquePtr<IVertexDataProvider, Quaint::Deleter<IVertexDataProvider>>;
+    using Image2dRef = Quaint::QUniquePtr<Image2d, Quaint::Deleter<Image2d>>;
 
     class Painter 
     {
@@ -155,6 +159,7 @@ namespace Bolt
         TVertexDataProviderRef m_dataProviderRef;
         Quaint::UniformBufferObject m_mvp;
         VkSampler m_sampler;
+        Image2dRef m_envMap;
     };
 
     class ImguiPainter : public Painter

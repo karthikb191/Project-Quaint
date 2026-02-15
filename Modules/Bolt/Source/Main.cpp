@@ -396,6 +396,7 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     shaderDef.attributeSets.pushBack(attributes);
     
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
 
     Bolt::Pipeline* cubemapCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("CubemapCapturePipeline"), Quaint::QName("scene_envmap_capture"), 0, shaderDef);
     //cubemapCapturePipeline->cullFront();
@@ -415,9 +416,9 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 2);
     cubemapPainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 3);
-    cubemapPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render bottom
+    cubemapPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 4);
-    cubemapPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render bottom
+    cubemapPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 5);
     
     QUAINT_DELETE(context, cubemapCapturePipeline);

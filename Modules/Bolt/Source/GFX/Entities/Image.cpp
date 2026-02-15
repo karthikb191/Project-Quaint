@@ -12,6 +12,14 @@ namespace Bolt
         imageRef->loadFromPath(filePath);
         return std::move(imageRef);
     }
+    Image2dRef Image2d::LoadHDRFromFile(Quaint::IMemoryContext* context, const Quaint::QPath& filePath, const Quaint::QName& name, EFormat format)
+    {
+        Image2d* image = QUAINT_NEW(context, Image2d, context, name, format);
+        Image2dRef imageRef(nullptr, Quaint::Deleter<Image2d>(context));
+        imageRef.reset(image);
+        imageRef->loadHDRFromPath(filePath);
+        return std::move(imageRef);
+    }
 
     Image2d::Image2d(Quaint::IMemoryContext* context, const Quaint::QName& name)
     : IGFXEntity(context)
@@ -57,5 +65,11 @@ namespace Bolt
     {
         int compsPerPixel = 0;
         m_data = stbi_load(path.getBuffer(), &m_width, &m_height, &compsPerPixel, STBI_rgb_alpha);
+    }
+    
+    void Image2d::loadHDRFromPath(const Quaint::QPath& path)
+    {   
+        int compsPerPixel = 0;
+        m_data = (unsigned char*)stbi_loadf(path.getBuffer(), &m_width, &m_height, &compsPerPixel, STBI_rgb_alpha);
     }
 }

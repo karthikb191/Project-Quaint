@@ -171,6 +171,7 @@ namespace Quaint
         QVec3 forward = (source - target).normalize();
         QVec3 up = normalizedUp;
         QVec3 right = cross_vf(normalizedUp, forward).normalize();
+        up = cross_vf(forward, right).normalize();
 
         Quaint::QVec4 invTranslation;
         invTranslation.x = -Quaint::dot_vf(right, source);

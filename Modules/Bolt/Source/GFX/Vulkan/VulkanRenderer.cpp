@@ -24,6 +24,7 @@
 #include <Gfx/Entities/RenderObject.h>
 #include <Gfx/Entities/Resources.h>
 #include <Gfx/Entities/Painters.h>
+#include <GFX/Vulkan/VulkanHelpers.h>
 #include <GFX/Vulkan/Internal/Entities/VulkanSwapchain.h>
 #include <Types/QVector.h>
 #include <BoltMemoryProvider.h>
@@ -1976,7 +1977,7 @@ namespace Bolt
 
     void VulkanRenderer::createShaderTextureFromPixels(VulkanTexture& outTexuture, const unsigned char* pixels, int width, int height, const VkImageUsageFlags flags, const VkFormat format)
     {
-        size_t bufferSize = width * height * 4;
+        size_t bufferSize = width * height * getTexelSizeFromFormat(format);
         VkBuffer stagingBuffer; 
         VkDeviceMemory stagingBufferGpuMemory;
         createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
