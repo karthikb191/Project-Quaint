@@ -35,6 +35,14 @@ namespace Bolt
         {
             builder.enableDepth();
         }
+        if(m_depthGEqual)
+        {
+            builder.enableDepthGEqual();
+        }
+        if(m_depthLEqual)
+        {
+            builder.enableDepthLEqual();
+        }
 
         m_pipelineImpl = std::move(builder.build());
     }

@@ -121,10 +121,10 @@ namespace Bolt
         TImageSamplerImplPtr m_tempCubemap;
     };
 
-    class DebugCubemapPainter : public Painter
+    class SkyboxPainter : public Painter
     {
     public:
-        DebugCubemapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        SkyboxPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
         virtual void prepare() override;
         virtual void preRender(RenderScene* scene) override;
         virtual void render(RenderScene* scene) override;

@@ -287,6 +287,16 @@ namespace Bolt {
         {
             builder.enableDepth();
         }
+        
+        if(m_depthLEqual)
+        {
+            builder.depthLEqual();   
+        }
+        else if(m_depthGEqual)
+        {
+            builder.depthGEqual();   
+        }
+        
     
         VulkanGraphicsPipeline* pipeline =  builder.build();
 

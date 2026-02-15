@@ -30,6 +30,8 @@ namespace Bolt{
         VulkanGraphicsPipelineBuilder& addDynamicFeature(Quaint::QName feature);
         VulkanGraphicsPipelineBuilder& setBlendEnabled(bool enabled);
         VulkanGraphicsPipelineBuilder& enableDepth();
+        VulkanGraphicsPipelineBuilder& depthLEqual();
+        VulkanGraphicsPipelineBuilder& depthGEqual();
         
         //TODO: Add dynamic state support
         VulkanGraphicsPipeline* build();
@@ -66,6 +68,7 @@ namespace Bolt{
         void addDynamicFeature(Quaint::QName feature);
         void setBlendEnabled();
         void enableDepth();
+        void setDepthCompareFlag(VkCompareOp);
 
         VkPipeline  m_pipeline = VK_NULL_HANDLE;
 
@@ -88,6 +91,7 @@ namespace Bolt{
         VkCullModeFlags m_cullMode = VK_CULL_MODE_NONE;
         VkFrontFace m_frontFace = VK_FRONT_FACE_CLOCKWISE;
         bool m_blendEnabled = false;
+        VkCompareOp m_depthCompareOp = VK_COMPARE_OP_LESS;
 
         VkPipelineLayout m_layout = VK_NULL_HANDLE;
         VkRenderPass m_renderPass = VK_NULL_HANDLE;

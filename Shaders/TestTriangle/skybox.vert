@@ -15,7 +15,9 @@ layout(binding = 0) uniform UniformBufferObject
 
 void main()
 {
-    gl_Position = mvp.proj * mvp.view * mvp.model * vec4(in_position.xyz, 1.0);
+    vec4 ndcPos = mvp.proj * mvp.view * mvp.model * vec4(in_position.xyz, 1.0);
     
+    //xyww because this ensures it's depth is always written at 1.0f and renders behind evrything else
+    gl_Position = ndcPos.xyww;
     out_fragLocalPos = in_position;
 }

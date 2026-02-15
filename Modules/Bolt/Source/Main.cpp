@@ -658,7 +658,7 @@ int main()
     uint8_t shadowStadeIdx = 0;
 
     uint32_t geoStageIdx = 0;
-    uint32_t debugEnvMapStageIdx = 1;
+    uint32_t skyboxStageIdx = 1;
 
     // Pipelines Setup --------------------------------------------------------------------------------
     // Lightmap pipeline -------------------------------------------------------------------------------
@@ -692,15 +692,15 @@ int main()
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(shadowPipeline);
 
 
-    // Debug Environment map piepline -----------------------------------
+    // Skybox piepline -----------------------------------
     attributes.clear();
     shaderDef.shaders.clear();
     shaderDef.uniforms.clear();
     shaderDef.pushConstants.clear();
     shaderDef.attributeSets.clear();
-    shaderDef.shaders.pushBack({"envmapToCube.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\envmapToCube.vert.spv"
+    shaderDef.shaders.pushBack({"skybox.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\skybox.vert.spv"
         , "main", Bolt::EShaderStage::VERTEX});
-    shaderDef.shaders.pushBack({"envmapToCube.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\envmapToCube.frag.spv"
+    shaderDef.shaders.pushBack({"skybox.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\skybox.frag.spv"
         , "main", Bolt::EShaderStage::FRAGMENT});
 
     attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
@@ -711,11 +711,12 @@ int main()
     shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     //TODO: Pass in cubemap uniform
 
-    Bolt::Pipeline* debugEnvMapPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("DebugEnvMapPipeline"), Quaint::QName("graphics"), debugEnvMapStageIdx, shaderDef);
-    debugEnvMapPipeline->cullBack();
-    debugEnvMapPipeline->enableDepth();
-    debugEnvMapPipeline->construct();
-    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(debugEnvMapPipeline);
+    Bolt::Pipeline* skyboxPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("SkyboxPipeline"), Quaint::QName("graphics"), skyboxStageIdx, shaderDef);
+    skyboxPipeline->cullFront();
+    skyboxPipeline->enableDepth();
+    skyboxPipeline->depthLEqual();
+    skyboxPipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(skyboxPipeline);
 
 
     // Graphics pipeline --------------------------
@@ -862,7 +863,7 @@ int main()
 
     Bolt::ToneMapPainter* tonemapPainter = QUAINT_NEW(context, Bolt::ToneMapPainter, context, Quaint::QName("TonemapPipeline"));
 
-    Bolt::DebugCubemapPainter* debugEnvMapPainter = QUAINT_NEW(context, Bolt::DebugCubemapPainter, context, Quaint::QName("DebugEnvMapPipeline"));
+    Bolt::SkyboxPainter* skyboxPainter = QUAINT_NEW(context, Bolt::SkyboxPainter, context, Quaint::QName("SkyboxPipeline"));
 
     // End of painters creation ----------------------------------------------------------------------------------------------------------
 
@@ -975,14 +976,13 @@ int main()
 
 
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(shadowPainter);
-    Bolt::RenderModule::get().getBoltRenderer()->addPainter(debugEnvMapPainter); //TODO: Delete this later
+    Bolt::RenderModule::get().getBoltRenderer()->addPainter(skyboxPainter); //TODO: Delete this later
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(geoPBRPainter);
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(imguiPainter);
 
     tonemapPainter->UpdateRenderTarget(graphicsScene, "renderTarget");
     Bolt::RenderModule::get().getBoltRenderer()->addPainter(tonemapPainter);
-
 
     //TODO: Loop through application module 
     //TODO: Move this to Application Module

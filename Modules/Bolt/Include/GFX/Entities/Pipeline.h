@@ -50,6 +50,9 @@ namespace Bolt
 
         void cullBack() { m_cullBack = true; }
         void cullFront() { m_cullFront = true; }
+        /*renders if depth of fragment is greater than current depth in depth buffer.*/
+        void depthGEqual() { m_depthGEqual = true; }
+        void depthLEqual() { m_depthLEqual = true; }
         void enableBlend() { m_blendEnabled = true; }
         void enableDepth() { m_depthEnabled = true; }
         
@@ -78,6 +81,8 @@ namespace Bolt
         bool                m_cullFront = false;
         bool                m_blendEnabled = false;
         bool                m_depthEnabled = false;
+        bool                m_depthGEqual = false;
+        bool                m_depthLEqual = false;
 
         //GPUDataDispatcher   m_dataDispatcher;
     };

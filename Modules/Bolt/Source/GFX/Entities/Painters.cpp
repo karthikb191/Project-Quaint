@@ -22,7 +22,7 @@
 
 namespace Bolt
 {
-    class DebugCubemapVertexDataProvider : public IVertexDataProvider
+    class SkyboxVertexDataProvider : public IVertexDataProvider
     {
         struct CubemapDebugVertex
         {
@@ -35,7 +35,7 @@ namespace Bolt
 
     public:
 
-        DebugCubemapVertexDataProvider(Quaint::IMemoryContext* context, Model* model)
+        SkyboxVertexDataProvider(Quaint::IMemoryContext* context, Model* model)
         : m_vertices(BOLT_ALLOCATOR)
         {
             auto& vertices = model->getVertices();
@@ -619,7 +619,7 @@ namespace Bolt
     }
 
 
-    DebugCubemapPainter::DebugCubemapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipelineName)
+    SkyboxPainter::SkyboxPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipelineName)
     : Painter(context, pipelineName)
     , m_uniformbuffer(nullptr, Quaint::Deleter<Bolt::IBufferImpl>(context))
     , m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
@@ -713,13 +713,13 @@ namespace Bolt
 
         //Finally create the model
         CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
-        DebugCubemapVertexDataProvider* dataProvider = QUAINT_NEW(context, DebugCubemapVertexDataProvider, context, cube);
+        SkyboxVertexDataProvider* dataProvider = QUAINT_NEW(context, SkyboxVertexDataProvider, context, cube);
         m_dataProviderRef.reset(dataProvider); 
         m_model.reset(cube);
         m_model->overrideVertexDataProvider(dataProvider);
         m_model->construct();
     }
-    void DebugCubemapPainter::prepare()
+    void SkyboxPainter::prepare()
     {
         const Camera &camera = RenderModule::get().getBoltRenderer()->getCamera();
 
@@ -731,17 +731,19 @@ namespace Bolt
 
             Quaint::UniformBufferObject mvp{};
             mvp.view = camera.getViewMatrix();
+            mvp.view.col3 = Quaint::QVec4(); //Effectively places the camera at the center of the world within the cube 
             mvp.proj = camera.getProjectionMatrix();
-            mvp.model = m_model->getTransform();
+            mvp.model = Quaint::QMat4x4::Identity();
+            //mvp.model = m_model->getTransform();
 
             memcpy(*region, &mvp, uniformBuffer->getBufferInfo().size);
         }
     }
-    void DebugCubemapPainter::preRender(RenderScene* scene)
+    void SkyboxPainter::preRender(RenderScene* scene)
     {
 
     }
-    void DebugCubemapPainter::render(RenderScene* scene)
+    void SkyboxPainter::render(RenderScene* scene)
     {
         VulkanRenderScene *vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
         VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
@@ -752,7 +754,7 @@ namespace Bolt
         
         m_model->draw(scene);
     }
-    void DebugCubemapPainter::postRender(RenderScene* scene)
+    void SkyboxPainter::postRender(RenderScene* scene)
     {
 
     }
@@ -835,7 +837,7 @@ namespace Bolt
 
         //Finally create the model
         CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
-        DebugCubemapVertexDataProvider* dataProvider = QUAINT_NEW(context, DebugCubemapVertexDataProvider, context, cube);
+        SkyboxVertexDataProvider* dataProvider = QUAINT_NEW(context, SkyboxVertexDataProvider, context, cube);
         m_dataProviderRef.reset(dataProvider); 
         m_model.reset(cube);
         m_model->overrideVertexDataProvider(dataProvider);

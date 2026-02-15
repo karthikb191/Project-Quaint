@@ -123,6 +123,9 @@ namespace Bolt
         PipelineResourceBuilder& setCullFront() { m_cullFront = true; return *this; }
         PipelineResourceBuilder& enableBlend() { m_enableBlend = true; return *this; }
         PipelineResourceBuilder& enableDepth() { m_enableDepth = true; return *this; }
+        PipelineResourceBuilder& enableDepthGEqual() { m_depthGEqual = true; return *this; }
+        PipelineResourceBuilder& enableDepthLEqual() { m_depthLEqual = true; return *this; }
+
         TPipelineImplPtr build();
 
     private:
@@ -132,6 +135,8 @@ namespace Bolt
         bool m_cullFront = false;
         bool m_enableBlend = false;
         bool m_enableDepth = false;
+        bool m_depthGEqual = false;
+        bool m_depthLEqual = false;
     };
 
 //====================================================================================

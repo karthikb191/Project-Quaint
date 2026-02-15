@@ -73,6 +73,16 @@ namespace Bolt
         m_pipeline->enableDepth();        
         return *this;
     }
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::depthLEqual()
+    {
+        m_pipeline->setDepthCompareFlag(VK_COMPARE_OP_LESS_OR_EQUAL);
+        return *this;
+    }
+    VulkanGraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::depthGEqual()
+    {
+        m_pipeline->setDepthCompareFlag(VK_COMPARE_OP_GREATER_OR_EQUAL);
+        return *this;
+    }
     vulkan::VulkanGraphicsPipeline* VulkanGraphicsPipelineBuilder::build()
     {
         m_pipeline->construct();
@@ -351,6 +361,10 @@ namespace Bolt
         {
             m_depthEnabled = true;
         }
+        void VulkanGraphicsPipeline::setDepthCompareFlag(VkCompareOp flag)
+        {
+            m_depthCompareOp = flag;
+        }
 
         void VulkanGraphicsPipeline::construct()
         {
@@ -438,7 +452,7 @@ namespace Bolt
                 depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 depthStencil.depthTestEnable = VK_TRUE;
                 depthStencil.depthWriteEnable = VK_TRUE;
-                depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+                depthStencil.depthCompareOp = m_depthCompareOp;
                 depthStencil.depthBoundsTestEnable = VK_FALSE;
                 depthStencil.minDepthBounds = -1.0f; // Optional
                 depthStencil.maxDepthBounds = 1.0f; // Optional
