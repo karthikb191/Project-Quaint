@@ -408,21 +408,120 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     Bolt::CubemapCapturePainter* cubemapPainter = QUAINT_NEW(context, Bolt::CubemapCapturePainter, context, Quaint::QName("CubemapCapturePipeline"));
 
     //How to pass in camera information
+    cubemapPainter->setCubeMapLayer(0);
     cubemapPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 0);
+    cubemapPainter->setCubeMapLayer(1);
     cubemapPainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 1);
+    cubemapPainter->setCubeMapLayer(2);
     cubemapPainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 2);
+    cubemapPainter->setCubeMapLayer(3);
     cubemapPainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 3);
+    cubemapPainter->setCubeMapLayer(4);
     cubemapPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 4);
+    cubemapPainter->setCubeMapLayer(5);
     cubemapPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 5);
     
     QUAINT_DELETE(context, cubemapCapturePipeline);
     QUAINT_DELETE(context, cubemapPainter);
+}
+
+void GenerateIrradianceMap(Quaint::IMemoryContext* context)
+{
+    /*
+    1. Create a new scene that has cubemap as an attachment
+    2. Painter should load and own the hdr image and pass it into the shader
+    3. Render
+    */
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::ShaderDefinition shaderDef{};
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+
+    Bolt::RenderInfo info;
+    //info.extents = Quaint::QVec2(~0, ~0);
+    info.extents = Quaint::QVec2(512, 512);
+    info.offset = Quaint::QVec2({0, 0});
+    info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    Bolt::AttachmentDefinition renderTargetDef;
+    renderTargetDef.binding = 0;
+    renderTargetDef.name = "renderTarget";
+    renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
+    renderTargetDef.clearImage = true;
+    renderTargetDef.storePrevious = true;
+    renderTargetDef.type = Bolt::AttachmentDefinition::Type::CubeMap;
+    renderTargetDef.extents = info.extents;
+    renderTargetDef.format = Bolt::EFormat::R32G32B32A32_SFLOAT;
+    renderTargetDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST | Bolt::EImageUsage::SAMPLED; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(renderTargetDef);
+
+    Bolt::RenderStage::AttachmentRef renderTargetRef{};
+    renderTargetRef.binding = 0;
+    renderTargetRef.attachmentName = "renderTarget";
+
+    //Stage setup
+    Bolt::RenderStage renderStage;
+    renderStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    renderStage.index = 0;
+    renderStage.dependentStage = ~0;
+    renderStage.attachmentRefs.pushBack(renderTargetRef);
+    stages.pushBack(renderStage);
+
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()
+                ->addImmediateCubemapRenderScene("scene_irradiance_capture", info, stages.getSize(), stages.getBuffer());
+
+    //pipeline
+    attributes.clear();
+    shaderDef.shaders.clear();
+    shaderDef.uniforms.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.shaders.pushBack({"irradianceCapture.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\irradianceCapture.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"irradianceCapture.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\irradianceCapture.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes);
+    
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+
+    Bolt::Pipeline* irradianceCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("IrradianceCapturePipeline"), Quaint::QName("scene_irradiance_capture"), 0, shaderDef);
+    //cubemapCapturePipeline->cullFront();
+    //cubemapCapturePipeline->enableDepth();
+    irradianceCapturePipeline->construct();
+    
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(irradianceCapturePipeline);
+    
+    Bolt::IrradiancePainter* irradiancePainter = QUAINT_NEW(context, Bolt::IrradiancePainter, context, Quaint::QName("IrradianceCapturePipeline"));
+
+    //How to pass in camera information
+    irradiancePainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 0);
+    irradiancePainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 1);
+    irradiancePainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 2);
+    irradiancePainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 3);
+    irradiancePainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 4);
+    irradiancePainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 5);
+    
+    QUAINT_DELETE(context, irradianceCapturePipeline);
+    QUAINT_DELETE(context, irradiancePainter);
 }
 
 //int main_SHOULD_REUSE_AFTER_TESTING()
@@ -477,6 +576,7 @@ int main()
 
     //TODO: There should be an explicit transition texture layout transition step
     EquirectangularToCubemap(context);
+    GenerateIrradianceMap(context);
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
@@ -709,7 +809,7 @@ int main()
     
     shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
     shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
-    //TODO: Pass in cubemap uniform
+    
 
     Bolt::Pipeline* skyboxPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("SkyboxPipeline"), Quaint::QName("graphics"), skyboxStageIdx, shaderDef);
     skyboxPipeline->cullFront();
@@ -946,13 +1046,12 @@ int main()
     Bolt::MaterialRef simpleMaterial = Quaint::makeShared<Bolt::Material>(context);
     simpleMaterial.reset(QUAINT_NEW(context, Bolt::SimpleMaterial, context));
 
-    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 10.0f, Quaint::QName("Floor"));
+    Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::FloorModel, context, 50.0f, Quaint::QName("Floor"));
     Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::FloorModel>(context));
     
     //Bolt::Model* floorModelPtr = QUAINT_NEW(context, Bolt::SphereModel, context, 30.0f, Quaint::QName("Floor"));
     //Bolt::ModelRef floorModel(floorModelPtr, Bolt::Deleter<Bolt::SphereModel>(context));
 
-    
     floorModel->setTranslation({0, -1, 0, 1});
     //floorModel->setMaterial(simpleMaterial);
     floorModel->setMaterial(pbrMaterial);

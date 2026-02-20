@@ -149,6 +149,7 @@ namespace Bolt
         virtual void preRender(RenderScene* scene) override;
         virtual void render(RenderScene* scene) override;
         virtual void postRender(RenderScene* scene) override;
+        void setCubeMapLayer(uint8_t layer){ m_cubemapLayer = layer; }
         void lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up);
 
     private:
@@ -160,6 +161,28 @@ namespace Bolt
         Quaint::UniformBufferObject m_mvp;
         VkSampler m_sampler;
         Image2dRef m_envMap;
+        uint8_t m_cubemapLayer = 0;
+    };
+
+    class IrradiancePainter : public Painter
+    {
+    public:
+        IrradiancePainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual ~IrradiancePainter();
+        virtual void prepare() override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
+        virtual void postRender(RenderScene* scene) override;
+        void lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up);
+
+    private:
+        TBufferImplPtr m_uniformbuffer;
+        //TImageSamplerImplPtr m_tempCubemap;
+        Bolt::ModelRef m_model;
+        VkDescriptorSet m_set;
+        TVertexDataProviderRef m_dataProviderRef;
+        Quaint::UniformBufferObject m_mvp;
+        VkSampler m_sampler;
     };
 
     class ImguiPainter : public Painter

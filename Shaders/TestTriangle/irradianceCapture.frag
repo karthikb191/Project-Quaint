@@ -10,10 +10,13 @@ layout(binding = 1) uniform samplerCube envMap;
 // Output interface
 layout(location = 0) out vec4 outColor;
 
+vec3 sampleIrradiance(vec3 direction)
+{
+    return vec3(1.0f);
+}
+
 void main()
 {
-    vec3 direction = normalize(in_fragLocalPos.xyz);
-    outColor = texture(envMap, direction);
-
-    //TODO: Should perform tonemapping here
+    vec3 irradianceRes = sampleIrradiance(in_fragLocalPos.xyz);
+    outColor = vec4(irradianceRes, 1.0f);
 }
