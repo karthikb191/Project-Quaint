@@ -38,8 +38,9 @@ layout(binding = 2) uniform Lights
 }lights;
 
 layout(binding = 3) uniform sampler2D shadowMap;
+layout(binding = 4) uniform samplerCube irradianceMap;
 
-layout(binding = 4) uniform MaterialUniform
+layout(binding = 5) uniform MaterialUniform
 {
     Material data;
 }material;

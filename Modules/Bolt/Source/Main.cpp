@@ -407,7 +407,6 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
 
     Bolt::CubemapCapturePainter* cubemapPainter = QUAINT_NEW(context, Bolt::CubemapCapturePainter, context, Quaint::QName("CubemapCapturePipeline"));
 
-    //How to pass in camera information
     cubemapPainter->setCubeMapLayer(0);
     cubemapPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_envmap_capture", cubemapPainter, 0);
@@ -449,7 +448,7 @@ void GenerateIrradianceMap(Quaint::IMemoryContext* context)
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
-    info.extents = Quaint::QVec2(512, 512);
+    info.extents = Quaint::QVec2(256, 256);
     info.offset = Quaint::QVec2({0, 0});
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition renderTargetDef;
@@ -506,18 +505,23 @@ void GenerateIrradianceMap(Quaint::IMemoryContext* context)
     
     Bolt::IrradiancePainter* irradiancePainter = QUAINT_NEW(context, Bolt::IrradiancePainter, context, Quaint::QName("IrradianceCapturePipeline"));
 
-    //How to pass in camera information
     irradiancePainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
+    irradiancePainter->setCubeMapLayer(0);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 0);
     irradiancePainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
+    irradiancePainter->setCubeMapLayer(1);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 1);
     irradiancePainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
+    irradiancePainter->setCubeMapLayer(2);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 2);
     irradiancePainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
+    irradiancePainter->setCubeMapLayer(3);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 3);
     irradiancePainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
+    irradiancePainter->setCubeMapLayer(4);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 4);
     irradiancePainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
+    irradiancePainter->setCubeMapLayer(5);
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_irradiance_capture", irradiancePainter, 5);
     
     QUAINT_DELETE(context, irradianceCapturePipeline);
@@ -836,6 +840,7 @@ int main()
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"irradianceMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     
     attributes.clear();
@@ -869,6 +874,7 @@ int main()
     
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"irradianceMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     //PBR stuff
     shaderDef.uniforms.pushBack({"PBRProperties", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});

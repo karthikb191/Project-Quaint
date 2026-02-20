@@ -47,18 +47,20 @@ layout(binding = 2) uniform Lights
 
 layout(binding = 3) uniform sampler2D shadowMap;
 
+layout(binding = 4) uniform samplerCube irradianceMap;
+
 //PBR stuff
 //TODO: Move these to a new specularStrength
 //TODO: Convert to a texture array?
-layout(binding = 4) uniform PBR
+layout(binding = 5) uniform PBR
 {
     PBRProperties data;
 } pbr;
 
-layout(binding = 5) uniform sampler2D diffuseMap;
-layout(binding = 6) uniform sampler2D normalMap;
-layout(binding = 7) uniform sampler2D metallicMap;
-layout(binding = 8) uniform sampler2D roughnessMap;
+layout(binding = 6) uniform sampler2D diffuseMap;
+layout(binding = 7) uniform sampler2D normalMap;
+layout(binding = 8) uniform sampler2D metallicMap;
+layout(binding = 9) uniform sampler2D roughnessMap;
 
 
 //layout (input_attachment_index=0, binding=3) uniform subpassInput myInputAttachment;

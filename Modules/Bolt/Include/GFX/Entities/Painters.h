@@ -173,6 +173,7 @@ namespace Bolt
         virtual void preRender(RenderScene* scene) override;
         virtual void render(RenderScene* scene) override;
         virtual void postRender(RenderScene* scene) override;
+        void setCubeMapLayer(uint8_t layer){ m_cubemapLayer = layer; }
         void lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up);
 
     private:
@@ -183,6 +184,7 @@ namespace Bolt
         TVertexDataProviderRef m_dataProviderRef;
         Quaint::UniformBufferObject m_mvp;
         VkSampler m_sampler;
+        uint8_t m_cubemapLayer = 0;
     };
 
     class ImguiPainter : public Painter

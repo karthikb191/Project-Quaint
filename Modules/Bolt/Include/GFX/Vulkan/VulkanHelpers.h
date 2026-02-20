@@ -57,6 +57,10 @@ namespace Bolt{ namespace vulkan{
                 return VK_FORMAT_R32G32_SFLOAT; 
             case Bolt::EFormat::R32G32B32A32_SFLOAT:
                 return VK_FORMAT_R32G32B32A32_SFLOAT;
+            case Bolt::EFormat::R16G16B16_SFLOAT:
+                return VK_FORMAT_R16G16B16_SFLOAT;
+            case Bolt::EFormat::R16G16B16A16_SFLOAT:
+                return VK_FORMAT_R16G16B16A16_SFLOAT;
             case Bolt::EFormat::R8G8B8A8_SRGB:
                 return VK_FORMAT_R8G8B8A8_SRGB;
             case Bolt::EFormat::R8G8B8A8_UNORM:
@@ -120,6 +124,24 @@ namespace Bolt{ namespace vulkan{
         case VK_FORMAT_B8G8R8A8_SRGB:
             return 4;
 
+        case VK_FORMAT_R16G16B16_SFLOAT:
+        case VK_FORMAT_R16G16B16_SINT:
+        case VK_FORMAT_R16G16B16_SNORM:
+        case VK_FORMAT_R16G16B16_SSCALED:
+        case VK_FORMAT_R16G16B16_UINT:
+        case VK_FORMAT_R16G16B16_UNORM:
+        case VK_FORMAT_R16G16B16_USCALED:
+            return 6;
+
+        case VK_FORMAT_R16G16B16A16_SFLOAT:
+        case VK_FORMAT_R16G16B16A16_SINT:
+        case VK_FORMAT_R16G16B16A16_SNORM:
+        case VK_FORMAT_R16G16B16A16_SSCALED:
+        case VK_FORMAT_R16G16B16A16_UINT:
+        case VK_FORMAT_R16G16B16A16_UNORM:
+        case VK_FORMAT_R16G16B16A16_USCALED:
+            return 8;
+
         case VK_FORMAT_R32G32B32A32_SFLOAT: 
         case VK_FORMAT_R32G32B32A32_SINT:
         case VK_FORMAT_R32G32B32A32_UINT:
@@ -136,6 +158,7 @@ namespace Bolt{ namespace vulkan{
 
         default:
             assert(false && "unsupported format");
+            return 0;
             break;
         }
     }

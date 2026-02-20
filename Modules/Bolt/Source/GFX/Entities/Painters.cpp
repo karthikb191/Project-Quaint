@@ -440,6 +440,11 @@ namespace Bolt
         VkDevice device = VulkanRenderer::get()->getDevice();
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
+        //Fetch the irradiance map
+        RenderScene* envMapCaptureScene = VulkanRenderer::get()->getRenderScene("scene_irradiance_capture");
+        VulkanRenderScene *vulkanGraphicsScene = envMapCaptureScene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* irradianceMap = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+
         // Create a buffer and map it
         const uint32_t size = sizeof(Bolt::UniformBufferObject);
         BufferResourceBuilder builder(m_context);
@@ -510,22 +515,36 @@ namespace Bolt
         // TODO: There should be a better way to fetch the shadow map.....
         RenderScene *scene = VulkanRenderer::get()->getRenderScene("scene_lightmap");
         VulkanRenderScene *vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
-        VkDescriptorImageInfo desc_image[1] = {};
-        desc_image[0].sampler = m_sampler;
-        desc_image[0].imageView = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getImageView();
-        desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo desc_image = {};
+        desc_image.sampler = m_sampler;
+        desc_image.imageView = vulkanScene->getAttachment("depthBuffer")->As<DepthAttachment>()->texture.getImageView();
+        desc_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkWriteDescriptorSet shadowMapWrite = {};
         shadowMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         shadowMapWrite.dstSet = set;
         shadowMapWrite.descriptorCount = 1;
         shadowMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        shadowMapWrite.pImageInfo = desc_image;
+        shadowMapWrite.pImageInfo = &desc_image;
         shadowMapWrite.dstBinding = 3;
+
+        VkDescriptorImageInfo desc_irradiance = {};
+        desc_irradiance.sampler = m_sampler;
+        desc_irradiance.imageView = irradianceMap->texture.getImageView();
+        desc_irradiance.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet irradianceDescWrite = {};
+        irradianceDescWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        irradianceDescWrite.dstSet = set;
+        irradianceDescWrite.descriptorCount = 1;
+        irradianceDescWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        irradianceDescWrite.pImageInfo = &desc_irradiance;
+        irradianceDescWrite.dstBinding = 4;
+        
 
         // TODO: writes for material data
 
-        VkWriteDescriptorSet writes[] = {mvpWrite, lightMvpWrite, lightsWrite, shadowMapWrite};
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightMvpWrite, lightsWrite, shadowMapWrite, irradianceDescWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
 
@@ -534,7 +553,7 @@ namespace Bolt
         auto &materials = model->getMaterials();
         if (materials.getSize() > 0)
         {
-            materials[0]->write(set, 4);
+            materials[0]->write(set, 5);
         }
     }
 
@@ -774,7 +793,7 @@ namespace Bolt
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         m_envMap = Image2d::LoadHDRFromFile(context
-                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\autumn_hilly_field_1k.hdr"
+                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\hausdorf_meadow_1k.hdr"
                                         , "environmentMap"
                                         , EFormat::R32G32B32A32_SFLOAT);
         m_envMap->construct();
@@ -1032,7 +1051,18 @@ namespace Bolt
     }
     void IrradiancePainter::postRender(RenderScene* scene)
     {
-
+        // Cubemap has been captured. Transition it's layout so that shaders can read it
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    , cmdBuffer
+                    , 0, 1
+                    , m_cubemapLayer, 1);
     }
     void IrradiancePainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)
     {
