@@ -164,6 +164,33 @@ namespace Bolt
         uint8_t m_cubemapLayer = 0;
     };
 
+    class PrefilterEnvMapPainter : public Painter
+    {
+    public:
+        PrefilterEnvMapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual ~PrefilterEnvMapPainter();
+        virtual void prepare() override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
+        virtual void postRender(RenderScene* scene) override;
+        void setCubeMapLayerAnMip(uint8_t layer, uint8_t mip){ m_cubemapLayer = layer; m_cubemapMip = mip; }
+        void setRoughness(float roughness) { m_roughness = roughness; }
+        void lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up);
+
+    private:
+        TBufferImplPtr m_uniformbuffer;
+        //TImageSamplerImplPtr m_tempCubemap;
+        Bolt::ModelRef m_model;
+        VkDescriptorSet m_set;
+        TVertexDataProviderRef m_dataProviderRef;
+        Quaint::UniformBufferObject m_mvp;
+        VkSampler m_sampler;
+        Image2dRef m_envMap;
+        uint8_t m_cubemapLayer = 0;
+        uint8_t m_cubemapMip = 0;
+        float m_roughness = 0;
+    };
+
     class IrradiancePainter : public Painter
     {
     public:

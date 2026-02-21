@@ -1098,7 +1098,165 @@ namespace Bolt
         // bottomRes = m_mvp.proj * top;
     }
 //===================================================================================================================
+// Prefilter Environment Map painter ==================================================================================
 
+PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, const Quaint::QName& pipelineName)
+    : Painter(context, pipelineName)
+    , m_uniformbuffer(nullptr, Quaint::Deleter<Bolt::IBufferImpl>(context))
+    //, m_tempCubemap(nullptr, Quaint::Deleter<Bolt::IImageSamplerImpl>(context))
+    , m_model(nullptr, Quaint::Deleter<Bolt::Model>(context))
+    , m_dataProviderRef(nullptr, Quaint::Deleter<Bolt::IVertexDataProvider>(context))
+    , m_envMap(nullptr, Quaint::Deleter<Bolt::Image2d>(context))
+    {
+        //Create model and it's MVP buffer
+
+        VkDevice device = VulkanRenderer::get()->getDevice();
+        vulkan::createDefaultSampler(&m_sampler);
+
+        //Create model and it's MVP buffer
+        VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+
+        RenderScene* envMapCaptureScene = VulkanRenderer::get()->getRenderScene("scene_envmap_capture");
+        VulkanRenderScene *vulkanGraphicsScene = envMapCaptureScene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+
+        // Create a buffer for MVP matrices and map it
+        const uint32_t size = sizeof(Bolt::UniformBufferObject);
+        BufferResourceBuilder builder(m_context);
+        m_uniformbuffer = std::move(builder.setBufferType(EBufferType::UNIFORM)
+                                                .setDataSize(size)
+                                                .setDataOffset(0)
+                                                .build());
+
+        VulkanBufferObjectResource *mvpResource = static_cast<VulkanBufferObjectResource *>(m_uniformbuffer.get());
+        mvpResource->map();
+
+        // Creates descriptor set
+        VkDescriptorSetLayout layouts[] = {pipeline->getDescriptorSetLayout()};
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = pipeline->getDescriptorPool();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = layouts;
+
+        m_set = VK_NULL_HANDLE;
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &m_set);
+        
+        VkDescriptorBufferInfo desc_mvpBuffer = {};
+        VkWriteDescriptorSet mvpBufferWrite = vulkan::getUniformBufferDescriptorWrite(m_set, &desc_mvpBuffer, mvpResource, 1, 0);
+
+        VkDescriptorImageInfo imgInfo = {};
+        imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imgInfo.sampler = m_sampler;
+        imgInfo.imageView = attachment->texture.getImageView();
+
+        VkWriteDescriptorSet envMapWrite = {};
+        envMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        envMapWrite.dstSet = m_set;
+        envMapWrite.descriptorCount = 1;
+        envMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        envMapWrite.pImageInfo = &imgInfo;
+        envMapWrite.dstBinding = 1;
+
+        VkWriteDescriptorSet writes[] = {mvpBufferWrite, envMapWrite};
+        const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
+        vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
+
+        //Finally create the model
+        CubeModel* cube = QUAINT_NEW(context, CubeModel, context);
+        SkyboxVertexDataProvider* dataProvider = QUAINT_NEW(context, SkyboxVertexDataProvider, context, cube);
+        m_dataProviderRef.reset(dataProvider); 
+        m_model.reset(cube);
+        m_model->overrideVertexDataProvider(dataProvider);
+        m_model->construct();
+
+        m_mvp.proj = Quaint::buildPerspectiveProjectionMatrix(0.1f, 100, 90, 1.0f);
+        m_mvp.model = Quaint::QMat4x4::Identity();
+    }
+
+    PrefilterEnvMapPainter::~PrefilterEnvMapPainter()
+    {
+        m_model->destroy();
+        m_dataProviderRef.release();
+        //m_uniformbuffer->destroy();
+        //TODO: Free vulkan resources
+    }
+
+    void PrefilterEnvMapPainter::prepare()
+    {
+        const Camera &camera = RenderModule::get().getBoltRenderer()->getCamera();
+
+        VkDescriptorBufferInfo bufferInfo{};
+        VulkanBufferObjectResource *uniformBuffer = (VulkanBufferObjectResource *)m_uniformbuffer.get();
+
+        {
+            void **region = uniformBuffer->getMappedRegion();
+
+            //Quaint::UniformBufferObject mvp{};
+            //mvp.view = camera.getViewMatrix();
+            //mvp.proj = camera.getProjectionMatrix();
+            //mvp.model = m_model->getTransform();
+
+            memcpy(*region, &m_mvp, uniformBuffer->getBufferInfo().size);
+        }
+    }
+    void PrefilterEnvMapPainter::preRender(RenderScene* scene)
+    {
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_UNDEFINED
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , cmdBuffer
+                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapLayer, 1);
+    }
+    void PrefilterEnvMapPainter::render(RenderScene* scene)
+    {
+        VulkanRenderScene *vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+        
+        VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipelineLayout(), 0, 1, &m_set, 0, nullptr);
+        
+        vkCmdPushConstants(cmdBuffer, pipeline->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &m_roughness);
+        
+        m_model->draw(scene);
+    }
+    void PrefilterEnvMapPainter::postRender(RenderScene* scene)
+    {
+        // Cubemap has been captured. Transition it's layout so that shaders can read it
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    , cmdBuffer
+                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapLayer, 1);
+    }
+    void PrefilterEnvMapPainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)
+    {
+        m_mvp.view = Quaint::lookAt_CorrectVersion(direction, Quaint::QVec4(), up);
+
+        // Quaint::QVec3 top(0, 1, 0);
+        // Quaint::QVec3 topView = m_mvp.view * top;
+        // Quaint::QVec3 topRes = m_mvp.proj * topView;
+        
+        // Quaint::QVec3 bottom(0, -1, 0);
+        // Quaint::QVec3 bottomView = m_mvp.view * bottom;
+        // Quaint::QVec3 bottomRes = m_mvp.proj * bottomView;
+        // bottomRes = m_mvp.proj * top;
+    }
+
+//===================================================================================================================
 
     void ToneMapPainter::prepare()
     {

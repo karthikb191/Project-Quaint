@@ -724,11 +724,11 @@ namespace Bolt {
         return true;
     }
 
-    bool VulkanRenderScene::beginRenderPass(uint32_t framebufferIdx)
+    bool VulkanRenderScene::beginRenderPass(uint32_t renderLayer, uint32_t renderMip)
     {
         VkRenderPassBeginInfo rpInfo{};
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.framebuffer = m_framebuffer->getHandle(framebufferIdx);
+        rpInfo.framebuffer = m_framebuffer->getHandle(renderLayer, renderMip);
         rpInfo.renderPass = m_renderpass;
         rpInfo.renderArea.extent = m_renderExtent;
         rpInfo.renderArea.offset = m_renderOffset;

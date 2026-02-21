@@ -2689,7 +2689,7 @@ namespace Bolt
         //memcpy(m_mappedUniformBuffers[index], &ubo, sizeof(ubo));
     }
 
-    void VulkanRenderer::renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx)
+    void VulkanRenderer::renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t renderLayer, uint32_t renderMip)
     {
         RenderScene* scene = getRenderScene(name);
         if(scene == nullptr || scene->isValid() == false)
@@ -2717,7 +2717,7 @@ namespace Bolt
         }
 
         painter->preRender(scene);
-        if(!vulkanScene->beginRenderPass(framebufferIdx))
+        if(!vulkanScene->beginRenderPass(renderLayer, renderMip))
         {
             QLOG_E(VULKAN_RENDERER_LOGGER, "Scene failed to begin renderpass");
             vulkanScene->end();

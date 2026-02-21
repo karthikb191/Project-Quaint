@@ -432,6 +432,112 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     QUAINT_DELETE(context, cubemapPainter);
 }
 
+void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
+{
+    const uint8_t mipLevels = 3;
+    /*
+    1. Create a new scene that has cubemap as an attachment
+    2. Painter should load and own the hdr image and pass it into the shader
+    3. Render
+    */
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::ShaderDefinition shaderDef{};
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+
+    Bolt::RenderInfo info;
+    //info.extents = Quaint::QVec2(~0, ~0);
+    info.extents = Quaint::QVec2(512, 512);
+    info.offset = Quaint::QVec2({0, 0});
+    info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    Bolt::AttachmentDefinition renderTargetDef;
+    renderTargetDef.binding = 0;
+    renderTargetDef.mipLevels = mipLevels;
+    renderTargetDef.name = "renderTarget";
+    renderTargetDef.isRenderTarget = true;
+    renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
+    renderTargetDef.clearImage = true;
+    renderTargetDef.storePrevious = true;
+    renderTargetDef.type = Bolt::AttachmentDefinition::Type::CubeMap;
+    renderTargetDef.extents = info.extents;
+    renderTargetDef.format = Bolt::EFormat::R32G32B32A32_SFLOAT;
+    renderTargetDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST | Bolt::EImageUsage::SAMPLED; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(renderTargetDef);
+
+    Bolt::RenderStage::AttachmentRef renderTargetRef{};
+    renderTargetRef.binding = 0;
+    renderTargetRef.attachmentName = "renderTarget";
+
+    //Stage setup
+    Bolt::RenderStage renderStage;
+    renderStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    renderStage.index = 0;
+    renderStage.dependentStage = ~0;
+    renderStage.attachmentRefs.pushBack(renderTargetRef);
+    stages.pushBack(renderStage);
+
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()
+                ->addImmediateCubemapRenderScene("scene_prefileter_envmap", info, stages.getSize(), stages.getBuffer());
+
+    //pipeline
+    attributes.clear();
+    shaderDef.shaders.clear();
+    shaderDef.uniforms.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.shaders.pushBack({"cubemapCapture.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"cubemapCapture.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    attributes.pushBack({"normal", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
+    shaderDef.attributeSets.pushBack(attributes);
+    
+    shaderDef.uniforms.pushBack({"Buffer_MVP", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::VERTEX, 1});
+    shaderDef.uniforms.pushBack({"EnvMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    
+    shaderDef.pushConstants.pushBack({"imgui_pushConstant", Bolt::EShaderStage::FRAGMENT, sizeof(float), 0});
+
+    Bolt::Pipeline* cubemapCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefileter_envmap"), 0, shaderDef);
+    //cubemapCapturePipeline->cullFront();
+    //cubemapCapturePipeline->enableDepth();
+    cubemapCapturePipeline->construct();
+    
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(cubemapCapturePipeline);
+
+    Bolt::PrefilterEnvMapPainter* prefilterPainter = QUAINT_NEW(context, Bolt::PrefilterEnvMapPainter, context, Quaint::QName("PrefilterEnvMapPipeline"));
+    
+    for(int i = 0; i < mipLevels; ++i)
+    {
+        prefilterPainter->setCubeMapLayerAnMip(0, i);
+        prefilterPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 0, i);
+        prefilterPainter->setCubeMapLayerAnMip(1, i);
+        prefilterPainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 1, i);
+        prefilterPainter->setCubeMapLayerAnMip(2, i);
+        prefilterPainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 2, i);
+        prefilterPainter->setCubeMapLayerAnMip(3, i);
+        prefilterPainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 3, i);
+        prefilterPainter->setCubeMapLayerAnMip(4, i);
+        prefilterPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 4, i);
+        prefilterPainter->setCubeMapLayerAnMip(5, i);
+        prefilterPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 5, i);
+    }
+        
+    QUAINT_DELETE(context, cubemapCapturePipeline);
+    QUAINT_DELETE(context, prefilterPainter);
+}
+
 void GenerateIrradianceMap(Quaint::IMemoryContext* context)
 {
     /*

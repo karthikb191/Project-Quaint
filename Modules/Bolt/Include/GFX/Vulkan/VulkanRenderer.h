@@ -252,7 +252,7 @@ namespace Bolt
         void mapBufferToMemory();
 
 
-        virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx) override;
+        virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t renderLayer = 0, uint32_t renderMip = 0) override;
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual void addImmediateRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;
         virtual void addImmediateCubemapRenderScene(Quaint::QName name, const RenderInfo& renderInfo, uint32_t numStages, const RenderStage* pStages) override;

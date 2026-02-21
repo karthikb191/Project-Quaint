@@ -29,7 +29,7 @@ namespace Bolt
         virtual void addRenderScene(Quaint::QName name, const RenderInfo& renderInfo, const uint32_t numStages, const RenderStage* pStages) = 0;
         virtual void addImmediateRenderScene(Quaint::QName name, const RenderInfo& renderInfo, const uint32_t numStages, const RenderStage* pStages) = 0;
         virtual void addImmediateCubemapRenderScene(Quaint::QName name, const RenderInfo& renderInfo, const uint32_t numStages, const RenderStage* pStages) = 0;
-        virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t framebufferIdx = 0) = 0;
+        virtual void renderSceneImmediate(const Quaint::QName& name, Bolt::Painter* painter, uint32_t renderLayer = 0, uint32_t renderMip = 0) = 0;
         virtual RenderScene* getRenderScene(Quaint::QName name) = 0;
 
         virtual void addPipeline(Bolt::Pipeline* pipeline) = 0;

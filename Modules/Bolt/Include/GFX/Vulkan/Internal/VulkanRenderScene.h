@@ -143,7 +143,7 @@ namespace Bolt {
         virtual void destroy();
     
         virtual bool start();
-        virtual bool beginRenderPass(uint32_t framebufferIdx = 0);
+        virtual bool beginRenderPass(uint32_t renderLayer = 0, uint32_t renderMip = 0);
         virtual void finishSubpass();
         virtual SceneParams end();
         virtual void submit(VkQueue queue);
