@@ -481,7 +481,7 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     stages.pushBack(renderStage);
 
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()
-                ->addImmediateCubemapRenderScene("scene_prefileter_envmap", info, stages.getSize(), stages.getBuffer());
+                ->addImmediateCubemapRenderScene("scene_prefilter_envmap", info, stages.getSize(), stages.getBuffer());
 
     //pipeline
     attributes.clear();
@@ -503,7 +503,7 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     
     shaderDef.pushConstants.pushBack({"imgui_pushConstant", Bolt::EShaderStage::FRAGMENT, sizeof(float), 0});
 
-    Bolt::Pipeline* prefilterPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefileter_envmap"), 0, shaderDef);
+    Bolt::Pipeline* prefilterPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefilter_envmap"), 0, shaderDef);
     //cubemapCapturePipeline->cullFront();
     //cubemapCapturePipeline->enableDepth();
     prefilterPipeline->construct();
@@ -518,24 +518,24 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
         prefilterPainter->setRoughness(roughness);
         prefilterPainter->setCubeMapLayerAnMip(0, i);
         prefilterPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 0, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 0, i);
         prefilterPainter->setCubeMapLayerAnMip(1, i);
         prefilterPainter->lookAt({-1, 0, 0}, {0, 1, 0}); // render left
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 1, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 1, i);
         prefilterPainter->setCubeMapLayerAnMip(2, i);
         prefilterPainter->lookAt({0, 1, 0}, {0, 0, -1}); // render top
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 2, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 2, i);
         prefilterPainter->setCubeMapLayerAnMip(3, i);
         prefilterPainter->lookAt({0, -1, 0}, {0, 0, 1}); // render bottom
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 3, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 3, i);
         prefilterPainter->setCubeMapLayerAnMip(4, i);
         prefilterPainter->lookAt({0, 0, 1}, {0, 1, 0}); // render forward
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 4, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 4, i);
         prefilterPainter->setCubeMapLayerAnMip(5, i);
         prefilterPainter->lookAt({0, 0, -1}, {0, 1, 0}); // render back
-        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 5, i);
+        Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefilter_envmap", prefilterPainter, 5, i);
     }
-        
+    
     QUAINT_DELETE(context, prefilterPipeline);
     QUAINT_DELETE(context, prefilterPainter);
 }
@@ -639,6 +639,75 @@ void GenerateIrradianceMap(Quaint::IMemoryContext* context)
     QUAINT_DELETE(context, irradiancePainter);
 }
 
+void GenerateBRDFLUT(Quaint::IMemoryContext* context)
+{
+    Quaint::QArray<Bolt::RenderStage> stages(context);
+    Bolt::ShaderDefinition shaderDef{};
+    shaderDef.shaders = Quaint::QArray<Bolt::ShaderFileInfo>(context);
+    shaderDef.uniforms = Quaint::QArray<Bolt::ShaderUniform>(context);
+    shaderDef.pushConstants = Quaint::QArray<Bolt::PushConstant>(context);
+    shaderDef.attributeSets = Quaint::QArray<Quaint::QArray<Bolt::ShaderAttributeInfo>>(context);
+
+    Quaint::QArray<Bolt::ShaderAttributeInfo> attributes(context);
+
+    Bolt::RenderInfo info;
+    //info.extents = Quaint::QVec2(~0, ~0);
+    info.extents = Quaint::QVec2(512, 512);
+    info.offset = Quaint::QVec2({0, 0});
+    info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
+    Bolt::AttachmentDefinition renderTargetDef;
+    renderTargetDef.binding = 0;
+    renderTargetDef.mipLevels = 1;
+    renderTargetDef.name = "renderTarget";
+    renderTargetDef.isRenderTarget = true;
+    renderTargetDef.clearColor = Quaint::QVec4(0.0f, 0.0f, 0.0f, 1.0f);
+    renderTargetDef.clearImage = true;
+    renderTargetDef.storePrevious = true;
+    renderTargetDef.type = Bolt::AttachmentDefinition::Type::Image;
+    renderTargetDef.extents = info.extents;
+    renderTargetDef.format = Bolt::EFormat::R32G32B32A32_SFLOAT;
+    renderTargetDef.usage = Bolt::EImageUsage::COLOR_ATTACHMENT | Bolt::EImageUsage::COPY_DST | Bolt::EImageUsage::SAMPLED; //Hardcoded the same as VulkanSwapchain for now
+    info.attachments.pushBack(renderTargetDef);
+
+    Bolt::RenderStage::AttachmentRef renderTargetRef{};
+    renderTargetRef.binding = 0;
+    renderTargetRef.attachmentName = "renderTarget";
+
+    //Stage setup
+    Bolt::RenderStage renderStage;
+    renderStage.attachmentRefs = Quaint::QArray<Bolt::RenderStage::AttachmentRef>(context);
+    renderStage.index = 0;
+    renderStage.dependentStage = ~0;
+    renderStage.attachmentRefs.pushBack(renderTargetRef);
+    stages.pushBack(renderStage);
+
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()
+                ->addImmediateRenderScene("scene_brdf_lut_capture", info, stages.getSize(), stages.getBuffer());
+
+    shaderDef.shaders.clear();
+    shaderDef.attributeSets.clear();
+    shaderDef.pushConstants.clear();
+    shaderDef.uniforms.clear();
+
+    shaderDef.shaders.pushBack({"brdfLUTCapture.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\brdfLUTCapture.vert.spv"
+        , "main", Bolt::EShaderStage::VERTEX});
+    shaderDef.shaders.pushBack({"brdfLUTCapture.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\brdfLUTCapture.frag.spv"
+        , "main", Bolt::EShaderStage::FRAGMENT});
+
+    Bolt::Pipeline* brdfCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("BRDFCapturePipeline"), Quaint::QName("scene_brdf_lut_capture"), 0, shaderDef);
+    brdfCapturePipeline->cullBack();
+    //presentationPipeline->enableDepth();
+    brdfCapturePipeline->construct();
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(brdfCapturePipeline);
+
+    Bolt::BRDFLutCapturePainter* brdfLutPainter = QUAINT_NEW(context, Bolt::BRDFLutCapturePainter, context, Quaint::QName("BRDFCapturePipeline"));
+    
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_brdf_lut_capture", brdfLutPainter, 0, 0);
+    
+    QUAINT_DELETE(context, brdfCapturePipeline);
+    QUAINT_DELETE(context, brdfLutPainter);
+}
+
 //int main_SHOULD_REUSE_AFTER_TESTING()
 int main()
 {
@@ -693,6 +762,7 @@ int main()
     EquirectangularToCubemap(context);
     GenerateIrradianceMap(context);
     PrefilterEnvironmentMap(context);
+    GenerateBRDFLUT(context);
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);
@@ -955,6 +1025,8 @@ int main()
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"irradianceMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"prefilterMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"brdfLUT", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"Material", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     
     attributes.clear();
@@ -989,6 +1061,8 @@ int main()
     shaderDef.uniforms.pushBack({"Lights", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"shadowMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     shaderDef.uniforms.pushBack({"irradianceMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"prefilterMap", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
+    shaderDef.uniforms.pushBack({"brdfLUT", Bolt::EShaderResourceType::COMBINED_IMAGE_SAMPLER, Bolt::EShaderStage::FRAGMENT, 1});
     
     //PBR stuff
     shaderDef.uniforms.pushBack({"PBRProperties", Bolt::EShaderResourceType::UNIFORM_BUFFER, Bolt::EShaderStage::FRAGMENT, 1});

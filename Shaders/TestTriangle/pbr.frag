@@ -48,24 +48,27 @@ layout(binding = 2) uniform Lights
 layout(binding = 3) uniform sampler2D shadowMap;
 
 layout(binding = 4) uniform samplerCube irradianceMap;
+layout(binding = 5) uniform samplerCube prefilterMap;
+layout(binding = 6) uniform sampler2D brdfLUT;
 
 //PBR stuff
 //TODO: Move these to a new specularStrength
 //TODO: Convert to a texture array?
-layout(binding = 5) uniform PBR
+layout(binding = 7) uniform PBR
 {
     PBRProperties data;
 } pbr;
 
-layout(binding = 6) uniform sampler2D diffuseMap;
-layout(binding = 7) uniform sampler2D normalMap;
-layout(binding = 8) uniform sampler2D metallicMap;
-layout(binding = 9) uniform sampler2D roughnessMap;
+layout(binding = 8) uniform sampler2D diffuseMap;
+layout(binding = 9) uniform sampler2D normalMap;
+layout(binding = 10) uniform sampler2D metallicMap;
+layout(binding = 11) uniform sampler2D roughnessMap;
 
 
 //layout (input_attachment_index=0, binding=3) uniform subpassInput myInputAttachment;
 
 //layout(binding = 1) uniform sampler2D texSampler;
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 vec3 CalculateFresnel(vec3 h, vec3 v, vec3 albedo, float metallic);
 float DistrubutionGGX_TrowbridgeReitz(vec3 h, vec3 n, float roughness);
 float GeometryGGX_Smith(vec3 n, vec3 v, vec3 l, float roughness);
@@ -179,18 +182,43 @@ void main()
     kd *= (1.0f - metallic);
 
 
-    //Ambient contribution from environment map. This is pretty much only the indirect lighting
-    vec3 irradiance = texture(irradianceMap, normal).rgb;
-    vec3 diffuse = irradiance * albedo;
-    vec3 ambient = diffuse * kd;
-
-
     vec3 diffuseWo = kd * (albedo / PI);
 
     vec3 radianceOutput = (diffuseWo + specularWo) * radiance;
 
-    vec3 finalColor = ambient + radianceOutput;
 
+    //Ambient contribution from environment map
+    vec3 N = normal;
+    vec3 V = wo;
+    vec3 L = wi;
+    vec3 R = reflect(-V, N); 
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, metallic);
+    F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    
+    ks = F;
+    kd = 1.0 - ks;
+    kd *= (1.0 - metallic);	  
+    
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    
+    // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+    const float MAX_REFLECTION_LOD = 3.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
+    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+    vec3 ambient = (kd * diffuse + specular);
+    
+    vec3 color = ambient + radianceOutput;
+
+    // HDR tonemapping
+    color = color / (color + vec3(1.0));
+
+    outColor = vec4(color, 1.0f);
+
+    //vec3 finalColor = ambient + radianceOutput;
 
     //float strength = 0.55f;
     //vec4 finalColor = vec4(radianceOutput * shadow * strength, 1.0f);
@@ -206,13 +234,17 @@ void main()
     //outColor = vec4(specularWo, 1.0f);
     
     //outColor = vec4(radianceOutput, 1.0f);
-    outColor = vec4(finalColor, 1.0f);
+    //outColor = vec4(finalColor, 1.0f);
     
     //outColor = vec4(radiance, 1.0f);
     //outColor = vec4(ndotl, ndotl, ndotl, 1.0f);
     //outColor = vec4(diffuseWo, 1.0f);
 }
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
 
 vec3 FresnelSchlick(vec3 f0, vec3 h, vec3 v)
 {

@@ -441,9 +441,19 @@ namespace Bolt
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         //Fetch the irradiance map
-        RenderScene* envMapCaptureScene = VulkanRenderer::get()->getRenderScene("scene_irradiance_capture");
-        VulkanRenderScene *vulkanGraphicsScene = envMapCaptureScene->getRenderSceneImplAs<VulkanRenderScene>();
+        RenderScene* irradianceScene = VulkanRenderer::get()->getRenderScene("scene_irradiance_capture");
+        VulkanRenderScene *vulkanGraphicsScene = irradianceScene->getRenderSceneImplAs<VulkanRenderScene>();
         CubemapAttachment* irradianceMap = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+
+        
+        RenderScene* prefilterScene = VulkanRenderer::get()->getRenderScene("scene_prefilter_envmap");
+        vulkanGraphicsScene = prefilterScene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* prefilerMap = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+
+        
+        RenderScene* brdfLutScene = VulkanRenderer::get()->getRenderScene("scene_brdf_lut_capture");
+        vulkanGraphicsScene = brdfLutScene->getRenderSceneImplAs<VulkanRenderScene>();
+        ImageAttachment* brdfLUTMap = vulkanGraphicsScene->getAttachment("renderTarget")->As<ImageAttachment>();
 
         // Create a buffer and map it
         const uint32_t size = sizeof(Bolt::UniformBufferObject);
@@ -528,6 +538,7 @@ namespace Bolt
         shadowMapWrite.pImageInfo = &desc_image;
         shadowMapWrite.dstBinding = 3;
 
+        //Irradiance map binding: 4
         VkDescriptorImageInfo desc_irradiance = {};
         desc_irradiance.sampler = m_sampler;
         desc_irradiance.imageView = irradianceMap->texture.getImageView();
@@ -540,11 +551,39 @@ namespace Bolt
         irradianceDescWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         irradianceDescWrite.pImageInfo = &desc_irradiance;
         irradianceDescWrite.dstBinding = 4;
+
+        //Env prefilter map binding: 5
+        VkDescriptorImageInfo desc_envPrefilterDesc = {};
+        desc_envPrefilterDesc.sampler = m_sampler;
+        desc_envPrefilterDesc.imageView = prefilerMap->texture.getImageView();
+        desc_envPrefilterDesc.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet envPrefilterWrite = {};
+        envPrefilterWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        envPrefilterWrite.dstSet = set;
+        envPrefilterWrite.descriptorCount = 1;
+        envPrefilterWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        envPrefilterWrite.pImageInfo = &desc_envPrefilterDesc;
+        envPrefilterWrite.dstBinding = 5;
+
+        //BRDF LUT map binding: 6
+        VkDescriptorImageInfo desc_brdfLutDesc = {};
+        desc_brdfLutDesc.sampler = m_sampler;
+        desc_brdfLutDesc.imageView = brdfLUTMap->texture.getImageView();
+        desc_brdfLutDesc.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet brdfLutWrite = {};
+        brdfLutWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        brdfLutWrite.dstSet = set;
+        brdfLutWrite.descriptorCount = 1;
+        brdfLutWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        brdfLutWrite.pImageInfo = &desc_brdfLutDesc;
+        brdfLutWrite.dstBinding = 6;
         
 
         // TODO: writes for material data
 
-        VkWriteDescriptorSet writes[] = {mvpWrite, lightMvpWrite, lightsWrite, shadowMapWrite, irradianceDescWrite};
+        VkWriteDescriptorSet writes[] = {mvpWrite, lightMvpWrite, lightsWrite, shadowMapWrite, irradianceDescWrite, envPrefilterWrite, brdfLutWrite};
         const uint32_t writeCount = sizeof(writes) / sizeof(writes[0]);
         vkUpdateDescriptorSets(device, writeCount, writes, 0, nullptr);
 
@@ -553,7 +592,7 @@ namespace Bolt
         auto &materials = model->getMaterials();
         if (materials.getSize() > 0)
         {
-            materials[0]->write(set, 5);
+            materials[0]->write(set, 7);
         }
     }
 
@@ -793,7 +832,7 @@ namespace Bolt
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         m_envMap = Image2d::LoadHDRFromFile(context
-                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\hausdorf_meadow_1k.hdr"
+                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\ferndale_studio_12_1k.hdr"
                                         , "environmentMap"
                                         , EFormat::R32G32B32A32_SFLOAT);
         m_envMap->construct();
@@ -1254,6 +1293,50 @@ PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, 
         // Quaint::QVec3 bottomView = m_mvp.view * bottom;
         // Quaint::QVec3 bottomRes = m_mvp.proj * bottomView;
         // bottomRes = m_mvp.proj * top;
+    }
+
+//===================================================================================================================
+//BRDF LUT ===================================================================================================================
+
+    BRDFLutCapturePainter::BRDFLutCapturePainter(Quaint::IMemoryContext *context, const Quaint::QName &pipeline)
+        : Painter(context, pipeline)
+    {
+    }
+    BRDFLutCapturePainter::~BRDFLutCapturePainter()
+    {
+    }
+
+
+    void BRDFLutCapturePainter::prepare()
+    {
+
+    }
+
+    void BRDFLutCapturePainter::preRender(RenderScene *scene)
+    {
+    }
+
+    void BRDFLutCapturePainter::render(RenderScene *scene)
+    {
+        VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        VulkanRenderScene *vulkanScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
+
+        vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
+    }
+    void BRDFLutCapturePainter::postRender(RenderScene *scene)
+    {
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    , cmdBuffer
+                    , 0, 1
+                    , 0, 1);
     }
 
 //===================================================================================================================

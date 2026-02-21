@@ -214,6 +214,21 @@ namespace Bolt
         uint8_t m_cubemapLayer = 0;
     };
 
+    class BRDFLutCapturePainter : public Painter
+    {
+    public:
+        BRDFLutCapturePainter(Quaint::IMemoryContext* context, const Quaint::QName& pipeline);
+        virtual ~BRDFLutCapturePainter();
+        virtual void prepare() override;
+        virtual void preRender(RenderScene* scene) override;
+        virtual void render(RenderScene* scene) override;
+        virtual void postRender(RenderScene* scene) override;
+        
+    private:
+
+    };
+
+
     class ImguiPainter : public Painter
     {
         //TODO: Should make these platform agnostic
