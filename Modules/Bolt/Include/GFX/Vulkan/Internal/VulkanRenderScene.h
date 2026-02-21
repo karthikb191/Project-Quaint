@@ -84,7 +84,7 @@ namespace Bolt {
         
         virtual void buildAttachmentReference() override;
         virtual void buildAttachmentDescription() override;
-        void addImageView(int layer, int count);
+        void addImageView(int layer, int count, int baseMip, int mipCount);
 
         VulkanTexture texture;
         Quaint::QArray<VkImageView> cubemapViews;

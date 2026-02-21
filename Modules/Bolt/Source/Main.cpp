@@ -355,7 +355,9 @@ void EquirectangularToCubemap(Quaint::IMemoryContext* context)
     info.attachments = Quaint::QArray<Bolt::AttachmentDefinition>(context);
     Bolt::AttachmentDefinition renderTargetDef;
     renderTargetDef.binding = 0;
+    renderTargetDef.mipLevels = 1;
     renderTargetDef.name = "renderTarget";
+    renderTargetDef.isRenderTarget = true;
     renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
     renderTargetDef.clearImage = true;
     renderTargetDef.storePrevious = true;
@@ -454,6 +456,7 @@ void GenerateIrradianceMap(Quaint::IMemoryContext* context)
     Bolt::AttachmentDefinition renderTargetDef;
     renderTargetDef.binding = 0;
     renderTargetDef.name = "renderTarget";
+    renderTargetDef.isRenderTarget = true;
     renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
     renderTargetDef.clearImage = true;
     renderTargetDef.storePrevious = true;
@@ -590,6 +593,7 @@ int main()
     Bolt::AttachmentDefinition renderTargetDef;
     renderTargetDef.binding = 0;
     renderTargetDef.name = "renderTarget";
+    renderTargetDef.isRenderTarget = true;
     renderTargetDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
     renderTargetDef.clearImage = true;
     renderTargetDef.storePrevious = true;
@@ -698,6 +702,7 @@ int main()
     Bolt::AttachmentDefinition swapchainDef;
     swapchainDef.binding = 0;
     swapchainDef.name = "swapchain";
+    swapchainDef.isRenderTarget = true;
     swapchainDef.clearColor = Quaint::QVec4(0.01f, 0.01f, 0.01f, 1.0f);
     swapchainDef.clearImage = true;
     

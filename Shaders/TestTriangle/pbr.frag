@@ -178,13 +178,24 @@ void main()
     //If surface is metallic, no light is refracted. We enforce this using the metallic surface parameter
     kd *= (1.0f - metallic);
 
+
+    //Ambient contribution from environment map. This is pretty much only the indirect lighting
+    vec3 irradiance = texture(irradianceMap, normal).rgb;
+    vec3 diffuse = irradiance * albedo;
+    vec3 ambient = diffuse * kd;
+
+
     vec3 diffuseWo = kd * (albedo / PI);
 
     vec3 radianceOutput = (diffuseWo + specularWo) * radiance;
-    float strength = 0.55f;
-    vec4 finalColor = vec4(radianceOutput * shadow * strength, 1.0f);
-    finalColor += vec4(radianceOutput * (1.0f - shadow), 1.0f);
-    finalColor.w = 1.0f;
+
+    vec3 finalColor = ambient + radianceOutput;
+
+
+    //float strength = 0.55f;
+    //vec4 finalColor = vec4(radianceOutput * shadow * strength, 1.0f);
+    //finalColor += vec4(radianceOutput * (1.0f - shadow), 1.0f);
+    //finalColor.w = 1.0f;
 
     //vec3 lightColor = ambientLight + radiance * (1.0 - shadow);
     //outColor = vec4(albedo * lightColor, 1.0f);
@@ -195,7 +206,7 @@ void main()
     //outColor = vec4(specularWo, 1.0f);
     
     //outColor = vec4(radianceOutput, 1.0f);
-    outColor = vec4(finalColor);
+    outColor = vec4(finalColor, 1.0f);
     
     //outColor = vec4(radiance, 1.0f);
     //outColor = vec4(ndotl, ndotl, ndotl, 1.0f);

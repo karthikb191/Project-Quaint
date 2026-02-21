@@ -894,7 +894,17 @@ namespace Bolt
     }
     void CubemapCapturePainter::preRender(RenderScene* scene)
     {
-
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_UNDEFINED
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , cmdBuffer
+                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapLayer, 1);
     }
     void CubemapCapturePainter::render(RenderScene* scene)
     {
@@ -919,7 +929,7 @@ namespace Bolt
                     , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                     , cmdBuffer
-                    , 0, 1
+                    , 0, attachment->getInfo().mipLevels
                     , m_cubemapLayer, 1);
     }
     void CubemapCapturePainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)
@@ -1036,7 +1046,17 @@ namespace Bolt
     }
     void IrradiancePainter::preRender(RenderScene* scene)
     {
-
+        VulkanRenderScene *vulkanGraphicsScene = scene->getRenderSceneImplAs<VulkanRenderScene>();
+        CubemapAttachment* attachment = vulkanGraphicsScene->getAttachment("renderTarget")->As<CubemapAttachment>();
+        VkCommandBuffer cmdBuffer = vulkanGraphicsScene->getSceneParams().commandBuffer;
+        
+        VulkanRenderer::get()->transitionImageLayout(attachment->texture.getHandle()
+                    , attachment->texture.getCreateInfo().imageInfo.format
+                    , VK_IMAGE_LAYOUT_UNDEFINED
+                    , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    , cmdBuffer
+                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapLayer, 1);
     }
     void IrradiancePainter::render(RenderScene* scene)
     {
@@ -1061,7 +1081,7 @@ namespace Bolt
                     , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                     , cmdBuffer
-                    , 0, 1
+                    , 0, attachment->getInfo().mipLevels
                     , m_cubemapLayer, 1);
     }
     void IrradiancePainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)

@@ -99,6 +99,7 @@ namespace Bolt
 
         Quaint::QName name = "";
         uint32_t binding = 0;
+        uint8_t mipLevels = 1;
         Type type = Type::Image;
         EFormat format = EFormat::R8G8B8A8_SRGB;
         EImageUsageFlags usage = EImageUsage::COLOR_ATTACHMENT;
@@ -106,6 +107,7 @@ namespace Bolt
         Quaint::QVec2 extents = {256, 256};
         bool clearImage = false;
         bool storePrevious = false;
+        bool isRenderTarget = false;
         //bool forEachSwapcahinImage = false;
     };
 

@@ -5,6 +5,10 @@
 
 namespace Bolt{ namespace vulkan{
 
+    //TODO: Potential improvements
+    // Framebuffer creation can be split from the render scene
+    // Framebuffer can own resources? Right now scene owns them
+
     FrameBuffer::FrameBuffer(Quaint::IMemoryContext* context)
     : m_context(context)
     , m_framebuffers(context)
@@ -39,20 +43,31 @@ namespace Bolt{ namespace vulkan{
         m_info.pNext = nullptr;
         m_info.renderPass = scene->getRenderpass();
         
-        auto& attachments = scene->getAttachments(); 
+        auto& attachments = scene->getAttachments();
+        uint8_t numFramebuffersRequired = 1;
         for(auto& attachment : attachments)
         {
             Bolt::AttachmentDefinition::Type type = attachment->getInfo().type;
             if(type == Bolt::AttachmentDefinition::Type::Swapchain)
             {
                 m_dependsOnSwapchain = true;
+                assert(attachment->getInfo().isRenderTarget && "Swapchain should be render target. No other mode supported");
+                numFramebuffersRequired = numImages;
+                break;
+            }
+            else if(attachment->getInfo().isRenderTarget)
+            {
+                assert(attachment->getInfo().mipLevels == 1 && "Not supporting multiple mip levels normal render scenes"); 
             }
         }
 
-        uint8_t numFramebuffersRequired = 1;
         if(m_dependsOnSwapchain)
         {
             numFramebuffersRequired = numImages;
+        }
+        else
+        {
+
         }
 
         for(size_t i = 0; i < numFramebuffersRequired; ++i)
@@ -111,10 +126,30 @@ namespace Bolt{ namespace vulkan{
         m_info.renderPass = scene->getRenderpass();
         
         auto& attachments = scene->getAttachments();
-        const uint8_t numFramebuffersRequired = 6;
+        uint8_t numFramebuffersRequired = 6;
+        m_renderTargetMaxLayers = 6;
+        
+        uint8_t numMips = 1;
+        for(auto& attachment : attachments)
+        {
+            if(attachment->getInfo().isRenderTarget)
+            {
+                assert((attachment->getInfo().type == Bolt::AttachmentDefinition::Type::CubeMap) && "Invalid attchment");
+                numFramebuffersRequired = 6 * attachment->getInfo().mipLevels;
+                numMips = attachment->getInfo().mipLevels;
+                assert(extents.width == extents.height && "Rectangular render targets for cubemaps are not supported");
+                break;
+            }
+        }
+        m_renderTargetMaxMips = numMips;
 
+        //NOTE: This kind of works, but implementation is extremely sketchy and prone to bugs
         for(size_t i = 0; i < numFramebuffersRequired; ++i)
         {   
+            int factor = i % numMips;
+            m_info.width = (float)(extents.width * (pow(0.5f, factor)));
+            m_info.height = (float)(extents.height * (pow(0.5f, factor)));
+
             Quaint::QArray<VkImageView> views(m_context);
             for(auto& attachment : attachments)
             {
@@ -153,7 +188,7 @@ namespace Bolt{ namespace vulkan{
         }
     }
 
-    VkFramebuffer FrameBuffer::getHandle(uint32_t idx)
+    VkFramebuffer FrameBuffer::getHandle(uint32_t layer, uint8_t mip)
     {
         VulkanSwapchain* swapchain = VulkanRenderer::get()->getSwapchain();
         
@@ -161,14 +196,16 @@ namespace Bolt{ namespace vulkan{
         // So we need multiple framebuffers
         if(m_dependsOnSwapchain)
         {
+            assert((layer == 0 && mip == 0) && "Not supporting swapchain presentation with multiple layers and mips");
             uint8_t index = swapchain->getCurrentSwapchainImageIndex();
             assert(index < m_framebuffers.getSize()); 
             return m_framebuffers[index];
         }
         else
         {
-            assert(idx < m_framebuffers.getSize() && "Invalid framebuffer size");
-            return m_framebuffers[idx];
+            assert(layer * m_renderTargetMaxMips + mip < m_framebuffers.getSize() && "Invalid layer and mip passed to retrieve framebuffer handle");
+            //assert(layer < m_framebuffers.getSize() && "Invalid framebuffer size");
+            return m_framebuffers[layer * m_renderTargetMaxMips + mip];
         }
     }
 }}

@@ -20,12 +20,14 @@ namespace Bolt{ namespace vulkan{
         void construct(const VulkanCubeMapRenderScene* scene);
         void destroy();
 
-        VkFramebuffer getHandle(uint32_t idx = 0);
+        VkFramebuffer getHandle(uint32_t layer = 0, uint8_t mip = 0);
     private:
         Quaint::IMemoryContext*             m_context;
         VkFramebufferCreateInfo             m_info = {};
         Quaint::QArray<VkFramebuffer>       m_framebuffers;
         bool                                m_dependsOnSwapchain = false;
+        uint32_t                            m_renderTargetMaxLayers = 1;
+        uint32_t                            m_renderTargetMaxMips = 1;
     };
 
 } }

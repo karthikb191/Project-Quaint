@@ -222,7 +222,7 @@ namespace Bolt {
         attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         attachmentReference.attachment = info.binding;
     }
-    void CubemapAttachment::addImageView(int layer, int count)
+    void CubemapAttachment::addImageView(int layer, int count, int baseMip, int mipCount)
     {
         VkAllocationCallbacks* callbacks = VulkanRenderer::get()->getAllocationCallbacks();
         VkDevice device = VulkanRenderer::get()->getDevice();
@@ -241,8 +241,8 @@ namespace Bolt {
         imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         imageViewInfo.subresourceRange.baseArrayLayer = layer;
         imageViewInfo.subresourceRange.layerCount = count;
-        imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.levelCount = 1;
+        imageViewInfo.subresourceRange.baseMipLevel = baseMip;
+        imageViewInfo.subresourceRange.levelCount = mipCount;
 
         VkImageView view = VK_NULL_HANDLE;
         VkResult res = vkCreateImageView(device, &imageViewInfo, callbacks, &view);
@@ -480,7 +480,7 @@ namespace Bolt {
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = def.mipLevels;
 
         VkImageUsageFlags usageFlags = toVulkanImageUsage(def.usage);
 
@@ -521,7 +521,7 @@ namespace Bolt {
         imageViewInfo.subresourceRange.baseArrayLayer = 0;
         imageViewInfo.subresourceRange.layerCount = 1;
         imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.levelCount = 1;
+        imageViewInfo.subresourceRange.levelCount = def.mipLevels;
 
 
         uint32_t width = def.extents.x;
@@ -876,12 +876,13 @@ namespace Bolt {
             {
                 VulkanTexture texture = constructCubemapTexture(def);
                 CubemapAttachment* attachment = QUAINT_NEW(m_context, CubemapAttachment, m_context, def, texture);
-                attachment->addImageView(0, 1);
-                attachment->addImageView(1, 1);
-                attachment->addImageView(2, 1);
-                attachment->addImageView(3, 1);
-                attachment->addImageView(4, 1);
-                attachment->addImageView(5, 1);
+                for(int i = 0; i < 6; ++i)
+                {
+                    for(int j = 0; j < def.mipLevels; ++j)
+                    {
+                        attachment->addImageView(i, 1, j, 1);
+                    }
+                }
                 m_attachments.emplace(attachment, Bolt::Deleter<Attachment>(m_context));
             }
             break;
@@ -913,7 +914,7 @@ namespace Bolt {
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 6;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = def.mipLevels;
 
         VkImageUsageFlags usageFlags = toVulkanImageUsage(def.usage);
 
@@ -931,6 +932,7 @@ namespace Bolt {
         .setImageViewInfo(viewInfo)
         .setIsCubeMap()
         .setLayerCount(6)
+        .setMipLevelCount(def.mipLevels)
         .setBuildImage()
         .setBackingMemory()
         .setBuildImageView()
