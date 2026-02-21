@@ -1211,7 +1211,7 @@ PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, 
                     , VK_IMAGE_LAYOUT_UNDEFINED
                     , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     , cmdBuffer
-                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapMip, 1
                     , m_cubemapLayer, 1);
     }
     void PrefilterEnvMapPainter::render(RenderScene* scene)
@@ -1223,7 +1223,7 @@ PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, 
         
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipelineLayout(), 0, 1, &m_set, 0, nullptr);
         
-        vkCmdPushConstants(cmdBuffer, pipeline->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &m_roughness);
+        vkCmdPushConstants(cmdBuffer, pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &m_roughness);
         
         m_model->draw(scene);
     }
@@ -1239,7 +1239,7 @@ PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, 
                     , VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     , VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                     , cmdBuffer
-                    , 0, attachment->getInfo().mipLevels
+                    , m_cubemapMip, 1
                     , m_cubemapLayer, 1);
     }
     void PrefilterEnvMapPainter::lookAt(const Quaint::QVec3 direction, const Quaint::QVec3 up)

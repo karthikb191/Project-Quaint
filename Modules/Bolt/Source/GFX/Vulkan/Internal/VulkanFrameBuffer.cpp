@@ -42,6 +42,7 @@ namespace Bolt{ namespace vulkan{
         m_info.layers = 1;
         m_info.pNext = nullptr;
         m_info.renderPass = scene->getRenderpass();
+        m_maxRenderExtents = extents;
         
         auto& attachments = scene->getAttachments();
         uint8_t numFramebuffersRequired = 1;
@@ -124,6 +125,7 @@ namespace Bolt{ namespace vulkan{
         m_info.layers = 1;
         m_info.pNext = nullptr;
         m_info.renderPass = scene->getRenderpass();
+        m_maxRenderExtents = extents;
         
         auto& attachments = scene->getAttachments();
         uint8_t numFramebuffersRequired = 6;
@@ -207,5 +209,13 @@ namespace Bolt{ namespace vulkan{
             //assert(layer < m_framebuffers.getSize() && "Invalid framebuffer size");
             return m_framebuffers[layer * m_renderTargetMaxMips + mip];
         }
+    }
+
+    VkExtent2D FrameBuffer::getExtents(uint8_t mip)
+    {
+        VkExtent2D res = m_maxRenderExtents;
+        res.width = m_maxRenderExtents.width * (pow(0.5f, mip));
+        res.height = m_maxRenderExtents.height * (pow(0.5f, mip));
+        return res;
     }
 }}

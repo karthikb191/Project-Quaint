@@ -460,7 +460,7 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     renderTargetDef.name = "renderTarget";
     renderTargetDef.isRenderTarget = true;
     renderTargetDef.clearColor = Quaint::QVec4(1.0f, 0.01f, 0.01f, 1.0f);
-    renderTargetDef.clearImage = true;
+    renderTargetDef.clearImage = false;
     renderTargetDef.storePrevious = true;
     renderTargetDef.type = Bolt::AttachmentDefinition::Type::CubeMap;
     renderTargetDef.extents = info.extents;
@@ -489,9 +489,9 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     shaderDef.uniforms.clear();
     shaderDef.pushConstants.clear();
     shaderDef.attributeSets.clear();
-    shaderDef.shaders.pushBack({"cubemapCapture.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.vert.spv"
+    shaderDef.shaders.pushBack({"prefilterEnvMap.vert", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\prefilterEnvMap.vert.spv"
         , "main", Bolt::EShaderStage::VERTEX});
-    shaderDef.shaders.pushBack({"cubemapCapture.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\cubemapCapture.frag.spv"
+    shaderDef.shaders.pushBack({"prefilterEnvMap.frag", "C:\\Works\\Project-Quaint\\Data\\Shaders\\TestTriangle\\prefilterEnvMap.frag.spv"
         , "main", Bolt::EShaderStage::FRAGMENT});
 
     attributes.pushBack({"position", 16, Bolt::EFormat::R32G32B32A32_SFLOAT});
@@ -503,17 +503,19 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     
     shaderDef.pushConstants.pushBack({"imgui_pushConstant", Bolt::EShaderStage::FRAGMENT, sizeof(float), 0});
 
-    Bolt::Pipeline* cubemapCapturePipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefileter_envmap"), 0, shaderDef);
+    Bolt::Pipeline* prefilterPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefileter_envmap"), 0, shaderDef);
     //cubemapCapturePipeline->cullFront();
     //cubemapCapturePipeline->enableDepth();
-    cubemapCapturePipeline->construct();
+    prefilterPipeline->construct();
     
-    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(cubemapCapturePipeline);
+    Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(prefilterPipeline);
 
     Bolt::PrefilterEnvMapPainter* prefilterPainter = QUAINT_NEW(context, Bolt::PrefilterEnvMapPainter, context, Quaint::QName("PrefilterEnvMapPipeline"));
     
     for(int i = 0; i < mipLevels; ++i)
     {
+        float roughness = (float) i / mipLevels;
+        prefilterPainter->setRoughness(roughness);
         prefilterPainter->setCubeMapLayerAnMip(0, i);
         prefilterPainter->lookAt({1, 0, 0}, {0, 1, 0}); // render right
         Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 0, i);
@@ -534,7 +536,7 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
         Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->renderSceneImmediate("scene_prefileter_envmap", prefilterPainter, 5, i);
     }
         
-    QUAINT_DELETE(context, cubemapCapturePipeline);
+    QUAINT_DELETE(context, prefilterPipeline);
     QUAINT_DELETE(context, prefilterPainter);
 }
 
@@ -690,6 +692,7 @@ int main()
     //TODO: There should be an explicit transition texture layout transition step
     EquirectangularToCubemap(context);
     GenerateIrradianceMap(context);
+    PrefilterEnvironmentMap(context);
 
     Bolt::RenderInfo info;
     //info.extents = Quaint::QVec2(~0, ~0);

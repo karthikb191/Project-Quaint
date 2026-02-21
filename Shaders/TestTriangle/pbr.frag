@@ -217,7 +217,7 @@ void main()
 vec3 FresnelSchlick(vec3 f0, vec3 h, vec3 v)
 {
     float angle = max(dot(h, v), 0);
-    return f0 + (1 - f0) * pow(1 - angle, 5);
+    return f0 + (1 - f0) * pow(clamp(1 - angle, 0.0f, 1.0f), 5);
 }
 
 vec3 CalculateFresnel(vec3 h, vec3 v, vec3 albedo, float metallic)

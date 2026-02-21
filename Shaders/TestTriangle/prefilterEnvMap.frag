@@ -78,13 +78,41 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 
 vec3 prefilterEnvMap(vec3 direction)
 {
-    const uint SAMPLE_COUNT = 4096u;
+    vec3 N = normalize(direction);    
+    vec3 R = N;
+    vec3 V = R;
+
+    float roughness = pc.roughness;
+    float totalWeight = 0.0;
+    vec3 prefilteredColor = vec3(0.0);
+    const uint SAMPLE_COUNT = 1024u;
     for(uint i = 0u; i < SAMPLE_COUNT; ++i)
     {
-        vec2 Xi = Hammersley(i, SAMPLE_COUNT);   
-    }
+        vec2 Xi = Hammersley(i, SAMPLE_COUNT);
+        vec3 H  = ImportanceSampleGGX(Xi, N, roughness);
+        vec3 L  = normalize(2.0 * dot(V, H) * H - V);
 
-    return vec3(1.0f);
+
+        // Here, we effectively calculate the expected value(mean) of the SAMPLE_COUNT, given the random variable L
+        // E[X] = (summ i = 1 to SAMPLE_COUNT) x(i) * p(i)
+        // x(i) is the sample representing texture fetch for vector L.
+        // p(i) is the probability of fetching the vector L. This is reinterpreted as weight, which is NDotL;
+        // The weight is accumulated and finally subtracted from E[X]. This normalizes the weights
+        // and converts p(i) in each sample into probability.
+        // So, our PDF here is basically NDotL. Well, not exactly right as PDF should be a function
+        // What we are doing here is adding weight contribution to the sample result and
+        // finally diving the total weight we accumulated, so that "weights" transforms to a value that represents
+        // probability of sample i.
+
+        float NdotL = max(dot(N, L), 0.0);
+        if(NdotL > 0.0)
+        {
+            prefilteredColor += texture(envMap, L).rgb * NdotL;
+            totalWeight      += NdotL;
+        }
+    }
+    prefilteredColor = prefilteredColor / totalWeight;
+    return prefilteredColor;
 }
 
 void main()

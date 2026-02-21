@@ -173,6 +173,12 @@ namespace Bolt
             {
                 m_createInfo.imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
             }
+
+            if(m_createInfo.imageInfo.mipLevels > 1)
+            {
+                m_createInfo.imageViewInfo.subresourceRange.baseMipLevel = 0;
+                m_createInfo.imageViewInfo.subresourceRange.levelCount = m_createInfo.imageInfo.mipLevels;
+            }
         }
 
         //If it's a swapchain image

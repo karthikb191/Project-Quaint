@@ -21,6 +21,7 @@ namespace Bolt{ namespace vulkan{
         void destroy();
 
         VkFramebuffer getHandle(uint32_t layer = 0, uint8_t mip = 0);
+        VkExtent2D getExtents(uint8_t mip = 0);
     private:
         Quaint::IMemoryContext*             m_context;
         VkFramebufferCreateInfo             m_info = {};
@@ -28,6 +29,7 @@ namespace Bolt{ namespace vulkan{
         bool                                m_dependsOnSwapchain = false;
         uint32_t                            m_renderTargetMaxLayers = 1;
         uint32_t                            m_renderTargetMaxMips = 1;
+        VkExtent2D                          m_maxRenderExtents;
     };
 
 } }

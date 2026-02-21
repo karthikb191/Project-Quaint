@@ -208,10 +208,15 @@ namespace Bolt {
         {
             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         }
-        else
+        else if(info.loadImage)
         {
             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         }
+        else
+        {
+            attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        }
+        
         attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -730,7 +735,7 @@ namespace Bolt {
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpInfo.framebuffer = m_framebuffer->getHandle(renderLayer, renderMip);
         rpInfo.renderPass = m_renderpass;
-        rpInfo.renderArea.extent = m_renderExtent;
+        rpInfo.renderArea.extent = m_framebuffer->getExtents(renderMip);
         rpInfo.renderArea.offset = m_renderOffset;
         
         Quaint::QArray<VkClearValue> clearValues(m_context);
@@ -766,8 +771,16 @@ namespace Bolt {
             }
         }
 
-        rpInfo.clearValueCount = clearValues.getSize();
-        rpInfo.pClearValues = clearValues.getBuffer();
+        if(renderMip == 0)
+        {
+            rpInfo.clearValueCount = clearValues.getSize();
+            rpInfo.pClearValues = clearValues.getBuffer();
+        }
+        else
+        {
+            rpInfo.clearValueCount = 0;
+            rpInfo.pClearValues = nullptr;
+        }
         rpInfo.pNext = nullptr;
 
         vkCmdBeginRenderPass(m_sceneParams.commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
