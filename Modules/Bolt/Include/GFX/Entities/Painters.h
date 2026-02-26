@@ -189,6 +189,7 @@ namespace Bolt
         uint8_t m_cubemapLayer = 0;
         uint8_t m_cubemapMip = 0;
         float m_roughness = 0;
+        VkViewport m_viewportCache;
     };
 
     class IrradiancePainter : public Painter

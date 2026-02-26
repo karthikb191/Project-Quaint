@@ -832,7 +832,7 @@ namespace Bolt
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
 
         m_envMap = Image2d::LoadHDRFromFile(context
-                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\ferndale_studio_12_1k.hdr"
+                                        , "C:\\Works\\Project-Quaint\\Data\\Textures\\Environment\\ferndale_studio_06_1k.hdr"
                                         , "environmentMap"
                                         , EFormat::R32G32B32A32_SFLOAT);
         m_envMap->construct();
@@ -1259,6 +1259,16 @@ PrefilterEnvMapPainter::PrefilterEnvMapPainter(Quaint::IMemoryContext* context, 
         VkCommandBuffer cmdBuffer = vulkanScene->getSceneParams().commandBuffer;
         
         VulkanGraphicsPipeline *pipeline = m_pipeline->GetPipelineImplAs<VulkanGraphicsPipeline>();
+        
+        VkExtent2D extents = vulkanScene->getFrameBuffer()->getExtents(m_cubemapMip);
+
+        m_viewportCache.x = 0;
+        m_viewportCache.y = 0;
+        m_viewportCache.width = extents.width;
+        m_viewportCache.height = extents.height;
+        m_viewportCache.minDepth = 0;
+        m_viewportCache.maxDepth = 1;
+        vkCmdSetViewport(cmdBuffer, 0, 1, &m_viewportCache);
         
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getPipelineLayout(), 0, 1, &m_set, 0, nullptr);
         

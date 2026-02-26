@@ -506,6 +506,7 @@ void PrefilterEnvironmentMap(Quaint::IMemoryContext* context)
     Bolt::Pipeline* prefilterPipeline = QUAINT_NEW(context, Bolt::Pipeline, context, Quaint::QName("PrefilterEnvMapPipeline"), Quaint::QName("scene_prefilter_envmap"), 0, shaderDef);
     //cubemapCapturePipeline->cullFront();
     //cubemapCapturePipeline->enableDepth();
+    prefilterPipeline->addDynamicStage("viewport");
     prefilterPipeline->construct();
     
     Bolt::RenderModule::get().getBoltRenderer()->GetRenderer()->addPipeline(prefilterPipeline);
