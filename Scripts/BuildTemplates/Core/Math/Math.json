@@ -1,0 +1,30 @@
+{
+    "Name" : "Math",
+    "Path" : "Modules/Core/Math",
+    "Type" : "BUILD_STATIC",
+    "PreProcessorDefines":["INTRINSICS_SUPPORTED"],
+    "CompileOptions":["/arch:SSE2"],
+    "SrcPaths":[
+        "Source"
+    ],
+    "HeaderPaths":[
+        "Include"
+    ],
+    "Dependencies":[
+        {
+            "Name" : "Types",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Types.json"
+        },
+        {
+            "Name" : "Logger",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Logger/Logger.json"
+        },
+        {
+            "Name" : "Memory",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.json"
+        }
+    ]
+}

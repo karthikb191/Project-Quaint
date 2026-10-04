@@ -1,0 +1,69 @@
+{
+    "Name": "Bolt",
+    "Path": "Modules/Bolt",
+    "Type" : "EXECUTABLE",
+    "SrcPaths" : [
+        "Source"
+    ],
+    "HeaderPaths" :[
+        "Include"
+    ],
+    
+    "Overrides":{
+        "WIN32":{
+            "PreProcessorDefines" : ["VK_USE_PLATFORM_WIN32_KHR"]
+        }
+    },
+
+    "Dependencies":[
+    {
+        "Name" : "Vulkan-1.3.280.0",
+        "Type" : "STATIC",
+        "Path" : "",
+        "LibName" : "vulkan-1",
+        "HeaderPaths" : [
+            "Include"
+        ],
+
+        "Overrides":{
+            "WIN32":{
+                "Path" : "External/Libs/Vulkan-1.3.280.0",
+                "LibPaths": ["Lib32"]
+            },
+            "WIN64":{
+                "Path" : "External/Libs/Vulkan-1.3.280.0",
+                "LibPaths": ["Lib"]
+            }
+        }
+    },
+    {
+        "Name" : "stb",
+        "Type" : "STATIC",
+        "Path" : "External/Libs/stb",
+        "HeaderPaths" : [
+            "./"
+        ]
+    },
+    {
+        "Name" : "imgui",
+        "Type" : "BUILD_STATIC",
+        "Path" : "External/Libs/imgui-1.92.3",
+        "HeaderPaths" : [
+            "./"
+        ],
+        "SrcPaths" : [
+            "./"
+        ],
+        "SrcExcludePaths" : [
+            "backends/*",
+            "docs/*",
+            "examples/*",
+            "misc/*"
+        ]
+    },
+    {
+        "Name" : "Core",
+        "Type" : "MODULE",
+        "Path" : "Scripts/BuildTemplates/Core/Core.json"
+    }]
+}

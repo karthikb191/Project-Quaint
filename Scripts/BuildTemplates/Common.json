@@ -1,0 +1,19 @@
+{
+    "Overrides" : 
+    {
+        "DEBUG_BUILD" : 
+        {
+            "CMAKE_BUILD_TYPE" : "Debug",
+            "PreProcessorDefines" : [
+                "DEBUG_BUILD"
+            ]
+        },
+        "WIN32":
+        {
+            "PreProcessorDefines" : [
+                "QUAINT_PLATFORM_WIN32"
+            ]
+        }
+    }
+}
+

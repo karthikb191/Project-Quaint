@@ -1,6 +1,7 @@
 {
     "cmake.configureSettings": { 
-        "WORKSPACE_ROOT": "${workspaceFolder}\\..\\..\\"
+        "WORKSPACE_ROOT": "${workspaceFolder}\\..\\..\\",
+        "CMAKE_POLICY_VERSION_MINIMUM":3.5
       },
     "cmake.additionalKits": ["${workspaceFolder}\\..\\..\\cmake-kits.json"],
     "cmake.ignoreKitEnv": false,

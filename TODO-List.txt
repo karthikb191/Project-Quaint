@@ -1,0 +1,25 @@
+Codebase:
+-Refactor memory allocation logic. Currently there's a single static RB-tree managing the allocations.
+Make the RB allocation specific
+- Find way to pass custom memory context around. (Get suggestions on decent ways to approach this)
+
+
+
+Data Structures:
+- Add allocators
+- Fallbacks to STL data structures
+
+
+
+Math:
+- Add more matrix functions
+- (Get suggestions from Alan on how to improve this)
+- 
+
+
+BOLT:
+- Get suggestions
+
+
+Build System:
+- Write an XML reader

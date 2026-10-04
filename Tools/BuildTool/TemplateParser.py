@@ -311,7 +311,7 @@ def ParseBlock(Param, Index) -> dict:
     return ParamDictionary
         
 
-def ReadTemplateFile(TemplateFilePath):
+def ReadTemplateFile(TemplateFilePath) -> dict | None:
     if not os.path.isfile(TemplateFilePath):
         print("Encountered something that's not a file when trying to read template file")
         return None

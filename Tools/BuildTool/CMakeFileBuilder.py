@@ -37,11 +37,11 @@ class CMakeBuilder:
                     f"set(CMAKE_LIBRARY_OUTPUT_DIRECTORY {BuildDir})\n"\
                     f"set(CMAKE_RUNTIME_OUTPUT_DIRECTORY {BuildDir})\n\n")
         
-        if("CMakeDefines" in self._BuildSettings.CommonSettings):
+        if(self._BuildSettings.CommonSettings is not None and "CMakeDefines" in self._BuildSettings.CommonSettings):
             self.AddCMakeDefinitions(fd, self._BuildSettings.CommonSettings["CMakeDefines"])
-        if("CompileOptions" in self._BuildSettings.CommonSettings):
+        if(self._BuildSettings.CommonSettings is not None and "CompileOptions" in self._BuildSettings.CommonSettings):
             self.AddCompileFlags(fd, self._BuildSettings.CommonSettings["CompileOptions"])
-        if("PreProcessorDefines" in self._BuildSettings.CommonSettings):
+        if(self._BuildSettings.CommonSettings is not None and "PreProcessorDefines" in self._BuildSettings.CommonSettings):
             self.AddCompileDefinitions(fd, self._BuildSettings.CommonSettings["PreProcessorDefines"])
         self.AddNewLines(fd, 1)
 
@@ -199,25 +199,25 @@ class CMakeBuilder:
         pass
 
     #TODO: Deprecate this
-    def AddSubModuleIncludes(self, fd : TextIOWrapper, module : ModuleObject) -> None:
-        for depModule in module.SubModules:
-            if depModule.Params.Name in self._IncludeList:
-                continue
-            if(depModule.Params.Name == self._RootModule.Params.Name):
-                continue
+    # def AddSubModuleIncludes(self, fd : TextIOWrapper, module : ModuleObject) -> None:
+    #     for depModule in module.SubModules:
+    #         if depModule.Params.Name in self._IncludeList:
+    #             continue
+    #         if(depModule.Params.Name == self._RootModule.Params.Name):
+    #             continue
 
-            depModule.Params.IntermediatePath = os.path.join(depModule.Params.IntermediatePath, module.Params.Name)
-            if (depModule.Type == ModuleType.BUILD_STATIC) or (depModule.Type == ModuleType.BUILD_DYNAMIC) or (depModule.Type == ModuleType.BUILD_INTERFACE):
-                self._IncludeList.append(depModule.Params.Name)
-                dirPath = os.path.join(self._BuildSettings.IntermediateDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
-                fileName = os.path.join(dirPath, "CMakeLists.txt")
+    #         depModule.Params.IntermediatePath = os.path.join(depModule.Params.IntermediatePath, module.Params.Name)
+    #         if (depModule.Type == ModuleType.BUILD_STATIC) or (depModule.Type == ModuleType.BUILD_DYNAMIC) or (depModule.Type == ModuleType.BUILD_INTERFACE):
+    #             self._IncludeList.append(depModule.Params.Name)
+    #             dirPath = os.path.join(self._BuildSettings.IntermediateDirectory, depModule.Params.IntermediatePath, depModule.Params.Name)
+    #             fileName = os.path.join(dirPath, "CMakeLists.txt")
 
-                fileName = fileName.replace('\\', '/')
-                fd.write(f"include({fileName})")
-                self.AddNewLines(fd, 1)
+    #             fileName = fileName.replace('\\', '/')
+    #             fd.write(f"include({fileName})")
+    #             self.AddNewLines(fd, 1)
 
-        self.AddNewLines(fd, 2)
-        pass
+    #     self.AddNewLines(fd, 2)
+    #     pass
     
     def AddDependentCMakeIncludes(self, fd : TextIOWrapper, dependencies : list[ModuleObject]) -> None:
         for depModule in dependencies:
@@ -259,10 +259,7 @@ class CMakeBuilder:
             BinPath = os.path.join(BinPath, "${CMAKE_BUILD_TYPE}/" + depModule.Params.Name + extension)
             BinPath = BinPath.replace('\\', '/')
             
-            if parentModule.Type == ModuleType.BUILD_INTERFACE:
-                fd.write(f"target_link_libraries(${{PROJECT_NAME}} INTERFACE {BinPath})")
-            else:
-                fd.write(f"target_link_libraries(${{PROJECT_NAME}} {depModule.Params.Name})")
+            fd.write(f"target_link_libraries(${{PROJECT_NAME}} PUBLIC {depModule.Params.Name})")
             
             self.AddNewLines(fd, 2)
         
@@ -280,7 +277,7 @@ class CMakeBuilder:
                 libFullPath = libpath + self._BuildSettings.StaticLibExtension
                 libFullPath = libFullPath.replace('\\', '/')
                 
-                fd.write(f"target_link_libraries(${{PROJECT_NAME}} {libFullPath})\n")
+                fd.write(f"target_link_libraries(${{PROJECT_NAME}} PUBLIC {libFullPath})\n")
 
             self.AddNewLines(fd, 2)
 
@@ -342,17 +339,17 @@ class CMakeBuilder:
             self.CollectHeaderDirs(fd, module)
 
         #Add any Submodule include. Submodules don't define "project". Their sources target last defined project
-        self.AddDependentCMakeIncludes(fd, module.SubModules)
+        # self.AddDependentCMakeIncludes(fd, module.SubModules)
 
         #TODO: Deprecate this
         #Include all submodules/dependency headers if they are not already included
         #self.AddSubModuleIncludes(fd, module)
 
         #Generate subModule Make files before adding dependencies
-        for depModule in module.SubModules:
-            assert(depModule.Type != ModuleType.EXECUTABLE), "SubModule cannot be an executable. Check your structure!"
-            if(depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC) or (depModule.Type == ModuleType.BUILD_INTERFACE):
-                self._Build(depModule, True)
+        # for depModule in module.SubModules:
+        #     assert(depModule.Type != ModuleType.EXECUTABLE), "SubModule cannot be an executable. Check your structure!"
+        #     if(depModule.Type == ModuleType.BUILD_STATIC or depModule.Type == ModuleType.BUILD_DYNAMIC) or (depModule.Type == ModuleType.BUILD_INTERFACE):
+        #         self._Build(depModule, True)
 
         #Dependencies are Modules/External Libs that are explictly specified to be built. Need to be addressed
         #!TODO: This needs to be tested

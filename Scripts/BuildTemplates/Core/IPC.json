@@ -1,0 +1,29 @@
+{
+    "Name" : "IPC",
+    "Path" : "Modules/Core/IPC",
+    "Type" : "BUILD_STATIC",
+
+    "SrcPaths":[
+        "Source"
+    ],
+    "HeaderPaths":[
+        "Include"
+    ],
+    "Dependencies":[
+        {
+            "Name" : "Types",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Types.json"
+        },
+        {
+            "Name" : "Logger",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Logger/Logger.json"
+        },
+        {
+            "Name" : "Memory",
+            "Type" : "MODULE",
+            "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.json"
+        }
+    ]
+}
