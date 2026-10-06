@@ -60,6 +60,8 @@ class TargetView(QtWidgets.QWidget):
 
         self.TargetTreeWidget.itemExpanded.connect(self.OnTargetItemExpanded)
 
+        self.TargetTreeWidget.itemClicked.connect(self.OnTargetSelected)
+
         self.TargetListLayout.addWidget(self.TargetTreeWidget)
 
         self.TargetListWidget.setLayout(self.TargetListLayout)
@@ -100,6 +102,8 @@ class TargetView(QtWidgets.QWidget):
 
         self.TargetTreeWidget.expandItem(item)
 
+    def OnTargetSelected(self, item:QtWidgets.QTreeWidgetItem):
+        print(f"Target Selected {item.text(0)}")
 
     def SetupView():
         pass
