@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "args": ["-c", "debug", "-p", "windows", "--path"],
+            "args": ["-c", "debug", "-p", "windows", "--path", "test"],
             "justMyCode": true
         }
     ]

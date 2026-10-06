@@ -1,5 +1,5 @@
 import sys
-
+from .TargetView import TargetView
 from PySide6 import QtCore, QtWidgets, QtGui
 
 class BuildToolGUI:
@@ -24,19 +24,29 @@ class BuildToolGUI:
         self.ToolWindow.show()
         pass
 
-class BuildToolWindow(QtWidgets.QWidget):
+class BuildToolWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.ClickCount = 0
         self.TestText = QtWidgets.QLabel("Clicked: 0", alignment=QtCore.Qt.AlignmentFlag.AlignCenter);
         self.TestButton = QtWidgets.QPushButton("TestButton")
 
-        #Vertial root layout 
-        self.RootLayout = QtWidgets.QVBoxLayout(self);
-        self.RootLayout.addWidget(self.TestButton);
-        self.RootLayout.addWidget(self.TestText);
+        self.TargetView = TargetView()
 
-        self.TestButton.clicked.connect(self.OnTestButtonClick)
+        self.setCentralWidget(self.TargetView)
+        
+        DockWidget = QtWidgets.QDockWidget("Dock Widget", self)
+        DockWidget.setAllowedAreas(QtCore.Qt.DockWidgetArea.LeftDockWidgetArea)
+        DockWidget.setWidget(self.TargetView.TargetListWidget)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea.LeftDockWidgetArea, DockWidget);
+        
+
+        #Vertial root layout 
+        # self.RootLayout = QtWidgets.QVBoxLayout(self);
+        # self.RootLayout.addWidget(self.TestButton);
+        # self.RootLayout.addWidget(self.TestText);
+
+        # self.TestButton.clicked.connect(self.OnTestButtonClick)
 
     def OnTestButtonClick(self):
         self.ClickCount += 1
