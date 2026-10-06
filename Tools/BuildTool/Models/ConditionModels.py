@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from .Models import TargetSettingsSchema
+from .Models import TargetSettingsSchema, PrebuiltTargetSettingsSchema
 
 #TODO: These should be validated. Claude generated project used Optional type here
 class ConditionSchema(BaseModel):
@@ -11,3 +11,5 @@ class ConditionSchema(BaseModel):
 class Variant(TargetSettingsSchema):
     condition : ConditionSchema = Field(default_factory=ConditionSchema)
 
+class PrebuiltVariant(PrebuiltTargetSettingsSchema):
+    condition : ConditionSchema = Field(default_factory=ConditionSchema)    

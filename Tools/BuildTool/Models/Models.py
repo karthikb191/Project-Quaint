@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from .ConditionModels import Variant
+from .ConditionModels import Variant, PrebuiltVariant
 
 '''
 This is my notes on how Pydantic works behind the scenes.
@@ -22,6 +22,11 @@ class TargetSettingsSchema():
     CompilerFlags : list[str] = Field(default=[])
     PreprocessorDefines : list[str] = Field(default=[])
 
+class PrebuiltTargetSettingsSchema():
+    HeaderPaths : list[str] = Field(default=[])
+    ExcludePaths : list[str] = Field(default=[])
+    PreprocessorDefines : list[str] = Field(default=[])
+
 '''
     Idea is that the targets should represent CMake build targets
     Each target can specify any overrides based on the conditions in variants
@@ -29,15 +34,6 @@ class TargetSettingsSchema():
 class TargetSchema(BaseTargetSchema, TargetSettingsSchema):
     Variants : list[Variant] | None = Field(default=None)
     pass
-
-class StaticLibSchema(TargetSchema):
-    FilePath : str #Relative to the path variable
-
-class DynamicLibSchema(TargetSchema):
-    SourcePaths = None
-    LibFilePath : str #Relative to the path variable
-    DllFilePath : str #Relative to the path variable
-    CopyDllToBuildPath : bool = False
 
 class HeaderLibSchema(TargetSchema):
     HeaderPaths : list[str] = Field(default=[])
@@ -47,3 +43,15 @@ class HeaderLibSchema(TargetSchema):
 
 class ExternalTargetSchema(TargetSchema):
     pass
+
+class BasePrebuiltTargetSchema(BaseTargetSchema, PrebuiltTargetSettingsSchema):
+    Variants : list[PrebuiltVariant] | None = Field(default=None)
+
+class StaticLibSchema(BasePrebuiltTargetSchema):
+    FilePath : str #Relative to the path variable
+
+class DynamicLibSchema(BasePrebuiltTargetSchema):
+    SourcePaths = None
+    LibFilePath : str #Relative to the path variable
+    DllFilePath : str #Relative to the path variable
+    CopyDllToBuildPath : bool = False

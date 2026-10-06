@@ -2,12 +2,15 @@ import sys
 import re
 import os
 import ast
+import argparse
 #import TemplateParser as Parser
 from typing import Any
 import JsonTemplateParser as Parser
 from BuildParams import BuildSettings
 from BuildParams import ModuleObject
 from BuildParams import ModuleType
+from Configs.Args import Args
+from GUI.App import BuildTool
 import CMakeFileBuilder
 
 
@@ -101,7 +104,47 @@ def ParseTemplate(templatePath : str, ModuleRef : ModuleObject):
     dirPath = os.path.dirname(templatePath)
     return
 
+#TODO: Convert this to module and use relative imports
+def Init():
+    res = GatherArguments()
+    if(res == False):
+        print("Arguments gathering failed", file=sys.stderr)
+        return
+    
+    BuildTool.Run()
+    sys.exit(BuildTool.Application.exec())
+
+def GatherArguments() -> (bool):
+    
+    parser = argparse.ArgumentParser(
+        prog="CMake File Generator Tool",
+        description="Generates CMake files based on the .json build template files"
+    )
+
+    parser.add_argument("-c", "--config", required=True,
+                        help="Choose configuration to generate cmake files for. Choices[debug, release]")
+    parser.add_argument("-p", "--platform", required=True,
+                        help="Provide platform to generate cmake files for. Choices[windows]")
+    parser.add_argument("--path" , required=True,
+                        help="Path to the Project file .json template")
+    try:
+        args = parser.parse_args()
+        print(f"Args Entered: {args}")
+        Args.Init(platform=args.platform, config=args.config, projectFilePath=args.path)
+    except argparse.ArgumentError:
+        print(f"Error parsing arguments: {argparse.ArgumentError.message}")
+        return False
+
+    if(not Args.Initialized):
+        return False
+    
+    return True
+
 if __name__ == "__main__":
+    Init();
+    pass
+
+def LegacyInit():
     InitBuildSettings()
     ParseCommonTemplate()
 
