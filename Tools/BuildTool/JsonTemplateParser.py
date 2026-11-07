@@ -47,6 +47,7 @@ def EvaluateData(data : dict | list):
             EvaluateData(val);
 
 def GatherOverrides(blockDict: dict):
+    #There should be a better way to gather overrides. Handle it later
     if(blockDict.get("Overrides") is None):
         return
     

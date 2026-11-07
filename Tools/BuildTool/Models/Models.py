@@ -21,6 +21,7 @@ class TargetSettingsSchema():
     ExcludePaths : list[str] = Field(default=[])
     CompilerFlags : list[str] = Field(default=[])
     PreprocessorDefines : list[str] = Field(default=[])
+    LinkerOptions : list[str] = Field(default=[])
 
 class PrebuiltTargetSettingsSchema():
     HeaderPaths : list[str] = Field(default=[])
