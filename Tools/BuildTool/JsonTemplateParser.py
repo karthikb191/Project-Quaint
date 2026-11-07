@@ -7,7 +7,7 @@ OverrideFlags = {
     "DEBUG_BUILD" : 1
 }
 
-def ReadTemplateFile(TemplateFilePath) -> dict[str, Any] | None:
+def ReadTemplateFile(TemplateFilePath) -> dict[str, Any]:
     parsedFile : dict = {}
 
     with open(TemplateFilePath, 'r', encoding='utf-8') as file:

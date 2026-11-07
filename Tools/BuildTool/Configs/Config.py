@@ -14,3 +14,4 @@ BUILD_CONFIG = {
     "debug" : "debug",
     "release" : "release"
 }
+

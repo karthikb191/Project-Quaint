@@ -11,6 +11,7 @@ from BuildParams import ModuleObject
 from BuildParams import ModuleType
 from Configs.Args import Args
 from GUI.App import BuildTool
+from CMake.CMakeBuilder import CMakeBuilder 
 import CMakeFileBuilder
 
 
