@@ -1,4 +1,4 @@
-import CMakePrintCommands as cmds
+import CMake.CMakePrintCommands as cmds
 
 class CMakeBuilder:
     pass

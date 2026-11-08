@@ -1,5 +1,5 @@
 from io import TextIOWrapper
-from ..Models.Models import TargetSettingsSchema
+from Models.Models import TargetSettingsSchema
 
 def PrintNewLine(fs : TextIOWrapper):
     fs.write("\n")

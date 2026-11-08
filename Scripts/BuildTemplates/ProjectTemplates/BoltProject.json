@@ -1,0 +1,7 @@
+{
+    "Name" : "BoltProject",
+    "Version" : "1.0.0",
+    "TestRun" : "test",
+    "TargetPath" : "Scripts/BuildTemplates/Projects/Bolt/Bolt.json"
+}
+

@@ -13,6 +13,7 @@ from Configs.Args import Args
 from GUI.App import BuildTool
 from CMake.CMakeBuilder import CMakeBuilder 
 import CMakeFileBuilder
+import CMakeBuildTest
 
 
 #TODO: Read this from a settings file
@@ -106,7 +107,7 @@ def ParseTemplate(templatePath : str, ModuleRef : ModuleObject):
     return
 
 #TODO: Convert this to module and use relative imports
-def Init():
+def InitBuildTool():
     res = GatherArguments()
     if(res == False):
         print("Arguments gathering failed", file=sys.stderr)
@@ -114,6 +115,10 @@ def Init():
     
     BuildTool.Run()
     sys.exit(BuildTool.Application.exec())
+
+def Init():
+    CMakeBuildTest.RunBuild()
+
 
 def GatherArguments() -> (bool):
     
