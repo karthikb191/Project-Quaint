@@ -13,4 +13,3 @@ class Args:
         Args.Config = config
         Args.ProjectFilePath = projectFilePath
         Args.Initialized = True
-

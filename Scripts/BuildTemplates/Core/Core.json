@@ -2,6 +2,32 @@
     "Name" : "Core",
     "Path" : "Modules/Core",
     "Type" : "BUILD_STATIC",
+    "BuildType" : "STATIC",
+
+    "DependencyList":{
+        "SubTargets":[
+        {
+            "Name" : "Logger",
+            "Path" : "Scripts/BuildTemplates/Core/Logger/Logger.json"
+        },
+        {
+            "Name" : "Math",
+            "Path" : "Scripts/BuildTemplates/Core/Math/Math.json"
+        },
+        {
+            "Name" : "Memory",
+            "Path" : "Scripts/BuildTemplates/Core/Memory/Memory.json"
+        },
+        {
+            "Name" : "IPC",
+            "Path" : "Scripts/BuildTemplates/Core/IPC.json"
+        },
+        {
+            "Name" : "Types",
+            "Path" : "Scripts/BuildTemplates/Core/Types.json"
+        }
+    ]
+    },
 
     "Dependencies":[
         {

@@ -1,10 +1,19 @@
 from __future__ import annotations
+from enum import Enum
 from Models import Models
+
+class ETargetBuildType(Enum):
+    EXECUTABLE = 0
+    STATIC = 1
+    DYNAMIC = 2
 
 class BuildTarget:
     def __init__(self) -> None:
         self.Schema = Models.TargetSchema()
+        self.Sources = []
+        self.BuildType = ETargetBuildType.STATIC
         self.Targets = {}
+        self.SubTargets = {}
         pass
 
     @property
@@ -26,6 +35,11 @@ class BuildTarget:
     Schema : Models.TargetSchema
     Targets : dict [str, BuildTarget]
     
+    # Targets of sub-targets are ignored
+    SubTargets : dict [str, BuildTarget]
+    Sources : list[str]
+    BuildType : ETargetBuildType
+    
 class BuildProject:
     def __init__(self) -> None:
         self.Schema = Models.ProjectSchema()
@@ -37,3 +51,4 @@ class BuildProject:
 
     Schema : Models.ProjectSchema
     Target : BuildTarget
+    AvailableTargets : dict[str, BuildTarget] = {}

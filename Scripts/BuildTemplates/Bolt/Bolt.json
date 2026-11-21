@@ -2,6 +2,8 @@
     "Name": "Bolt",
     "Path": "Modules/Bolt",
     "Type" : "EXECUTABLE",
+    "BuildType" : "EXECUTABLE",
+
     "SrcPaths" : [
         "Source"
     ],

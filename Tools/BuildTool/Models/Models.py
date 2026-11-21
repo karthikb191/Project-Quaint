@@ -16,6 +16,7 @@ class TargetDependencySchema(BaseTargetSchema):
     pass
 
 class TargetSettingsSchema(BaseModel):
+    BuildType : str = Field(default="STATIC")
     SourcePaths : list[str] | None = Field(default=[])
     HeaderPaths : list[str] = Field(default=[])
     ExcludePaths : list[str] = Field(default=[])
@@ -31,6 +32,7 @@ class PrebuiltTargetSettingsSchema(BaseModel):
 
 class DependencySchema(BaseModel):
     Targets : list[TargetDependencySchema] | None = Field(default=None)
+    SubTargets : list[TargetDependencySchema] | None = Field(default=None)
     ExternalTargets : list[TargetSchema] | None = Field(default=None)
     StaticLibs : list[StaticLibSchema] | None = Field(default=None)
     DynamicLibs : list[DynamicLibSchema] | None = Field(default=None)

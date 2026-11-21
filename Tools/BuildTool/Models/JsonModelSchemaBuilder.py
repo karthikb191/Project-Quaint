@@ -4,13 +4,12 @@ from Models import Models, ProjectTypes
 import JsonTemplateParser as Parser
 import Configs.Config as Config
 
-AvailableTargets : dict[str, ProjectTypes.BuildTarget] = {}
 TargetsToEvaluate : list[Models.TargetDependencySchema] = []
+AvailableTargets : dict[str, ProjectTypes.BuildTarget] = {}
 
-
-def BuildProjectSchema(projectJsonPath : str) -> ProjectTypes.BuildProject | None:
+def BuildProjectSchema(projectJsonPath : str) -> ProjectTypes.BuildProject:
     print("-> Reading Project Schema: " + projectJsonPath)
-
+    
     projectFullPath = Config.GetFullPath(projectJsonPath)
     tbl = Parser.ReadTemplateFile(projectFullPath)
 
@@ -24,11 +23,13 @@ def BuildProjectSchema(projectJsonPath : str) -> ProjectTypes.BuildProject | Non
     target = __GatherTarget(schema.TargetPath)
     if target is None:
         print(Fore.RED + f"(!) Failed to parse project. Initial target provided failed to parse")
-        return
+        return project
 
     project.Target = target
+    project.Target.BuildType = ProjectTypes.ETargetBuildType.EXECUTABLE
     __GatherTargetDependencies(target)
     __LinkTargetsDependencies()
+    project.AvailableTargets = AvailableTargets
 
     print("-> Finished Reading Project Schema")
     return project
@@ -47,6 +48,15 @@ def __GatherTarget(targetPath: str) -> ProjectTypes.BuildTarget | None:
 
     target = ProjectTypes.BuildTarget()
     target.Schema = schema
+
+    #Gather sub-targets for this target    
+    if schema.DependencyList.SubTargets is not None:
+        for subTarget in schema.DependencyList.SubTargets:
+            st = __GatherTarget(subTarget.Path)
+            if st is None: continue
+            target.SubTargets[st.Name] = st
+            pass
+    
     print(Fore.GREEN + f"-> Finished Reading Target: {targetPath}")
 
     return target

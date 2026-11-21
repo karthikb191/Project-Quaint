@@ -9,11 +9,11 @@ import JsonTemplateParser as Parser
 from BuildParams import BuildSettings
 from BuildParams import ModuleObject
 from BuildParams import ModuleType
-from Configs.Args import Args
 from GUI.App import BuildTool
-from CMake.CMakeBuilder import CMakeBuilder 
+from CMake.CMakeBuilder import CMakeBuilder
+from Configs.Args import Args 
 import CMakeFileBuilder
-import CMakeBuildTest
+import CMakeBuildRunner
 
 
 #TODO: Read this from a settings file
@@ -117,7 +117,7 @@ def InitBuildTool():
     sys.exit(BuildTool.Application.exec())
 
 def Init():
-    CMakeBuildTest.RunBuild()
+    CMakeBuildRunner.RunBuild()
 
 
 def GatherArguments() -> (bool):
