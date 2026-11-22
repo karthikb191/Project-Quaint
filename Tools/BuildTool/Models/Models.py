@@ -34,6 +34,7 @@ class DependencySchema(BaseModel):
     Targets : list[TargetDependencySchema] | None = Field(default=None)
     SubTargets : list[TargetDependencySchema] | None = Field(default=None)
     ExternalTargets : list[TargetSchema] | None = Field(default=None)
+    ExternalCMakeTargets: list[TargetDependencySchema] | None = Field(default = None)
     StaticLibs : list[StaticLibSchema] | None = Field(default=None)
     DynamicLibs : list[DynamicLibSchema] | None = Field(default=None)
     #TODO: Add Header Only Library dependency

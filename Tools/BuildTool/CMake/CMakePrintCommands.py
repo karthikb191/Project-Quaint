@@ -5,7 +5,7 @@ def PrintNewLine(fs : TextIOWrapper):
     fs.write("\n")
 
 def PrintCMakeMinimum(fs : TextIOWrapper, minVersion: str):
-    fs.write(f"cmake_minimum_required(VERSION {str})")
+    fs.write(f"cmake_minimum_required(VERSION {minVersion})")
     PrintNewLine(fs)
 
 def PrintIncludeGuard(fs : TextIOWrapper, scope : str = "DIRECTORY"):
@@ -16,8 +16,9 @@ def PrintInclude(fs : TextIOWrapper, includeFile: str ):
     fs.write(f"include({includeFile})")
     PrintNewLine(fs)
 
-def PrintSubDirectory(fs : TextIOWrapper, subDirectory: str):
-    fs.write(f"add_subdirectory({subDirectory})")
+def PrintSubDirectory(fs : TextIOWrapper, subDirectory: str, relBinDir : str = ""):
+    subDirStr = f"${{CMAKE_CURRENT_BINARY_DIR/}}{relBinDir}" if len(relBinDir) > 0 else ""
+    fs.write(f"add_subdirectory({subDirectory} {subDirStr})")
     PrintNewLine(fs)
 
 def PrintCMakeProject(fs : TextIOWrapper, name : str, version : str = "1.0.0"):
@@ -33,8 +34,7 @@ def PrintSetTargetName(fs: TextIOWrapper, targetName: str):
 
 def PrintSources(fs: TextIOWrapper, sourceList : list[str], append : bool = False):
     sourceStr = '\n'.join(sourceList)
-    fs.write(f"set({"APPEND" if append else ""}SOURCES \
-        {sourceStr})")
+    fs.write(f"set({"APPEND " if append else ""}SOURCES {sourceStr})")
     PrintNewLine(fs)
 
 # Defining Target

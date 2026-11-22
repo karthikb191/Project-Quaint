@@ -7,6 +7,9 @@
     "SrcPaths" : [
         "Source"
     ],
+    "SourcePaths" : [
+        "Source"
+    ],
     "HeaderPaths" :[
         "Include"
     ],
@@ -42,6 +45,25 @@
                     "examples/*",
                     "misc/*"
                 ]
+            },
+            {
+                "Name" : "stb",
+                "Type" : "STATIC",
+                "Path" : "External/Libs/stb",
+                "HeaderPaths" : [
+                    "./"
+                ]
+            }
+        ],
+
+        "StaticLibs" : [
+            {
+                "Name" : "Vulkan-1.3.280.0",
+                "Path" : "External/Libs/Vulkan-1.3.280.0",
+                "HeaderPaths" : [
+                    "Include"
+                ],
+                "FilePath": "Lib32/vulkan-1.lib"
             }
         ]
     },

@@ -2,12 +2,21 @@
     "Name" : "Memory",
     "Path" : "Modules/Core/Memory",
     "Type" : "BUILD_STATIC",
+    "BuildType" : "STATIC",
     "SrcPaths":[
+        "Source"
+    ],
+    "SourcePaths":[
         "Source"
     ],
     "HeaderPaths":[
         "Include"
     ],
+    "DependencyList":{
+        "Targets":[
+        ]
+    },
+
     "Dependencies":[
         {
             "Name" : "Types",

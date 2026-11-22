@@ -2,12 +2,21 @@
     "Name" : "Logger",
     "Path" : "Modules/Core/Logger",
     "Type" : "BUILD_STATIC",
+    "BuildType" : "STATIC",
     "SrcPaths":[
+        "Source"
+    ],
+    "SourcePaths":[
         "Source"
     ],
     "HeaderPaths":[
         "Include"
     ],
+    "DependencyList":{
+        "Targets":[
+        ]
+    },
+
     "Dependencies":[
         {
             "Name" : "Types",

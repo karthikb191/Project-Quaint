@@ -2,14 +2,23 @@
     "Name" : "Math",
     "Path" : "Modules/Core/Math",
     "Type" : "BUILD_STATIC",
+    "BuildType" : "STATIC",
     "PreProcessorDefines":["INTRINSICS_SUPPORTED"],
     "CompileOptions":["/arch:SSE2"],
     "SrcPaths":[
         "Source"
     ],
+    "SourcePaths":[
+        "Source"
+    ],
     "HeaderPaths":[
         "Include"
     ],
+    "DependencyList":{
+        "Targets":[
+        ]
+    },
+
     "Dependencies":[
         {
             "Name" : "Types",
