@@ -58,12 +58,10 @@ def PrintIncludeDirectories(fs: TextIOWrapper, includePaths: list[str], scope: s
     dirStr = "\n".join(includePaths)
     fs.write(f"include_directories(${{TARGET_NAME}} {scope} {dirStr})")
     PrintNewLine(fs)
-    PrintNewLine(fs)
     
 def PrintTargetIncludeDirectories(fs: TextIOWrapper, includePaths: list[str], scope: str = "PUBLIC"):
     dirStr = "\n".join(includePaths)
     fs.write(f"target_include_directories(${{TARGET_NAME}} {scope} {dirStr})")
-    PrintNewLine(fs)
     PrintNewLine(fs)
 
 # Compile Options

@@ -1,5 +1,6 @@
 from colorama import Fore
 import os
+import re
 from io import TextIOWrapper
 from pathlib import Path
 import Configs.Config as Config
@@ -46,6 +47,7 @@ class CMakeBuilder:
         pass
 
     def __BuildCMakeTarget(self, target: BuildTarget):
+        #TODO: Check if target is already built.
         #each target forms it's own sub directory with CMakeLists.txt file
 
         #Currently, all "Targets" get their own sub directory when building
@@ -85,9 +87,13 @@ class CMakeBuilder:
         #Target Linking and dependency setup
         #Link Targets being built
         for _, link in target.Targets.items():
+            targetIntrPath = os.path.join(Config.INTERMEDIATES_DIRECTORY, link.Name)
+            cmds.PrintSubDirectory(fs, targetIntrPath)
             cmds.PrintLinkTarget(fs, link.Name)
+            cmds.PrintNewLine(fs)
             #TODO: Add support for link option printing for specific targets
-
+        
+        self.__BuildExternalTargets(fs, target)
         self.__BuildExternalCMakeTargets(fs, target)
         self.__BuildStaticLibraries(fs, target)
         #TODO: Add support for linking static libraries
@@ -95,6 +101,21 @@ class CMakeBuilder:
         #TODO: Add support for linking dynamic libraries
 
         fs.close()
+
+    def __BuildExternalTargets(self, fs: TextIOWrapper, target: BuildTarget):
+        extTargets = target.ExternalTargets
+        if extTargets is None: return
+
+        #Fire off function to build target file
+        for _, extTarget in extTargets.items():
+            intermediatePath = os.path.join(Config.INTERMEDIATES_DIRECTORY, extTarget.Name)
+            filePath = os.path.join(intermediatePath, "CMakeLists.txt") 
+            cmds.PrintSubDirectory(fs, filePath)
+            cmds.PrintLinkTarget(fs, extTarget.Name)
+            self.__BuildCMakeTarget(extTarget)
+        
+        cmds.PrintNewLine(fs)
+
 
     def __BuildStaticLibraries(self, fs: TextIOWrapper, target: BuildTarget):
         staticLibs = target.Schema.DependencyList.StaticLibs
@@ -105,8 +126,8 @@ class CMakeBuilder:
             libFilePath = os.path.join(Config.PROJECT_DIRECTORY, lib.Path, lib.FilePath)
             cmds.PrintTargetIncludeDirectories(fs, headerPaths)
             cmds.PrintLinkTarget(fs, libFilePath)
-
-        pass
+        
+        cmds.PrintNewLine(fs)
 
     def __BuildExternalCMakeTargets(self, fs: TextIOWrapper, target: BuildTarget):
         extCMakeTargets = target.Schema.DependencyList.ExternalCMakeTargets
@@ -118,6 +139,7 @@ class CMakeBuilder:
                 print(Fore.RED, "No CMakeLists.txt file found for external CMake target: " + ext.Name)
             cmds.PrintSubDirectory(fs, cmakeListsPath)
             cmds.PrintLinkTarget(fs, ext.Name)
+        cmds.PrintNewLine(fs)
 
 
     def __BuildCMakeSubTarget(self, parentTarget: BuildTarget, subTarget: BuildTarget):
@@ -154,10 +176,10 @@ class CMakeBuilder:
 #TODO: These functions may be best to be placed in a utils file
 #TODO: Pass parameter that specifies directories already checked against
 def GatherSources(target : BuildTarget) -> list[str]:
-    sources = []
+    sources : list[str] = []
     #TODO: Currently ignores any overrides.
 
-    print(Fore.WHITE, f"(Target): {target.Name}")
+    print(Fore.WHITE, f"(Sourcing): {target.Name}")
     targetDirectory = Path(Config.PROJECT_DIRECTORY).joinpath(target.Schema.Path)
 
     srcPaths = target.Schema.SourcePaths
@@ -173,10 +195,20 @@ def GatherSources(target : BuildTarget) -> list[str]:
         fullPath = targetDirectory.joinpath(path)
         sources.extend(GetSourcesFromPath(fullPath, excludePaths))
 
+    filesToRemove = []
+    mainFilePattern = ".*[Mm]ain.(cpp|cxx|cc)"
+    if target.BuildType != ETargetBuildType.EXECUTABLE:
+        filesToRemove = [path for path in sources if re.search(mainFilePattern, path)]
+        for file in filesToRemove:
+            sources.remove(file)
+
     # SubTarget sources should also be fetched. And, it's the responsibility of the target 
     # TODO: Validate against paths that are already fetched from above!!
-    for _, subTarget in target.SubTargets.items():
-        subTarget.Sources = GatherSources(subTarget)
+    if len(target.SubTargets) > 0:
+        print(Fore.WHITE, "..... Gathering SubTarget sources .....")
+        for _, subTarget in target.SubTargets.items():
+            subTarget.Sources = GatherSources(subTarget)
+        print(Fore.WHITE, "..... Gathering SubTarget sources Completed .....")
 
     return sources
 

@@ -5,6 +5,7 @@ import JsonTemplateParser as Parser
 import Configs.Config as Config
 
 TargetsToEvaluate : list[Models.TargetDependencySchema] = []
+ExternalTargetsToEvaluate : list[Models.TargetSchema] = []
 AvailableTargets : dict[str, ProjectTypes.BuildTarget] = {}
 
 def BuildProjectSchema(projectJsonPath : str) -> ProjectTypes.BuildProject:
@@ -27,6 +28,11 @@ def BuildProjectSchema(projectJsonPath : str) -> ProjectTypes.BuildProject:
 
     project.Target = target
     project.Target.BuildType = ProjectTypes.ETargetBuildType.EXECUTABLE
+    if target.Schema.DependencyList.Targets is not None:
+        TargetsToEvaluate.extend(target.Schema.DependencyList.Targets)
+    if target.Schema.DependencyList.ExternalTargets is not None:
+        ExternalTargetsToEvaluate.extend(target.Schema.DependencyList.ExternalTargets)
+
     __GatherTargetDependencies(target)
     __LinkTargetsDependencies()
     project.AvailableTargets = AvailableTargets
@@ -43,9 +49,19 @@ def __GatherTarget(targetPath: str) -> ProjectTypes.BuildTarget | None:
     if(len(tbl.items()) == 0):
         print(Fore.RED + f"(!) Following target failed to parse: {targetPath}")
         return
-
+    
     schema = Models.TargetSchema(**tbl)
+    target = __GatherFromTargetSchema(schema)
+    if(target is not None):
+        print(Fore.GREEN + f"-> Finished Reading Target: {targetPath}")
+    
+    return target
 
+def __GatherFromTargetSchema(schema: Models.TargetSchema) -> ProjectTypes.BuildTarget | None:
+    if(schema is None): 
+        print(Fore.RED, "Invalid target schema encountered")
+        return
+    
     target = ProjectTypes.BuildTarget()
     target.Schema = schema
 
@@ -56,15 +72,12 @@ def __GatherTarget(targetPath: str) -> ProjectTypes.BuildTarget | None:
             if st is None: continue
             target.SubTargets[st.Name] = st
             pass
-    
-    print(Fore.GREEN + f"-> Finished Reading Target: {targetPath}")
 
     return target
 
 def __GatherTargetDependencies(initialTarget : ProjectTypes.BuildTarget):
     AvailableTargets[initialTarget.Name] = initialTarget
-    targetDependencies = initialTarget.Schema.DependencyList.Targets
-    if targetDependencies is None:
+    if TargetsToEvaluate is None:
         print(Fore.YELLOW + "-> No Additional build targets found on root project.")
         return
     
@@ -76,8 +89,6 @@ def __GatherTargetDependencies(initialTarget : ProjectTypes.BuildTarget):
         If dependency is already in the the Available target list, skip it
         Terminate once there are no dependencies left
     '''
-    
-    TargetsToEvaluate.extend(targetDependencies)
 
     while len(TargetsToEvaluate) > 0:
         targetDependency = TargetsToEvaluate.pop()
@@ -90,8 +101,45 @@ def __GatherTargetDependencies(initialTarget : ProjectTypes.BuildTarget):
         if(target is None):
             continue
 
+        #TODO: Clean this up. Not very optimal
+        schema = target.Schema
+        if schema.DependencyList.Targets is not None:
+            for depTarget in schema.DependencyList.Targets:
+                if depTarget.Name not in AvailableTargets:
+                    TargetsToEvaluate.append(depTarget)
+
+        if schema.DependencyList.ExternalTargets is not None:
+            for extTarget in schema.DependencyList.ExternalTargets:
+                if extTarget.Name not in AvailableTargets:
+                    ExternalTargetsToEvaluate.append(extTarget)
+
         AvailableTargets[target.Name] = target
-    pass
+
+    while len(ExternalTargetsToEvaluate) > 0:
+        targetDependency = ExternalTargetsToEvaluate.pop()
+        
+        # If this target is already processed, skip it
+        if targetDependency.Name in AvailableTargets:
+            continue
+
+        target = __GatherFromTargetSchema(targetDependency)
+        if(target is None):
+            continue
+
+        #TODO: Clean this up. Not very optimal
+        schema = target.Schema
+        if schema.DependencyList.Targets is not None:
+            for depTarget in schema.DependencyList.Targets:
+                if depTarget.Name not in AvailableTargets:
+                    TargetsToEvaluate.append(depTarget)
+
+        if schema.DependencyList.ExternalTargets is not None:
+            for extTarget in schema.DependencyList.ExternalTargets:
+                if extTarget.Name not in AvailableTargets:
+                    ExternalTargetsToEvaluate.append(extTarget)
+
+        AvailableTargets[target.Name] = target
+
 
 def __LinkTargetsDependencies():
 
@@ -104,14 +152,21 @@ def __LinkTargetsDependencies():
     for _, val in AvailableTargets.items():
         target = val
         deps = val.TargetDependencies
-        if deps is None: continue
+        extDeps = val.ExternalTargetDependencies
 
-        for dep in deps:
-            if dep.Name not in AvailableTargets:
-                print(Fore.RED + f"(!) {dep.Name} has not been fetched as a dependency. Will not be added to target {target.Name}")
-                continue
+        if deps is not None:
+            for dep in deps:
+                if dep.Name not in AvailableTargets:
+                    print(Fore.RED + f"(!) {dep.Name} has not been fetched as a dependency. Will not be added to target {target.Name}")
+                    continue
+                target.Targets[dep.Name] = AvailableTargets[dep.Name]
 
-            target.Targets[dep.Name] = AvailableTargets[dep.Name]
+        if extDeps is not None:
+            for dep in extDeps:
+                if dep.Name not in AvailableTargets:
+                    print(Fore.RED + f"(!) {dep.Name} has not been fetched as a dependency. Will not be added to target {target.Name}")
+                    continue
+                target.ExternalTargets[dep.Name] = AvailableTargets[dep.Name]
 
     print(Fore.GREEN + "-> Finished Linking target dependencies")
 

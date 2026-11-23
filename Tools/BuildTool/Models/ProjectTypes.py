@@ -14,6 +14,7 @@ class BuildTarget:
         self.BuildType = ETargetBuildType.STATIC
         self.Targets = {}
         self.SubTargets = {}
+        self.ExternalTargets = {}
         pass
 
     @property
@@ -32,8 +33,13 @@ class BuildTarget:
     def TargetDependencies(self):
         return self.Schema.DependencyList.Targets
 
+    @property
+    def ExternalTargetDependencies(self):
+        return self.Schema.DependencyList.ExternalTargets
+
     Schema : Models.TargetSchema
     Targets : dict [str, BuildTarget]
+    ExternalTargets : dict[str, BuildTarget]
     
     # Targets of sub-targets are ignored
     SubTargets : dict [str, BuildTarget]
