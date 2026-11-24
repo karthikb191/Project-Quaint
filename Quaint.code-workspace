@@ -42,7 +42,8 @@
     //CMake Kits will set compiler information, along with useful PLATFORM DEFINES
     "settings": {
       "cmake.configureSettings": { 
-        "WORKSPACE_ROOT": "${workspaceFolder}"
+        "WORKSPACE_ROOT": "${workspaceFolder}",
+        "CMAKE_POLICY_VERSION_MINIMUM":3.5
       },
       "cmake.additionalKits": ["${workspaceFolder}\\cmake-kits.json"],
       "cmake.ignoreKitEnv": false,
@@ -50,8 +51,8 @@
 
       "cmake.autoSelectActiveFolder": false,
       "cmake.options.statusBarVisibility": "compact",
-      "cmake.sourceDirectory":"${workspaceFolder}\\Build\\Intermediates",
-      "cmake.buildDirectory": "${workspaceFolder}\\Build\\Output",
+      "cmake.sourceDirectory":"${workspaceFolder}\\Build\\V2\\Intermediates",
+      "cmake.buildDirectory": "${workspaceFolder}\\Build\\V2\\Output",
       "files.associations": {
         "system_error": "cpp",
         "xlocale": "cpp",

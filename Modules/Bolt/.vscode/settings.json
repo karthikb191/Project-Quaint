@@ -9,6 +9,6 @@
 
     "cmake.autoSelectActiveFolder": false,
     "cmake.options.statusBarVisibility": "compact",
-    "cmake.sourceDirectory":"${workspaceFolder}\\..\\..\\Build\\Intermediates",
-    "cmake.buildDirectory": "${workspaceFolder}\\..\\..\\Build\\Output",
+    "cmake.sourceDirectory":"${workspaceFolder}\\..\\..\\Build\\V2\\Intermediates",
+    "cmake.buildDirectory": "${workspaceFolder}\\..\\..\\Build\\V2\\Output",
 }

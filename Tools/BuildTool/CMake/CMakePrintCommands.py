@@ -17,7 +17,7 @@ def PrintInclude(fs : TextIOWrapper, includeFile: str ):
     PrintNewLine(fs)
 
 def PrintSubDirectory(fs : TextIOWrapper, subDirectory: str, relBinDir : str = ""):
-    subDirStr = f"${{CMAKE_CURRENT_BINARY_DIR/}}{relBinDir}" if len(relBinDir) > 0 else ""
+    subDirStr = f"${{CMAKE_CURRENT_BINARY_DIR}}/{relBinDir}" if len(relBinDir) > 0 else ""
     fs.write(f"add_subdirectory({subDirectory} {subDirStr})")
     PrintNewLine(fs)
 
@@ -29,26 +29,30 @@ def PrintCMakeProject(fs : TextIOWrapper, name : str, version : str = "1.0.0"):
 
 def PrintSetTargetName(fs: TextIOWrapper, targetName: str):
     fs.write(f"set(TARGET_NAME {targetName})")
+    fs.write(f"set(SOURCES )")
     PrintNewLine(fs)
     PrintNewLine(fs)
 
 def PrintSources(fs: TextIOWrapper, sourceList : list[str], append : bool = False):
     sourceStr = '\n'.join(sourceList)
-    fs.write(f"set({"APPEND " if append else ""}SOURCES {sourceStr})")
+    fs.write(f"list({"APPEND " if append else ""}SOURCES {sourceStr})")
     PrintNewLine(fs)
 
 # Defining Target
 def PrintExecutableTarget(fs: TextIOWrapper):
-    fs.write(f"add_executable(${{TARGET_NAME}} ${{SOURCES}})")
+    fs.write(f"add_executable(${{TARGET_NAME}})")
     PrintNewLine(fs)
 
 def PrintStaticLibraryTarget(fs: TextIOWrapper):
-    fs.write(f"add_library(${{TARGET_NAME}} STATIC ${{SOURCES}})")
+    fs.write(f"add_library(${{TARGET_NAME}} STATIC)")
     PrintNewLine(fs)
 
 def PrintDynamicLibraryTarget(fs: TextIOWrapper):
-    fs.write(f"add_library(${{TARGET_NAME}} DYNAMIC ${{SOURCES}})")
+    fs.write(f"add_library(${{TARGET_NAME}} DYNAMIC)")
     PrintNewLine(fs)
+
+def PrintTargetSources(fs: TextIOWrapper):
+    fs.write(f"target_sources({{TARGET_NAME}} {{SOURCES}})")
 
 def PrintInterfaceTarget(fs: TextIOWrapper):
     fs.write(f"add_library(${{TARGET_NAME}} INTERFACE)")

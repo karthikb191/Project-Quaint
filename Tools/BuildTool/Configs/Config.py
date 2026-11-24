@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import Configs.Args as Args
 
 #TODO: Valid platforms and compilers can be fetched from a settings file
@@ -17,14 +17,14 @@ class CONFIG():
     RELEASE : str = "release"
 
 #TODO: Inject patch from command line arguments
-PROJECT_DIRECTORY = "C:\\Works\\Project-Quaint\\"
-BUILT_TEMPLATES_DIRECTORY_REL = "Scripts\\BuildTemplates\\"
+PROJECT_DIRECTORY = "C:/Works/Project-Quaint/"
+BUILT_TEMPLATES_DIRECTORY_REL = "Scripts/BuildTemplates/"
 BUILD_TEMPLATES_DIRECTORY = PROJECT_DIRECTORY + BUILT_TEMPLATES_DIRECTORY_REL
 
-BUILD_DIRECTORY = os.path.join(PROJECT_DIRECTORY, "Build/V2")
-BINARY_DIRECTORY = os.path.join(BUILD_DIRECTORY, "Bin")
-INTERMEDIATES_DIRECTORY = os.path.join(BUILD_DIRECTORY, "Intermediates")
-OUTPUT_DIRECTORY = os.path.join(BUILD_DIRECTORY, "Output")
+BUILD_DIRECTORY = Path(PROJECT_DIRECTORY, "Build/V2")
+BINARY_DIRECTORY = BUILD_DIRECTORY.joinpath("Bin")
+INTERMEDIATES_DIRECTORY = BUILD_DIRECTORY.joinpath("Intermediates")
+OUTPUT_DIRECTORY = BUILD_DIRECTORY.joinpath("Output")
 
 TEMPLATE_FILE_EXTENSION = ".json"
 SOURCE_EXTENSIONS = [".c", ".cpp", ".cxx", ".c++", ".cc", ".hpp"]
@@ -34,4 +34,4 @@ CMAKE_MINIMUM_VERSION = "3.10"
 Args = Args.Args
 
 def GetFullPath(relPath : str) -> str:
-    return os.path.join(PROJECT_DIRECTORY, relPath)
+    return Path(PROJECT_DIRECTORY, relPath).as_posix()

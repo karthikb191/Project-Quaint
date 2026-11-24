@@ -36,14 +36,14 @@
                 "HeaderPaths" : [
                     "./"
                 ],
-                "SrcPaths" : [
+                "SourcePaths" : [
                     "./"
                 ],
-                "SrcExcludePaths" : [
-                    "backends/*",
-                    "docs/*",
-                    "examples/*",
-                    "misc/*"
+                "ExcludePaths" : [
+                    "backends",
+                    "docs",
+                    "examples",
+                    "misc"
                 ]
             },
             {

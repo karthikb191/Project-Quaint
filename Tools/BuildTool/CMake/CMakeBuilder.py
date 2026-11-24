@@ -1,5 +1,4 @@
 from colorama import Fore
-import os
 import re
 from io import TextIOWrapper
 from pathlib import Path
@@ -30,18 +29,18 @@ class CMakeBuilder:
         pass
 
     def __BuildCMakeProject(self, project: BuildProject):
-        path = Config.INTERMEDIATES_DIRECTORY
-        filePath = os.path.join(path, "CMakeLists.txt")
-        if not os.path.exists(path):
-            os.makedirs(path)
+        path = Path(Config.INTERMEDIATES_DIRECTORY)
+        filePath = Path(path, "CMakeLists.txt")
+        if not path.exists():
+            path.mkdir(parents=True)
 
         fs = open(filePath, 'w', -1, "utf-8")
         cmds.PrintCMakeMinimum(fs, Config.CMAKE_MINIMUM_VERSION)
         cmds.PrintCMakeProject(fs, project.Name)
 
         #TODO: Add common compiler flags, etc
-        
-        cmds.PrintSubDirectory(fs, filePath)
+        targetDirectory = Path(path, project.Target.Name)
+        cmds.PrintSubDirectory(fs, targetDirectory.as_posix(), project.Target.Name)
 
         fs.close()
         pass
@@ -51,10 +50,10 @@ class CMakeBuilder:
         #each target forms it's own sub directory with CMakeLists.txt file
 
         #Currently, all "Targets" get their own sub directory when building
-        intermediatePath = os.path.join(Config.INTERMEDIATES_DIRECTORY, target.Name)
-        filePath = os.path.join(intermediatePath, "CMakeLists.txt")
-        if not os.path.exists(intermediatePath):
-            os.makedirs(intermediatePath)
+        intermediatePath = Path(Config.INTERMEDIATES_DIRECTORY, target.Name)
+        filePath = intermediatePath.joinpath("CMakeLists.txt")
+        if not intermediatePath.exists():
+            intermediatePath.mkdir(parents=True)
 
         fs = open(filePath, 'w', -1, "utf-8")
         
@@ -63,12 +62,7 @@ class CMakeBuilder:
 
         cmds.PrintSetTargetName(fs, target.Name)
         cmds.PrintSources(fs, target.Sources)
-
-        #Include any sub-targets here
-        for _, subTarget in target.SubTargets.items():
-            subTargetPath = os.path.join(intermediatePath, "SubTargets", f"{subTarget.Name}.cmake")
-            cmds.PrintInclude(fs, subTargetPath)
-            self.__BuildCMakeSubTarget(target, subTarget)
+        cmds.PrintNewLine(fs)
 
         match target.BuildType:
             case ETargetBuildType.EXECUTABLE:
@@ -79,6 +73,13 @@ class CMakeBuilder:
                 cmds.PrintDynamicLibraryTarget(fs)
             case _:
                 raise Exception("Invalid operation")
+        cmds.PrintNewLine(fs)
+
+        #Include any sub-targets here. Need to define the target before adding include statements
+        for _, subTarget in target.SubTargets.items():
+            subTargetPath = Path(intermediatePath, "SubTargets", f"{subTarget.Name}.cmake")
+            cmds.PrintInclude(fs, subTargetPath.as_posix())
+            self.__BuildCMakeSubTarget(target, subTarget)
 
         #Header setup
         headerPaths = self.__GetHeaderFullPaths(target.Schema.Path, target.Schema.HeaderPaths)
@@ -87,8 +88,8 @@ class CMakeBuilder:
         #Target Linking and dependency setup
         #Link Targets being built
         for _, link in target.Targets.items():
-            targetIntrPath = os.path.join(Config.INTERMEDIATES_DIRECTORY, link.Name)
-            cmds.PrintSubDirectory(fs, targetIntrPath)
+            targetDirPath = Path(Config.INTERMEDIATES_DIRECTORY, link.Name)
+            cmds.PrintSubDirectory(fs, targetDirPath.as_posix(), link.Name)
             cmds.PrintLinkTarget(fs, link.Name)
             cmds.PrintNewLine(fs)
             #TODO: Add support for link option printing for specific targets
@@ -108,9 +109,8 @@ class CMakeBuilder:
 
         #Fire off function to build target file
         for _, extTarget in extTargets.items():
-            intermediatePath = os.path.join(Config.INTERMEDIATES_DIRECTORY, extTarget.Name)
-            filePath = os.path.join(intermediatePath, "CMakeLists.txt") 
-            cmds.PrintSubDirectory(fs, filePath)
+            intermediatePath = Path(Config.INTERMEDIATES_DIRECTORY, extTarget.Name)
+            cmds.PrintSubDirectory(fs, intermediatePath.as_posix(), extTarget.Name)
             cmds.PrintLinkTarget(fs, extTarget.Name)
             self.__BuildCMakeTarget(extTarget)
         
@@ -123,9 +123,9 @@ class CMakeBuilder:
 
         for lib in staticLibs:
             headerPaths = self.__GetHeaderFullPaths(lib.Path, lib.HeaderPaths)
-            libFilePath = os.path.join(Config.PROJECT_DIRECTORY, lib.Path, lib.FilePath)
+            libFilePath = Path(Config.PROJECT_DIRECTORY, lib.Path, lib.FilePath)
             cmds.PrintTargetIncludeDirectories(fs, headerPaths)
-            cmds.PrintLinkTarget(fs, libFilePath)
+            cmds.PrintLinkTarget(fs, libFilePath.as_posix())
         
         cmds.PrintNewLine(fs)
 
@@ -134,19 +134,23 @@ class CMakeBuilder:
         if extCMakeTargets is None: return
 
         for ext in extCMakeTargets:
-            cmakeListsPath = os.path.join(Config.PROJECT_DIRECTORY, ext.Path)
+            cmakeListsPath = Path(Config.PROJECT_DIRECTORY, ext.Path)
             if(Path(cmakeListsPath).is_file() is False):
                 print(Fore.RED, "No CMakeLists.txt file found for external CMake target: " + ext.Name)
-            cmds.PrintSubDirectory(fs, cmakeListsPath)
+
+            if(cmakeListsPath.is_file()):
+                cmds.PrintSubDirectory(fs, cmakeListsPath.parent.as_posix(), ext.Name)
+            else:
+                cmds.PrintSubDirectory(fs, cmakeListsPath.as_posix(), ext.Name)
             cmds.PrintLinkTarget(fs, ext.Name)
         cmds.PrintNewLine(fs)
 
 
     def __BuildCMakeSubTarget(self, parentTarget: BuildTarget, subTarget: BuildTarget):
-        intermediatePath = os.path.join(Config.INTERMEDIATES_DIRECTORY, parentTarget.Name, "SubTargets")
-        filePath = os.path.join(intermediatePath, f"{subTarget.Name}.cmake")
-        if not os.path.exists(intermediatePath):
-            os.makedirs(intermediatePath)
+        intermediatePath = Path(Config.INTERMEDIATES_DIRECTORY, parentTarget.Name, "SubTargets")
+        filePath = intermediatePath.joinpath(f"{subTarget.Name}.cmake")
+        if not intermediatePath.exists():
+            intermediatePath.mkdir(parents=True)
 
         fs = open(filePath, 'w', -1, "utf-8")
         
@@ -169,7 +173,7 @@ class CMakeBuilder:
         fs.close()
 
     def __GetHeaderFullPaths(self, targetRelPath: str, relHeaderPaths: list[str]) -> list[str]:
-        headerPaths = [os.path.join(Config.PROJECT_DIRECTORY, targetRelPath, header) 
+        headerPaths = [Path(Config.PROJECT_DIRECTORY, targetRelPath, header).as_posix() 
                             for header in relHeaderPaths]
         return headerPaths
 
@@ -226,7 +230,7 @@ def GetSourcesFromPath(fullPath : Path, excludePaths: list[Path]) -> list[str]:
     # Gather all the source files in the current directory
     for ext in regexExtList:
         paths = fullPath.glob(ext)
-        sources.extend([str(path) for path in paths])
+        sources.extend([path.as_posix() for path in paths])
 
     # Walk into the sub-directories and collect sources from them too
     for path in fullPath.iterdir():
