@@ -1,0 +1,17 @@
+TODOS:
+    CRITICAL @critical:
+        ☐ Differentiate between target_compile_definitions and compile_definitions. compile_definitions should apply to all sub-directories added
+        
+    HIGH @high:
+        ☐ Override and conditionals support in build json files
+        ☐ Support for building and referencing dynamic libraries
+        ☐ Define a proper tree structure for the targets
+        ☐ Check for cycles in dependency
+
+    LOW @low:
+        ☐ GUI tool support for viewing the tree structure and all the flags
+        ☐ Have a section in every generated CMAKE file for manual entry. This section shouldn't be modified by builder
+        ☐ If having a separate section is proving tricky, there could be a field that takes a manual CMAKE file, which could bypass everything defined
+
+    DONE:
+        ✔ Generate CMake files and with Bolt project running as before @done(26-11-26 23:57)

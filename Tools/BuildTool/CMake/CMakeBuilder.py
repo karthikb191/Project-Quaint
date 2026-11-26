@@ -38,6 +38,11 @@ class CMakeBuilder:
         cmds.PrintCMakeMinimum(fs, Config.CMAKE_MINIMUM_VERSION)
         cmds.PrintCMakeProject(fs, project.Name)
 
+        dirPath = Config.BINARY_DIRECTORY.joinpath(project.Name).as_posix()
+        cmds.PrintArchiveOutputDirectory(fs, dirPath)
+        cmds.PrintLibraryOutputDirectory(fs, dirPath)
+        cmds.PrintRuntimeOutputDirectory(fs, dirPath)
+
         #TODO: Add common compiler flags, etc
         targetDirectory = Path(path, project.Target.Name)
         cmds.PrintSubDirectory(fs, targetDirectory.as_posix(), project.Target.Name)
@@ -61,6 +66,7 @@ class CMakeBuilder:
         cmds.PrintNewLine(fs)
 
         cmds.PrintSetTargetName(fs, target.Name)
+
         cmds.PrintSources(fs, target.Sources)
         cmds.PrintNewLine(fs)
 
@@ -71,9 +77,20 @@ class CMakeBuilder:
                 cmds.PrintStaticLibraryTarget(fs)
             case ETargetBuildType.DYNAMIC:
                 cmds.PrintDynamicLibraryTarget(fs)
+            case ETargetBuildType.INTERFACE:
+                cmds.PrintInterfaceTarget(fs)
             case _:
                 raise Exception("Invalid operation")
         cmds.PrintNewLine(fs)
+
+        if(target.BuildType == ETargetBuildType.EXECUTABLE or
+            target.BuildType == ETargetBuildType.STATIC or 
+            target.BuildType == ETargetBuildType.DYNAMIC):
+            #Compile definitions and options
+            cmds.PrintCompileDefinitions(fs, target.Schema.CompileDefinitions)
+            cmds.PrintCompileOptions(fs, target.Schema.CompileFlags)
+            cmds.PrintNewLine(fs)
+            #TODO: linker flags
 
         #Include any sub-targets here. Need to define the target before adding include statements
         for _, subTarget in target.SubTargets.items():
@@ -81,9 +98,20 @@ class CMakeBuilder:
             cmds.PrintInclude(fs, subTargetPath.as_posix())
             self.__BuildCMakeSubTarget(target, subTarget)
 
+        if(target.BuildType == ETargetBuildType.EXECUTABLE or
+            target.BuildType == ETargetBuildType.STATIC or 
+            target.BuildType == ETargetBuildType.DYNAMIC):
+            cmds.PrintNewLine(fs)
+            cmds.PrintTargetSources(fs)
+            cmds.PrintNewLine(fs)
+
         #Header setup
         headerPaths = self.__GetHeaderFullPaths(target.Schema.Path, target.Schema.HeaderPaths)
-        cmds.PrintTargetIncludeDirectories(fs, headerPaths)
+
+        scope = "PUBLIC"
+        if target.BuildType == ETargetBuildType.INTERFACE:
+            scope = "INTERFACE"
+        cmds.PrintTargetIncludeDirectories(fs, headerPaths, scope)
 
         #Target Linking and dependency setup
         #Link Targets being built
@@ -97,7 +125,6 @@ class CMakeBuilder:
         self.__BuildExternalTargets(fs, target)
         self.__BuildExternalCMakeTargets(fs, target)
         self.__BuildStaticLibraries(fs, target)
-        #TODO: Add support for linking static libraries
 
         #TODO: Add support for linking dynamic libraries
 
@@ -154,7 +181,7 @@ class CMakeBuilder:
 
         fs = open(filePath, 'w', -1, "utf-8")
         
-        cmds.PrintSources(fs, subTarget.Sources, True)
+        cmds.PrintSources(fs, subTarget.Sources)
 
         headerPaths = self.__GetHeaderFullPaths(subTarget.Schema.Path, subTarget.Schema.HeaderPaths)
 

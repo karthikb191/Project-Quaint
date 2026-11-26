@@ -20,8 +20,8 @@ class TargetSettingsSchema(BaseModel):
     SourcePaths : list[str] | None = Field(default=[])
     HeaderPaths : list[str] = Field(default=[])
     ExcludePaths : list[str] = Field(default=[])
-    CompilerFlags : list[str] = Field(default=[])
-    CompilerDefinitions : list[str] = Field(default=[])
+    CompileFlags : list[str] = Field(default=[])
+    CompileDefinitions : list[str] = Field(default=[])
     PreprocessorDefines : list[str] = Field(default=[])
     LinkerOptions : list[str] = Field(default=[])
 

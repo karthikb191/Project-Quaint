@@ -63,6 +63,7 @@ def __GatherFromTargetSchema(schema: Models.TargetSchema) -> ProjectTypes.BuildT
         return
     
     target = ProjectTypes.BuildTarget()
+    target.BuildType = ProjectTypes.ETargetBuildType[schema.BuildType]
     target.Schema = schema
 
     #Gather sub-targets for this target    

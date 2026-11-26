@@ -13,7 +13,10 @@
     "HeaderPaths" :[
         "Include"
     ],
-    
+    "CompileDefinitions" :[
+        "VK_USE_PLATFORM_WIN32_KHR", "DEBUG_BUILD", "QUAINT_PLATFORM_WIN32"
+    ],
+
     "Overrides":{
         "WIN32":{
             "PreProcessorDefines" : ["VK_USE_PLATFORM_WIN32_KHR"]
@@ -48,7 +51,7 @@
             },
             {
                 "Name" : "stb",
-                "Type" : "STATIC",
+                "BuildType" : "INTERFACE",
                 "Path" : "External/Libs/stb",
                 "HeaderPaths" : [
                     "./"

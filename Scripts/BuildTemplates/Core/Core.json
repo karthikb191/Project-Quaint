@@ -4,6 +4,12 @@
     "Type" : "BUILD_STATIC",
     "BuildType" : "STATIC",
 
+    "CompileDefinitions" :["INTRINSICS_SUPPORTED", "QUAINT_PLATFORM_WIN32"],
+    
+    "CompileFlags" : [
+        "/arch:SSE2"
+    ],
+
     "DependencyList":{
         "ExternalCMakeTargets":[
             {

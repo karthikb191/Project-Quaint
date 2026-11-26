@@ -6,6 +6,7 @@ class ETargetBuildType(Enum):
     EXECUTABLE = 0
     STATIC = 1
     DYNAMIC = 2
+    INTERFACE = 3
 
 class BuildTarget:
     def __init__(self) -> None:
